@@ -1,0 +1,12 @@
+[Unit]
+Description=Connect and Frp
+After=network-online.target
+
+[Service]
+Restart=always
+ExecStart=/usr/local/NetworkConfigure/connect.sh /usr/local/NetworkConfigure/you-srun-account.json /opt/frp/frp.toml
+RestartSec=5
+StartLimitInterval=0
+
+[Install]
+WantedBy=default.target

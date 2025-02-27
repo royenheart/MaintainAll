@@ -3,7 +3,7 @@
 # debug
 set -x
 
-envFolder="../envs"
+envFolder="${HOME}/envs"
 apps=()
 
 # use with example file moduleD and moduleD_Devel
@@ -15,22 +15,22 @@ function help() {
 }
 
 function find_files() {
-        local path=$1
-        local d=`ls ${path}`
-        for file in ${d[@]}
-        do
-            if test -d ${path}/${file}
-            then
-                if [[ ! "${file}" =~ [a-zA-Z0-9_]+-([0-9]+\.)+[0-9]+ ]]; then
-                    echo "${file} not meets with the format name-version"
-                    exit -1
-                fi
-                # name
-                apps[${#apps[*]}]=${file%-*}
-                # version
-                apps[${#apps[*]}]=${file#*-}
+    local path=$1
+    local d=`ls ${path}`
+    for file in ${d[@]}
+    do
+        if test -d ${path}/${file}
+        then
+            if [[ ! "${file}" =~ [a-zA-Z0-9_]+-([0-9]+\.)+[0-9]+ ]]; then
+                echo "${file} not meets with the format name-version"
+                exit -1
             fi
-        done
+            # name
+            apps[${#apps[*]}]=${file%-*}
+            # version
+            apps[${#apps[*]}]=${file#*-}
+        fi
+    done
 }
 
 ## 读取参数

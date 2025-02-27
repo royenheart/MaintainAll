@@ -1,6 +1,6 @@
 #!/bin/bash
 
-# 自动生成Patch补丁文件
+# generate Patches
 
 # SHELL调试
 # set -x

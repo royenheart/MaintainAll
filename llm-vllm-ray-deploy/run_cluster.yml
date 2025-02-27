@@ -1,0 +1,38 @@
+---
+- name: Run run_cluster.sh on both servers
+  hosts: servers
+  become: false
+  tasks:
+    - name: Copy run_cluster.sh from master to slaves
+      ansible.builtin.copy:
+        src: /path/to/master/node/run_cluster.sh
+        dest: /tmp/run_cluster.sh  # copy to slave nodes' /tmp/ so that it can be executed
+        owner: xxx
+        group: xxx
+        mode: u+rwx,g+rx,o-rwx
+
+    - name: Run run_cluster.sh on master
+      command: >
+        bash /path/to/run_cluster.sh
+        vllm/vllm-openai
+        <master_ip>
+        --head
+        /home/hzxie/.cache/huggingface
+        -e VLLM_HOST_IP=master_ip
+        -e NCCL_SOCKET_IFNAME=master_hca_with_vllm_host_ip
+        -e GLOO_SOCKET_IFNAME=master_hca_with_vllm_host_ip
+        -v /path/to/model:/mnt/deepseek
+      when: inventory_hostname == "master_node_hostname"
+
+    - name: Run run_cluster.sh on pink
+      command: >
+        bash /tmp/run_cluster.sh
+        vllm/vllm-openai
+        <master_ip>
+        --worker
+        /home/hzxie/.cache/huggingface
+        -e VLLM_HOST_IP=slave_ip
+        -e NCCL_SOCKET_IFNAME=slave_hca_with_vllm_host_ip
+        -e GLOO_SOCKET_IFNAME=slave_hca_with_vllm_host_ip
+        -v /path/to/model:/mnt/deepseek
+      when: inventory_hostname == "slave_node_hostname"

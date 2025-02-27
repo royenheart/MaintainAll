@@ -1,0 +1,45 @@
+# addr2line2src $(addr2line -e xxx xxx)
+# convert addr2line output to source code
+function addr2line2src() {
+    result=$1
+    filename=$(echo $1 | cut -d':' -f1)
+    line=$(echo $1 | cut -d':' -f2)
+    sed -n "${line}p" "${filename}"
+}
+
+# rust mirror
+
+function unset_rustup_mirror() {
+    unset RUSTUP_UPDATE_ROOT
+    unset RUSTUP_DIST_SERVER
+}
+
+function set_rustup_mirror() {
+    export RUSTUP_UPDATE_ROOT=https://mirrors.cernet.edu.cn/rustup/rustup
+    export RUSTUP_DIST_SERVER=https://mirrors.cernet.edu.cn/rustup
+}
+
+. set_rustup_mirror
+
+# use ccache to speed up compilation
+
+export CMAKE_CXX_COMPILER_LAUNCHER=ccache
+
+# environment module common paths
+. /usr/share/modules/init/bash
+export MODULEPATH=${HOME}/envs:${HOME}/modulefiles:/opt/modulefiles:$MODULEPATH
+
+# Spack
+# . ${HOME}/softwares/spack/share/spack/setup-env.sh
+# spack load tmux
+# spack load environment-modules
+
+# For intel oneapi
+# . /opt/intel/oneapi/setvars.sh
+
+alias ssh-keygen-ed25519="ssh-keygen -t ed25519 -C \"you@email.domain\""
+alias ll='ls -alF'
+alias la='ls -A'
+alias l='ls -CF'
+alias dkps='docker ps --all'
+alias dkimgs='docker image ls --all'

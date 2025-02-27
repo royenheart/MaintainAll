@@ -1,0 +1,17 @@
+serverPort = xxx
+serverAddr = "xxx"
+loginFailExit = true
+auth.token = "xxx"
+# This parameter is not officially supported, visit my fork of frp project
+# maxRetries = 5
+
+[[proxies]]
+localPort = xxx
+remotePort = xxx
+name = "ssh-xxx"
+type = "tcp"
+localIP = "xxx"
+healthCheck.type = "tcp"
+healthCheck.maxFailed = 3
+healthCheck.timeoutSeconds = 3
+healthCheck.intervalSeconds = 5

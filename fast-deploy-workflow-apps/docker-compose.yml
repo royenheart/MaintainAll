@@ -1,0 +1,90 @@
+services:
+  grafana:
+    container_name: services-grafana
+    image: grafana/grafana:10.2.2
+    ports:
+      - '3000:3000'
+    restart: unless-stopped
+    volumes:
+      - services_grafana_storage:/var/lib/grafana
+      - /home/data/sqlites:/srv/sqlites
+      - ./configs/grafana:/etc/grafana
+    networks:
+      - services
+  prometheus:
+    container_name: services-prometheus
+    image: prom/prometheus:v2.48.1
+    user: root
+    ports:
+      - '9090:9090'
+    restart: unless-stopped
+    volumes:
+      - services_prometheus_storage:/prometheus
+      - ./configs/prometheus:/etc/prometheus
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+      - '--storage.tsdb.path=/prometheus'
+    networks:
+      - services
+  alertmanager:
+    container_name: services-alertmanager
+    image: prom/alertmanager:main
+    ports:
+      - '9093:9093'
+    restart: unless-stopped
+    volumes:
+      - services_alertmanager_storage:/alertmanager
+      - ./configs/alertmanager:/etc/alertmanager
+    command:
+      - '--config.file=/etc/alertmanager/alertmanager.yml'
+      - '--storage.path=/alertmanager'
+    networks:
+      - services
+  jupyterhub:
+    container_name: services-jupyterhub
+    build:
+      context: ./MyJupyterhub
+      dockerfile: Dockerfile
+    ports:
+      - '8000:8000'
+    restart: unless-stopped
+    volumes:
+      - services_jupyterhub_storage:/usr/local/share/jupyterhub
+      - services_jupyterhub_home:/home
+      - services_jupyterhub_shared:/srv/shared
+      - ./configs/jupyterhub:/srv/jupyterhub
+    networks:
+      - services
+      # gitlab:
+      # container_name: services-gitlab
+      # image: gitlab/gitlab-ee:17.1.0-ee.0
+      # hostname: 'xxx'
+      # ports:
+      # - '10080:10080'
+      # - '10443:443'
+      # - '10022:22'
+      # restart: always
+      # volumes:
+      # - ./configs/gitlab:/etc/gitlab
+      # - services_gitlab_log:/var/log/gitlab
+      # - services_gitlab_data:/var/opt/gitlab
+      # environment:
+      #GITLAB_OMNIBUS_CONFIG: |
+      #external_url 'http://xxx:10080'
+      #   gitlab_rails['gitlab_ssh_host'] = 'xxx'
+      #   gitlab_rails['gitlab_shell_ssh_port'] = 10022
+      #shm_size: '256m'
+      #networks:
+      #  - services
+networks:
+  services:
+    driver: bridge
+volumes:
+  services_grafana_storage: {}
+  services_prometheus_storage: {}
+  services_alertmanager_storage: {}
+  services_jupyterhub_storage: {}
+  services_gitlab_log: {}
+  services_gitlab_data: {}
+  services_jupyterhub_home: {}
+  services_jupyterhub_shared: {}

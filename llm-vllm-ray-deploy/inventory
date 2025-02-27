@@ -1,0 +1,3 @@
+[servers]
+red ansible_host=ip1
+pink ansible_host=ip2

@@ -1,0 +1,14 @@
+---
+- name: Stop and remove Docker container
+  hosts: servers
+  become: false
+  tasks:
+    - name: Stop Docker container
+      community.docker.docker_container:
+        name: node
+        state: stopped
+
+    - name: Remove Docker container
+      community.docker.docker_container:
+        name: node
+        state: absent
