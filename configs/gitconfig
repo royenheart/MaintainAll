@@ -1,3 +1,5 @@
 [user]
         email = you@email.domain
         name = you real name
+[alias]
+	logp = log --graph --oneline --date=iso --pretty=format:\"%h %ad %an %s\" --color 
