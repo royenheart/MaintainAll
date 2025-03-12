@@ -29,6 +29,11 @@ export CMAKE_CXX_COMPILER_LAUNCHER=ccache
 . /usr/share/modules/init/bash
 export MODULEPATH=${HOME}/envs:${HOME}/modulefiles:/opt/modulefiles:$MODULEPATH
 
+function do_sync() {
+sudo bash -c "echo 3 > /proc/sys/vm/drop_caches"
+sudo sync
+}
+
 # Spack
 # . ${HOME}/softwares/spack/share/spack/setup-env.sh
 # spack load tmux
