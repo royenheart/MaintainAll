@@ -34,6 +34,18 @@ sudo bash -c "echo 3 > /proc/sys/vm/drop_caches"
 sudo sync
 }
 
+function loop_cmd_until_success() {
+    exe_cmd=$1
+    max_loops=${2:-'5'}
+    eval $exe_cmd
+    for i in `seq 1 $max_loops`; do
+        eval $exe_cmd
+        if [[ $? == 0 ]]; then
+            break
+        fi
+    done
+}
+
 # Spack
 # . ${HOME}/softwares/spack/share/spack/setup-env.sh
 # spack load tmux
