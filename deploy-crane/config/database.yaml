@@ -1,0 +1,21 @@
+# EmbeddedDb settings
+# BerkeleyDB or Unqlite(default)
+CraneEmbeddedDbBackend: Unqlite
+# File path of CraneCtld embeded DB (Relative to CraneBaseDir)
+CraneCtldDbPath: cranectld/embedded.db
+
+# Mongodb settings
+DbUser: admin
+DbPassword: "123456"
+DbHost: localhost
+DbPort: 27017
+DbReplSetName: crane_rs
+DbName: crane_db
+
+Vault:
+  Enabled: false
+  Addr: 127.0.0.1
+  Port: 8200
+  Username: admin
+  Password: "123456"
+  Tls: false
