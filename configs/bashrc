@@ -60,3 +60,102 @@ alias la='ls -A'
 alias l='ls -CF'
 alias dkps='docker ps --all'
 alias dkimgs='docker image ls --all'
+
+# =========== SET WSL VPN ===========
+# Plz use wsl networking mode 'mirrored' if possible, this has greater support for VPN.
+# SEE: https://learn.microsoft.com/zh-cn/windows/wsl/networking#mirrored-mode-networking
+
+# Set WSL's proxy in NAT mode
+# TESTED ON: v2raya
+
+# Prepare:
+# 1. WSL network mode in NAT
+# 2. enable WSL localhost forwarding
+
+# SEE: https://learn.microsoft.com/zh-cn/windows/wsl/wsl-config
+# SEE ALSO: https://zhuanlan.zhihu.com/p/414627975
+# WARNING: wsl cant use v2ray's nameserver, so it needs to be changed
+# ABOUT v2raya: https://v2raya.org/docs/prologue/quick-start
+# =========== SET WSL VPN ===========
+
+function backup_file() {
+    local file=$1
+    if [[ -f "$file" ]]; then
+        sudo cp -f "$file" "$file.bak"
+        echo "已备份: $file -> $file.bak"
+    fi
+}
+
+function set_wsl_proxy() {
+    # 1. 处理 /etc/wsl.conf
+    WSL_CONF="/etc/wsl.conf"
+    if [[ ! -f "$WSL_CONF" ]]; then
+        # 文件不存在：创建并写入内容
+        echo "创建 $WSL_CONF"
+        backup_file "$WSL_CONF"  # 备份空文件（实际创建备份文件但不包含内容）
+        sudo bash -c "echo -e '[network]\ngenerateResolvConf = false' > $WSL_CONF"
+    else
+        # 文件存在：进行修改
+        backup_file "$WSL_CONF"
+
+        # 检查 generateResolvConf 是否存在
+        if grep -q "generateResolvConf" "$WSL_CONF"; then
+            # 存在：替换为 true
+            sudo sed -i 's/^generateResolvConf\s*=.*/generateResolvConf = false/' "$WSL_CONF"
+            echo "已更新 generateResolvConf = false"
+        else
+            # 不存在：检查 [network] 是否存在
+            if grep -q "^\[network\]" "$WSL_CONF"; then
+                # [network] 存在：在其后插入
+                sudo sed -i '/^\[network\]/a generateResolvConf = false' "$WSL_CONF"
+                echo "已插入 generateResolvConf = false"
+            else
+                # [network] 不存在：在文件末尾追加
+                sudo bash -c "echo -e '\n[network]\ngenerateResolvConf = false' >> $WSL_CONF"
+                echo "已添加 [network] 和 generateResolvConf = false"
+            fi
+        fi
+    fi
+
+    # 2. 处理 /etc/resolv.conf
+    RESOLV_CONF="/etc/resolv.conf"
+    backup_file "$RESOLV_CONF"  # 无论是否存在都尝试备份
+
+    # 检查 nameserver 是否存在
+    if grep -q "^nameserver" "$RESOLV_CONF"; then
+        # 存在：替换为 8.8.8.8
+        sudo sed -i 's/^nameserver\s.*/nameserver 8.8.8.8/' "$RESOLV_CONF"
+        echo "已将 nameserver 替换为 8.8.8.8"
+    else
+        # 不存在：在文件末尾追加
+        sudo bash -c "echo 'nameserver 8.8.8.8' >> $RESOLV_CONF"
+        echo "已添加 nameserver 8.8.8.8"
+    fi
+
+    echo "所有操作完成！备份文件已创建(.bak)"
+    local hostip=$(ip route | grep default | awk '{print $3}')
+
+    # v2raya default:
+    # 1. socks5: 20170
+    # 2. http: 20171
+    # 3. https: 20172
+
+    local hostport=${1-'20170'}
+    local proxy_type=${2-'socks5'}
+    export HTTPS_PROXY="${proxy_type}://${hostip}:${hostport}";
+    export HTTP_PROXY="${proxy_type}://${hostip}:${hostport}";
+    export ALL_PROXY="${proxy_type}://${hostip}:${hostport}";
+    echo -e "Acquire::http::Proxy \"http://${hostip}:${hostport}\";" | sudo tee -a /etc/apt/apt.conf.d/proxy.conf > /dev/null;
+    echo -e "Acquire::https::Proxy \"http://${hostip}:${hostport}\";" | sudo tee -a /etc/apt/apt.conf.d/proxy.conf > /dev/null;
+} 
+
+function unset_wsl_proxy() {
+    # return wsl.conf and set auto generate resolve.conf
+    WSL_CONF="/etc/wsl.conf"
+    sudo mv -f ${WSL_CONF}.bak $WSL_CONF
+    unset HTTPS_PROXY;
+    unset HTTP_PROXY;
+    unset ALL_PROXY;
+    sudo sed -i -e '/Acquire::http::Proxy/d' /etc/apt/apt.conf.d/proxy.conf;
+    sudo sed -i -e '/Acquire::https::Proxy/d' /etc/apt/apt.conf.d/proxy.conf;
+}
