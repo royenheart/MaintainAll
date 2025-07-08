@@ -82,11 +82,17 @@ TaskPlugin=task/affinity
 #                    NODES                     #
 ################################################
 # 节点配置
+{% for host in groups['management'] %}
+NodeName={{ host }} NodeAddr={{ hostvars[host]['ansible_host'] }} CPUs=4 RealMemory=200 CoresPerSocket=4 ThreadsPerCore=1 Procs=1 State=UNKNOWN
+{% endfor %}
+{% for host in groups['login'] %}
+NodeName={{ host }} NodeAddr={{ hostvars[host]['ansible_host'] }} CPUs=4 RealMemory=200 CoresPerSocket=4 ThreadsPerCore=1 Procs=1 State=UNKNOWN
+{% endfor %}
 {% for host in groups['compute'] %}
-NodeName={{ hostvars[host]['ansible_host'] }} CPUs=2 RealMemory=1000 Sockets=1 CoresPerSocket=2 ThreadsPerCore=1 State=UNKNOWN
+NodeName={{ host }} NodeAddr={{ hostvars[host]['ansible_host'] }} CPUs=4 RealMemory=200 CoresPerSocket=4 ThreadsPerCore=1 Procs=1 State=UNKNOWN
 {% endfor %}
 
 ################################################
 #                  PARTITIONS                  #
 ################################################
-PartitionName=compute Nodes=ALL Default=YES MaxTime=INFINITE State=UP
+PartitionName=compute Nodes={% for host in groups['compute'] %}{{ host }}{% if not loop.last %},{% endif %}{% endfor %} Default=YES MaxTime=INFINITE State=UP
