@@ -12,7 +12,7 @@
 #                   CONTROL                    #
 ################################################
 ClusterName={{ cluster_name }}
-SlurmctldHost={{ groups['management'][0] }}    #管理服务节点名称
+SlurmctldHost={{ hostvars[groups['management'][0]].get('ansible_host', groups['management'][0]) }}    #管理服务节点名称
 SlurmctldPort=6817    #slurmctld服务端口
 SlurmdPort=6818   #slurmd服务的端口 
 SlurmUser=slurm    #slurm的主用户
@@ -34,7 +34,7 @@ StateSaveLocation=/var/spool/slurmctld
 #                  ACCOUNTING                  #
 ################################################
 AccountingStorageEnforce=associations,limits,qos  #account存储数据的配置选项
-AccountingStorageHost={{ groups['management'][0] }}
+AccountingStorageHost={{ hostvars[groups['management'][0]].get('ansible_host', groups['management'][0]) }}
 AccountingStoragePass=/var/run/munge/munge.socket.2    #munge认证文件，与slurmdbd.conf文件中的AuthInfo文件同名。
 AccountingStoragePort=6819    #slurmd服务监听端口，默认为6819
 AccountingStorageType=accounting_storage/slurmdbd    #数据库记账服务
@@ -83,7 +83,7 @@ TaskPlugin=task/affinity
 ################################################
 # 节点配置
 {% for host in groups['compute'] %}
-NodeName={{ host }} CPUs=2 RealMemory=1000 Sockets=1 CoresPerSocket=2 ThreadsPerCore=1 State=UNKNOWN
+NodeName={{ hostvars[host]['ansible_host'] }} CPUs=2 RealMemory=1000 Sockets=1 CoresPerSocket=2 ThreadsPerCore=1 State=UNKNOWN
 {% endfor %}
 
 ################################################

@@ -9,7 +9,7 @@ AuthInfo=/var/run/munge/munge.socket.2     #为了与slurmctld控制节点通信
 #
 # slurmDBD info
 DbdAddr={{ hostvars[groups['management'][0]]['ansible_default_ipv4']['address'] }}
-DbdHost={{ groups['management'][0] }}
+DbdHost={{ hostvars[groups['management'][0]].get('ansible_host', groups['management'][0]) }}
 SlurmUser=slurm     #用户数据库操作的用户
 DebugLevel=verbose
 LogFile=/var/log/slurm/slurmdbd.log     #slurmdbd守护进程日志文件绝对路径 

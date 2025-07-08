@@ -76,14 +76,17 @@
         state: directory
 
     - name: Set up rngd.service override
-      community.general.ini_file:
-        dest: /etc/systemd/system/rngd.service.d/exec_override.conf
+      ansible.builtin.blockinfile:
+        path: /etc/systemd/system/rngd.service.d/exec_override.conf
+        block: |
+          [Service]
+          ExecStart=
+          ExecStart=/sbin/rngd -f -r /dev/urandom
         owner: root
         group: root
-        mode: u=rw,g=r,o=r
-        section: Service
-        option: ExecStart
-        value: /sbin/rngd -f -r /dev/urandom
+        mode: '0640'
+        create: true
+      notify: Reload systemd
 
     - name: Start and enable rngd service
       ansible.builtin.systemd:
@@ -111,6 +114,11 @@
         group: munge
         mode: '0400'
 
+  handlers:
+    - name: Reload systemd
+      ansible.builtin.systemd:
+        daemon_reload: true
+
 - name: Start munge service
   hosts: all
   become: true
@@ -122,6 +130,30 @@
         dest: /etc/munge/munge.key
         mode: push
       delegate_to: "{{ groups['management'][0] }}"
+
+    - name: Ensure munge var lib permissions
+      ansible.builtin.file:
+        path: /var/lib/munge/
+        owner: munge
+        group: munge
+
+    - name: Ensure munge run dir permissions
+      ansible.builtin.file:
+        path: /run/munge/
+        owner: munge
+        group: munge
+
+    - name: Ensure munge log dir permissions
+      ansible.builtin.file:
+        path: /var/log/munge/
+        owner: munge
+        group: munge
+
+    - name: Ensure munge key dir permissions
+      ansible.builtin.file:
+        path: /etc/munge
+        owner: munge
+        group: munge
 
     - name: Start and enable munge
       ansible.builtin.systemd:
@@ -136,6 +168,7 @@
     slurm_version: "22.05.3"
     mysql_slurm_password: "123456"
     cluster_name: "mycluster"
+    mysql_root_password: "654321"
 
   tasks:
     - name: Install MariaDB and development libs
@@ -149,26 +182,29 @@
         state: started
         enabled: true
 
-    - name: Generate MySQL root password
-      ansible.builtin.shell: set -o pipefail && tr -dc A-Za-z0-9 </dev/urandom | head -c 16
-      register: mysql_root_password
-      changed_when: false
+    # TODO: 需创建幂等、原子性的数据库操作
+
+    # - name: Generate MySQL root password
+    #   ansible.builtin.shell: set -o pipefail && tr -dc A-Za-z0-9 </dev/urandom | head -c 16 || true
+    #   register: mysql_root_password
+    #   changed_when: false
 
     - name: Set MySQL root password
       community.mysql.mysql_user:
         name: root
-        password: "{{ mysql_root_password.stdout }}"
+        # password: "{{ mysql_root_password.stdout }}"
+        password: "{{ mysql_root_password }}"
         login_unix_socket: /var/lib/mysql/mysql.sock
-      failed_when: >
-        (mysql_root_password is failed) and
-        ('Access denied for user' not in (mysql_root_password.msg | default('')))
+      # failed_when: >
+      #   (mysql_root_password is failed) and
+      #   ('Access denied for user' not in (mysql_root_password.msg | default('')))
 
     - name: Create slurm database
       community.mysql.mysql_db:
         name: slurm_acct_db
         state: present
         login_user: root
-        login_password: "{{ mysql_root_password.stdout }}"
+        login_password: "{{ mysql_root_password }}"
 
     - name: Create slurm MySQL user
       community.mysql.mysql_user:
@@ -178,7 +214,7 @@
         host: localhost
         state: present
         login_user: root
-        login_password: "{{ mysql_root_password.stdout }}"
+        login_password: "{{ mysql_root_password }}"
 
     - name: Download SLURM source
       ansible.builtin.get_url:
@@ -248,7 +284,43 @@
         state: started
         enabled: true
 
-# 登录节点和计算节点任务
+# 登录节点任务
+- name: Configure Login Nodes
+  hosts: login
+  become: true
+
+  tasks:
+    - name: Copy slurm configuration files to all nodes
+      ansible.posix.synchronize:
+        src: /etc/slurm/
+        dest: /etc/slurm/
+        mode: push
+      delegate_to: "{{ groups['management'][0] }}"
+
+    - name: Copy SLURM RPM packages
+      ansible.posix.synchronize:
+        src: /root/rpmbuild/RPMS/x86_64/
+        dest: /tmp/slurm-rpms/
+      delegate_to: "{{ groups['management'][0] }}"
+
+    - name: Install SLURM packages
+      ansible.builtin.shell: |
+        cd /tmp/slurm-rpms/
+        yum localinstall -y slurm-*
+      args:
+        creates: /usr/bin/scontrol
+
+    - name: Create SLURM directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: slurm
+        group: slurm
+        mode: '0755'
+      loop:
+        - /var/log/slurm
+
+# 计算节点任务
 - name: Configure Compute Nodes
   hosts: compute
   become: true
@@ -284,18 +356,6 @@
       loop:
         - /var/spool/slurmd
         - /var/log/slurm
-
-    - name: Copy SLURM configuration files
-      ansible.builtin.copy:
-        src: "/etc/slurm/{{ item }}"
-        dest: "/etc/slurm/{{ item }}"
-        owner: slurm
-        group: slurm
-        mode: '0644'
-      delegate_to: "{{ groups['management'][0] }}"
-      loop:
-        - slurm.conf
-        - cgroup.conf
 
     - name: Start and enable slurmd
       ansible.builtin.systemd:

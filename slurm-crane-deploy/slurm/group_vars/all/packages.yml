@@ -21,5 +21,6 @@ packages:
       - rng-tools
   database:
     RedHat:
+      - python3-PyMySQL
       - mariadb-server
       - mysql-devel
