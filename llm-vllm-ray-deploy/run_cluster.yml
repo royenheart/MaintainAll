@@ -12,7 +12,7 @@
         mode: u+rwx,g+rx,o-rwx
 
     - name: Run run_cluster.sh on master
-      command: >
+      ansible.builtin.command: >
         bash /path/to/run_cluster.sh
         vllm/vllm-openai
         <master_ip>
@@ -25,7 +25,7 @@
       when: inventory_hostname == "master_node_hostname"
 
     - name: Run run_cluster.sh on pink
-      command: >
+      ansible.builtin.command: >
         bash /tmp/run_cluster.sh
         vllm/vllm-openai
         <master_ip>
