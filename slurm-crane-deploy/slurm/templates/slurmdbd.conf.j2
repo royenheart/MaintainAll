@@ -1,0 +1,22 @@
+#
+# slurmdbd.conf file.
+#
+# See the slurmdbd.conf man page for more information.
+#
+# Authentication info
+AuthType=auth/munge     #认证方式，该处采用munge进行认证
+AuthInfo=/var/run/munge/munge.socket.2     #为了与slurmctld控制节点通信的其它认证信息
+#
+# slurmDBD info
+DbdAddr={{ hostvars[groups['management'][0]]['ansible_default_ipv4']['address'] }}
+DbdHost={{ groups['management'][0] }}
+SlurmUser=slurm     #用户数据库操作的用户
+DebugLevel=verbose
+LogFile=/var/log/slurm/slurmdbd.log     #slurmdbd守护进程日志文件绝对路径 
+PidFile=/var/run/slurmdbd.pid     #slurmdbd守护进程存储进程号文件绝对路径
+#
+# Database info
+StorageType=accounting_storage/mysql     #数据存储类型
+StoragePass={{ mysql_slurm_password }}
+StorageUser=slurm     #存储数据库用户名
+StorageLoc=slurm_acct_db     #数据库名称

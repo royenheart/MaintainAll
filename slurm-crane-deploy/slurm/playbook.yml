@@ -1,0 +1,388 @@
+---
+# SLURM 集群部署 Ansible Playbook
+# 包含管理节点、登录节点和计算节点的完整配置
+
+- name: Common tasks
+  hosts: all
+  become: true
+  vars:
+    munge_uid: 1108
+    munge_gid: 1108
+    slurm_uid: 1109
+    slurm_gid: 1109
+
+  tasks:
+    # 通用任务 - 所有节点
+    - name: Install EPEL repository
+      ansible.builtin.package:
+        name: "{{ packages.epel[ansible_os_family] }}"
+        state: present
+
+    - name: Install common packages
+      ansible.builtin.package:
+        name: "{{ packages.common[ansible_os_family] }}"
+        state: present
+
+    - name: Create munge group
+      ansible.builtin.group:
+        name: munge
+        gid: "{{ munge_gid }}"
+        state: present
+
+    - name: Create munge user
+      ansible.builtin.user:
+        name: munge
+        uid: "{{ munge_uid }}"
+        group: munge
+        home: /var/lib/munge
+        shell: /sbin/nologin
+        comment: "Munge Uid 'N' Gid Emporium"
+        create_home: true
+        state: present
+
+    - name: Create slurm group
+      ansible.builtin.group:
+        name: slurm
+        gid: "{{ slurm_gid }}"
+        state: present
+
+    - name: Create slurm user
+      ansible.builtin.user:
+        name: slurm
+        uid: "{{ slurm_uid }}"
+        group: slurm
+        home: /var/lib/slurm
+        shell: /bin/bash
+        comment: "Slurm manager"
+        create_home: true
+        state: present
+
+- name: Configure Management Node Munge
+  hosts: management
+  become: true
+
+  tasks:
+    - name: Install rngd
+      ansible.builtin.package:
+        name: "{{ packages.rngd[ansible_os_family] }}"
+        stat: present
+
+    - name: Create a rngd override directory
+      ansible.builtin.file:
+        owner: root
+        group: root
+        mode: u=rwx,g=rx,o=rx
+        path: /etc/systemd/system/rngd.service.d
+        state: directory
+
+    - name: Set up rngd.service override
+      community.general.ini_file:
+        dest: /etc/systemd/system/rngd.service.d/exec_override.conf
+        owner: root
+        group: root
+        mode: u=rw,g=r,o=r
+        section: Service
+        option: ExecStart
+        value: /sbin/rngd -f -r /dev/urandom
+
+    - name: Start and enable rngd service
+      ansible.builtin.systemd:
+        name: rngd
+        state: started
+        enabled: true
+        daemon_reload: true
+
+    - name: Generate munge key
+      ansible.builtin.command:
+        /usr/sbin/create-munge-key -r
+      args:
+        creates: /etc/munge/munge.key
+      become: true
+
+    - name: Generate munge key content
+      ansible.builtin.shell: dd if=/dev/urandom bs=1 count=1024 > /etc/munge/munge.key
+      args:
+        creates: /etc/munge/munge.key
+
+    - name: Set munge key permissions
+      ansible.builtin.file:
+        path: /etc/munge/munge.key
+        owner: munge
+        group: munge
+        mode: '0400'
+
+- name: Start munge service
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Copy munge key to other nodes
+      ansible.posix.synchronize:
+        src: /etc/munge/munge.key
+        dest: /etc/munge/munge.key
+        mode: push
+      delegate_to: "{{ groups['management'][0] }}"
+
+    - name: Start and enable munge
+      ansible.builtin.systemd:
+        name: munge
+        state: started
+        enabled: true
+
+- name: Configure Management Node database
+  hosts: management
+  become: true
+  vars:
+    slurm_version: "22.05.3"
+    mysql_slurm_password: "123456"
+    cluster_name: "mycluster"
+
+  tasks:
+    - name: Install MariaDB and development libs
+      ansible.builtin.package:
+        name: "{{ packages.database[ansible_os_family] }}"
+        state: present
+
+    - name: Start and enable MariaDB
+      ansible.builtin.systemd:
+        name: mariadb
+        state: started
+        enabled: true
+
+    - name: Generate MySQL root password
+      ansible.builtin.shell: set -o pipefail && tr -dc A-Za-z0-9 </dev/urandom | head -c 16
+      register: mysql_root_password
+      changed_when: false
+
+    - name: Set MySQL root password
+      community.mysql.mysql_user:
+        name: root
+        password: "{{ mysql_root_password.stdout }}"
+        login_unix_socket: /var/lib/mysql/mysql.sock
+      failed_when: >
+        (mysql_root_password is failed) and
+        ('Access denied for user' not in (mysql_root_password.msg | default('')))
+
+    - name: Create slurm database
+      community.mysql.mysql_db:
+        name: slurm_acct_db
+        state: present
+        login_user: root
+        login_password: "{{ mysql_root_password.stdout }}"
+
+    - name: Create slurm MySQL user
+      community.mysql.mysql_user:
+        name: slurm
+        password: "{{ mysql_slurm_password }}"
+        priv: "slurm_acct_db.*:ALL"
+        host: localhost
+        state: present
+        login_user: root
+        login_password: "{{ mysql_root_password.stdout }}"
+
+    - name: Download SLURM source
+      ansible.builtin.get_url:
+        url: "https://download.schedmd.com/slurm/slurm-{{ slurm_version }}.tar.bz2"
+        dest: "/tmp/slurm-{{ slurm_version }}.tar.bz2"
+        mode: '0644'
+
+    - name: Build SLURM RPM packages
+      ansible.builtin.shell: |
+        rpmbuild -ta --nodeps /tmp/slurm-{{ slurm_version }}.tar.bz2
+      args:
+        creates: /root/rpmbuild/RPMS/x86_64
+
+    - name: Install SLURM packages
+      ansible.builtin.shell: |
+        cd /root/rpmbuild/RPMS/x86_64/
+        yum localinstall -y slurm-*
+      args:
+        creates: /usr/bin/scontrol
+
+    - name: Create SLURM directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: slurm
+        group: slurm
+        mode: '0755'
+      loop:
+        - /var/spool/slurmctld
+        - /var/spool/slurmd
+        - /var/log/slurm
+
+    - name: Configure slurm.conf
+      ansible.builtin.template:
+        src: slurm.conf.j2
+        dest: /etc/slurm/slurm.conf
+        owner: slurm
+        group: slurm
+        mode: '0644'
+
+    - name: Configure slurmdbd.conf
+      ansible.builtin.template:
+        src: slurmdbd.conf.j2
+        dest: /etc/slurm/slurmdbd.conf
+        owner: slurm
+        group: slurm
+        mode: '0600'
+
+    - name: Configure cgroup.conf
+      ansible.builtin.copy:
+        src: /etc/slurm/cgroup.conf.example
+        dest: /etc/slurm/cgroup.conf
+        owner: slurm
+        group: slurm
+        mode: '0644'
+        remote_src: true
+
+    - name: Start and enable slurmdbd
+      ansible.builtin.systemd:
+        name: slurmdbd
+        state: started
+        enabled: true
+
+    - name: Start and enable slurmctld
+      ansible.builtin.systemd:
+        name: slurmctld
+        state: started
+        enabled: true
+
+# 登录节点和计算节点任务
+- name: Configure Compute Nodes
+  hosts: compute
+  become: true
+
+  tasks:
+    - name: Copy slurm configuration files to all nodes
+      ansible.posix.synchronize:
+        src: /etc/slurm/
+        dest: /etc/slurm/
+        mode: push
+      delegate_to: "{{ groups['management'][0] }}"
+
+    - name: Copy SLURM RPM packages
+      ansible.posix.synchronize:
+        src: /root/rpmbuild/RPMS/x86_64/
+        dest: /tmp/slurm-rpms/
+      delegate_to: "{{ groups['management'][0] }}"
+
+    - name: Install SLURM packages
+      ansible.builtin.shell: |
+        cd /tmp/slurm-rpms/
+        yum localinstall -y slurm-*
+      args:
+        creates: /usr/bin/scontrol
+
+    - name: Create SLURM directories
+      ansible.builtin.file:
+        path: "{{ item }}"
+        state: directory
+        owner: slurm
+        group: slurm
+        mode: '0755'
+      loop:
+        - /var/spool/slurmd
+        - /var/log/slurm
+
+    - name: Copy SLURM configuration files
+      ansible.builtin.copy:
+        src: "/etc/slurm/{{ item }}"
+        dest: "/etc/slurm/{{ item }}"
+        owner: slurm
+        group: slurm
+        mode: '0644'
+      delegate_to: "{{ groups['management'][0] }}"
+      loop:
+        - slurm.conf
+        - cgroup.conf
+
+    - name: Start and enable slurmd
+      ansible.builtin.systemd:
+        name: slurmd
+        state: started
+        enabled: true
+
+# 初始化 SLURM 账户和 QOS
+# 仅供参考，实际部署时自行测试
+# - name: Initialize SLURM accounts and QOS
+#   hosts: management
+#   become: true
+#   become_user: slurm
+#   tasks:
+#     - name: Wait for slurmdbd to be ready
+#       ansible.builtin.wait_for:
+#         port: 6819
+#         host: localhost
+#         delay: 10
+
+#     - name: Check if 'low' QOS exists
+#       ansible.builtin.shell: set -o pipefail && sacctmgr show qos format=Name | grep -w low
+#       register: qos_low_check
+#       changed_when: false
+#       failed_when: false
+
+#     - name: Create 'low' QOS if not present
+#       ansible.builtin.shell: set -o pipefail && sacctmgr -i create qos name=low
+#       when: qos_low_check.rc != 0
+#       register: qos_low_create
+#       changed_when: qos_low_check.rc != 0
+#       failed_when: qos_low_create.rc != 0 and ('already exists' not in qos_low_create.stderr | default(''))
+
+#     - name: Check if 'high' QOS exists
+#       ansible.builtin.shell: set -o pipefail && sacctmgr show qos format=Name | grep -w high
+#       register: qos_high_check
+#       changed_when: false
+#       failed_when: false
+
+#     - name: Create 'high' QOS if not present
+#       ansible.builtin.shell: set -o pipefail && sacctmgr -i create qos name=high
+#       when: qos_high_check.rc != 0
+#       register: qos_high_create
+#       changed_when: qos_high_check.rc != 0
+#       failed_when: qos_high_create.rc != 0 and ('already exists' not in qos_high_create.stderr | default(''))
+
+#     - name: Check if cluster exists
+#       ansible.builtin.shell: set -o pipefail && sacctmgr show cluster format=Name | grep -w {{ cluster_name }}
+#       register: cluster_check
+#       changed_when: false
+#       failed_when: false
+
+#     - name: Add cluster to accounting if not present
+#       ansible.builtin.shell: set -o pipefail && sacctmgr -i add cluster name={{ cluster_name }}
+#       when: cluster_check.rc != 0
+#       register: cluster_add
+#       changed_when: cluster_check.rc != 0
+#       failed_when: cluster_add.rc != 0 and ('already exists' not in cluster_add.stderr | default(''))
+
+#     - name: Check if admin account exists
+#       ansible.builtin.shell: set -o pipefail && sacctmgr show account format=Name | grep -w a_admin
+#       register: admin_account_check
+#       changed_when: false
+#       failed_when: false
+
+#     - name: Create admin account if not present
+#       ansible.builtin.shell: set -o pipefail && sacctmgr -i add account name=a_admin
+#       when: admin_account_check.rc != 0
+#       register: admin_account_create
+#       changed_when: admin_account_check.rc != 0
+#       failed_when: admin_account_create.rc != 0 and ('already exists' not in admin_account_create.stderr | default(''))
+
+#     - name: Check if demo_admin user exists
+#       ansible.builtin.shell: set -o pipefail && sacctmgr show user format=Name | grep -w demo_admin
+#       register: demo_user_check
+#       changed_when: false
+#       failed_when: false
+
+#     - name: Create demo user if not present
+#       ansible.builtin.shell: |
+#         sacctmgr -i add user name=demo_admin account=a_admin partition=compute qos=low,high,normal defaultQOS=normal
+#       when: demo_user_check.rc != 0
+#       register: demo_user_create
+#       changed_when: demo_user_check.rc != 0
+#       failed_when: demo_user_create.rc != 0 and ('already exists' not in demo_user_create.stderr | default(''))
+
+#   handlers:
+#     - name: Reload systemd
+#       ansible.builtin.systemd:
+#         daemon_reload: true

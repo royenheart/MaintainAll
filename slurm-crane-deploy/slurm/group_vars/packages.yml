@@ -1,0 +1,25 @@
+packages:
+  common:
+    RedHat:
+      - wget
+      - rsync
+      - gcc
+      - gcc-c++
+      - readline-devel
+      - perl-ExtUtils-MakeMaker
+      - pam-devel
+      - rpm-build
+      - python3
+      - munge
+      - munge-libs
+      - munge-devel
+  epel:
+    RedHat:
+      - epel-release
+  rngd:
+    RedHat:
+      - rng-tools
+  database:
+    RedHat:
+      - mariadb-server
+      - mysql-devel
