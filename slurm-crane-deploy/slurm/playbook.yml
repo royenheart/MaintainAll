@@ -65,7 +65,7 @@
     - name: Install rngd
       ansible.builtin.package:
         name: "{{ packages.rngd[ansible_os_family] }}"
-        stat: present
+        state: present
 
     - name: Create a rngd override directory
       ansible.builtin.file:
