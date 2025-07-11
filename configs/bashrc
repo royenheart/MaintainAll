@@ -60,6 +60,7 @@ alias la='ls -A'
 alias l='ls -CF'
 alias dkps='docker ps --all'
 alias dkimgs='docker image ls --all'
+alias gdb='gdb -q'
 
 # =========== SET WSL VPN ===========
 # Plz use wsl networking mode 'mirrored' if possible, this has greater support for VPN.
