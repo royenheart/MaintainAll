@@ -19,7 +19,7 @@ module-whatis "$NAME $VERSION"
 # prereq cuda/12.3
 
 # 指定无法同时载入的软件包
-conflict cuda
+conflict $NAME
 
 # 设置环境变量
 prepend-path     PKG_CONFIG_PATH            $SPATH/lib64/pkgconfig
