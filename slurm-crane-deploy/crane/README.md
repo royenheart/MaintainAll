@@ -2,8 +2,7 @@
 
 ```bash
 pip install ansible
-# If community.general module not exists
-# ansible-galaxy collection install community.general
+ansible-galaxy collection install -r ./requirements.yml
 ansible-playbook -i inventory.ini playbook.yml
 ```
 
