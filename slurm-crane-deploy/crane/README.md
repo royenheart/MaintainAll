@@ -1,8 +1,9 @@
 # How to use
 
 ```bash
-apt install -y ansible
-ansible-galaxy collection install community.general
+pip install ansible
+# If community.general module not exists
+# ansible-galaxy collection install community.general
 ansible-playbook -i inventory.ini playbook.yml
 ```
 
