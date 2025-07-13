@@ -1,0 +1,21 @@
+packages:
+  deps:
+    RedHat:
+      - libstdc++
+      - openssl-libs
+      - systemd-libs
+      - libcurl
+      - pam
+      - zlib
+      - libaio
+      - libbpf
+    # Seems Ubuntu/Debian installation not update
+    Debian:
+      - libstdc++6
+      - libssl3
+      - libsystemd0
+      - libcurl4
+      - libpam0g
+      - zlib1g
+      - libaio1
+      - libbpf-dev

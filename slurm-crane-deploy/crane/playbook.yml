@@ -1,0 +1,499 @@
+---
+# Deploy Crane
+# Executes on login node
+
+- name: Configure system
+  hosts: management,compute
+  become: true
+  vars:
+    firewall_ports:
+      - 10010/tcp
+      - 10011/tcp
+      - 10012/tcp
+      - 873/tcp
+    timezone: "Asia/Shanghai"
+
+  tasks:
+    # === System Update ===
+
+    - name: Update RedHat/Rocky Linux
+      when: ansible_os_family == 'RedHat'
+      block:
+        - name: Install EPEL and enable CRB
+          ansible.builtin.dnf:
+            name:
+              - yum-utils
+              - epel-release
+            state: present
+
+        - name: Enable CRB repository
+          community.general.dnf_config_manager:
+            name: crb
+            state: enabled
+
+        - name: Update all packages
+          ansible.builtin.dnf:
+            name: '*'
+            state: latest
+
+        - name: Reboot
+          ansible.builtin.reboot:
+            msg: "Reboot after updates"
+            connect_timeout: 5
+            reboot_timeout: 600
+            pre_reboot_delay: 0
+            post_reboot_delay: 30
+
+    - name: Update Ubuntu/Debian
+      when: ansible_os_family == 'Debian'
+      block:
+        - name: Update all packages
+          ansible.builtin.apt:
+            upgrade: dist
+            update_cache: true
+
+        - name: Install ca-certificates
+          ansible.builtin.apt:
+            name: ca-certificates
+            state: present
+
+    # === Time Synchronization ===
+
+    - name: Install and configure Chrony
+      block:
+        - name: Install chrony
+          ansible.builtin.dnf:
+            name: chrony
+            state: present
+        - name: Restart systemd-timedated
+          ansible.builtin.systemd:
+            name: systemd-timedated
+            state: restarted
+        - name: Set timezone
+          community.general.timezone:
+            name: "{{ timezone }}"
+        # TODO: Check if timedatectl set-ntp true is done.
+        - name: Enable and start chronyd
+          ansible.builtin.systemd:
+            name: chronyd
+            enabled: true
+            state: started
+
+    # === Firewall and Security ===
+
+    - name: Disable firewall (RedHat)
+      when:
+        - ansible_os_family == 'RedHat'
+        - disable_firewall
+      block:
+        - name: Stop and disable firewalld
+          ansible.builtin.systemd:
+            name: firewalld
+            state: stopped
+            enabled: "{{ not disable_firewall }}"
+
+    - name: Allow ports if firewall is enabled (RedHat)
+      when:
+        - ansible_os_family == 'RedHat'
+        - not disable_firewall
+      block:
+        - name: Open firewall ports
+          ansible.posix.firewalld:
+            port: "{{ item }}"
+            permanent: true
+            immediate: true
+            state: enabled
+            zone: public
+          loop: "{{ firewall_ports }}"
+
+    - name: Disable firewall (Ubuntu/Debian)
+      when:
+        - ansible_os_family == 'Debian'
+        - disable_firewall
+      block:
+        - name: Stop and disable ufw
+          ansible.builtin.systemd:
+            name: ufw
+            state: stopped
+            enabled: "{{ not disable_firewall }}"
+
+    - name: Allow ports if firewall is enabled (Ubuntu/Debian)
+      when:
+        - ansible_os_family == 'Debian'
+        - not disable_firewall
+      block:
+        - name: Ensure ufw is installed
+          ansible.builtin.apt:
+            name: ufw
+            state: present
+        - name: Open firewall ports
+          community.general.ufw:
+            rule: allow
+            port: "{{ item.split('/')[0] }}"
+            proto: "{{ item.split('/')[1] }}"
+          loop: "{{ firewall_ports }}"
+        - name: Enable ufw
+          community.general.ufw:
+            state: enabled
+
+    - name: Disable SELinux (RedHat)
+      when:
+        - ansible_os_family == 'RedHat'
+        - disable_security
+      block:
+        - name: Temporarily set SELinux to permissive
+          ansible.posix.selinux:
+            policy: targeted
+            state: permissive
+        - name: Permanently disable SELinux
+          ansible.builtin.lineinfile:
+            path: /etc/selinux/config
+            regexp: '^SELINUX='
+            line: 'SELINUX=disabled'
+            validate: '/usr/sbin/sestatus -v'
+
+    # TODO: Check if AppArmor work correctly in ansible
+    # - name: Disable AppArmor (Ubuntu/Debian)
+    #   when:
+    #     - ansible_os_family == 'Debian'
+    #     - disable_security
+    #   block:
+    #     - name: Stop and disable AppArmor
+    #       ansible.builtin.systemd:
+    #         name: apparmor
+    #         state: stopped
+    #         enabled: "{{ not disable_security }}"
+
+    # === CGroup Setting ===
+
+    # CGroup v2
+    - name: Check current subtree_control settings
+      ansible.builtin.command: cat /sys/fs/cgroup/cgroup.subtree_control
+      register: cgroup_status
+      changed_when: false  # Just check, nothing changed
+      failed_when: false
+
+    - name: Create tmpfiles configuration (if needed)
+      ansible.builtin.copy:
+        dest: /etc/tmpfiles.d/cgroup-subtree-control.conf
+        content: "w /sys/fs/cgroup/cgroup.subtree_control - - - - +cpuset +cpu +io +memory +pids\n"
+        owner: root
+        group: root
+        mode: "0644"
+      when: >
+        not all(x in cgroup_status.stdout for x in ['cpuset', 'cpu', 'io', 'memory', 'pids'])
+
+    - name: Apply tmpfiles configuration
+      ansible.builtin.command: systemd-tmpfiles --create /etc/tmpfiles.d/cgroup-subtree-control.conf
+      when: >
+        not all(x in cgroup_status.stdout for x in ['cpuset', 'cpu', 'io', 'memory', 'pids'])
+      changed_when: false
+
+    # TODO: Add CGroup v1 compatibility
+
+    # === Install Dependencies ===
+
+    - name: Install crane deps
+      ansible.builtin.package:
+        name: "{{ packages.deps[ansible_os_family] }}"
+        state: present
+
+    # === Install Crane repos ===
+
+    - name: Install Crane repository (RedHat)
+      when: ansible_os_family == 'RedHat'
+      vars:
+        cranesched_repo_url: "https://git.pku.edu.cn/api/packages/CraneSched/rpm/{{ crane_version }}.repo"
+      ansible.builtin.yum_repository:
+        name: CraneSched
+        description: CraneSched Repository
+        baseurl: "{{ cranesched_repo_url }}"
+
+    - name: Install Crane repository (Ubuntu/Debian)
+      when: ansible_os_family == 'Debian'
+      vars:
+        cranesched_gpg_url: "https://git.pku.edu.cn/api/packages/CraneSched/debian/repository.key"
+        cranesched_repo_line: >-
+          deb [signed-by=/etc/apt/keyrings/CraneSched.asc]
+          https://git.pku.edu.cn/api/packages/CraneSched/debian
+          {{ ansible_distribution_release }} {{ crane_version }}
+      block:
+        - name: Ensure apt keyrings directory exists
+          ansible.builtin.file:
+            path: /etc/apt/keyrings
+            state: directory
+            mode: '0755'
+
+        - name: Download CraneSched GPG key
+          ansible.builtin.get_url:
+            url: "{{ cranesched_gpg_url }}"
+            dest: "/etc/apt/keyrings/CraneSched.asc"
+            mode: '0644'
+          notify: Update apt cache
+
+        - name: Add CraneSched repository
+          ansible.builtin.apt_repository:
+            repo: "{{ cranesched_repo_line }}"
+            state: present
+          notify: Update apt cache
+
+  handlers:
+    - name: Update apt cache
+      ansible.builtin.apt:
+        update_cache: true
+      listen: "Update apt cache"
+
+- name: Management node crane
+  hosts: management
+  become: true
+
+  tasks:
+    - name: Install CraneCtld
+      ansible.builtin.package:
+        name: cranesched-cranectld
+        state: present
+
+    # TODO: In which way database deployed ansible?
+    # 1. Install mongodb directly in package manager
+    # 2. Provide separate Dockerfile
+    # 3. Use external database server and let user configure its connection method so that ansible can operate on it.
+
+    # Method 1: Install MongoDB directly when DB host set to local
+    - name: Install MongoDB
+      when: DbHost == 'localhost' or DbHost == '127.0.0.1'
+      vars:
+        mongodb_version: "7.0"
+        mongodb_keyfile_path: "/var/lib/mongo/mongo.key"
+      block:
+        - name: Configure MongoDB repository (RHEL/CentOS)
+          when: ansible_os_family == 'RedHat'
+          ansible.builtin.yum_repository:
+            name: mongodb-org-{{ mongodb_version }}
+            description: MongoDB Repository
+            baseurl: "https://repo.mongodb.org/yum/redhat/{{ ansible_distribution_major_version }}/mongodb-org/{{ mongodb_version }}/x86_64/"
+            gpgcheck: true
+            gpgkey: "https://pgp.mongodb.com/server-{{ mongodb_version }}.asc"
+            enabled: true
+          notify: Update package cache
+
+        - name: Configure MongoDB repository (Ubuntu/Debian)
+          when: ansible_os_family == 'Debian'
+          vars:
+            mongodb_gpg_key: "/usr/share/keyrings/mongodb-server-{{ mongodb_version }}.gpg"
+          block:
+            - name: Install prerequisites
+              ansible.builtin.apt:
+                name:
+                  - gnupg
+                state: present
+            - name: Download MongoDB GPG key
+              ansible.builtin.apt_key:
+                url: "https://www.mongodb.org/static/pgp/server-{{ mongodb_version }}.asc"
+                keyring: "/usr/share/keyrings/mongodb-server-{{ mongodb_version }}.gpg"
+            - name: Configure MongoDB repository (Ubuntu)
+              when: ansible_distribution == 'Ubuntu'
+              ansible.builtin.apt_repository:
+                repo: >-
+                  deb [ arch=amd64,arm64 signed-by={{ mongodb_gpg_key }} ]
+                  https://repo.mongodb.org/apt/ubuntu
+                  {{ ansible_distribution_release }}/mongodb-org/{{ mongodb_version }}
+                  multiverse
+                filename: mongodb-org-{{ mongodb_version }}
+                state: present
+                update_cache: true
+            - name: Configure MongoDB repository (Debian)
+              when: ansible_distribution == 'Debian'
+              ansible.builtin.apt_repository:
+                repo: >-
+                  deb [ signed-by={{ mongodb_gpg_key }} ]
+                  http://repo.mongodb.org/apt/debian
+                  {{ ansible_distribution_release }}/mongodb-org/{{ mongodb_version }}
+                  main
+                filename: mongodb-org-{{ mongodb_version }}
+                state: present
+                update_cache: true
+
+        - name: Install and start MongoDB
+          ansible.builtin.package:
+            name: mongodb-org
+            state: present
+          notify: Start MongoDB
+
+        # Create mongdb admin
+        - name: Create admin user
+          community.mongodb.mongodb_shell:
+            login_host: "{{ DbHost }}"
+            login_port: "{{ DbPort }}"
+            eval: |
+              db.getSiblingDB("admin").createUser({
+                user: "{{ DbUser }}",
+                pwd: "{{ DbPassword }}",
+                roles: [{ role: "root", db: "admin" }]
+              })
+
+        - name: Shutdown MongoDB
+          community.mongodb.mongodb_shell:
+            login_user: "{{ DbUser }}"
+            login_password: "{{ DbPassword }}"
+            login_host: "{{ DbHost }}"
+            login_port: "{{ DbPort }}"
+            eval: "db.shutdownServer()"
+
+        - name: Check mongod service is stopped
+          ansible.builtin.systemd:
+            name: mongod
+            state: stopped
+
+        - name: Generate MongoDB keyfile
+          ansible.builtin.shell:
+            cmd: "openssl rand -base64 756 > {{ mongodb_keyfile_path }} && chmod 400 {{ mongodb_keyfile_path }}"
+            creates: "{{ mongodb_keyfile_path }}"
+          become: true
+          become_user: mongod
+
+        # TODO: Whether to add mongd config template
+
+        # Ensure security and keyfile settings are configured
+        - name: Configure MongoDB Security Settings
+          ansible.builtin.blockinfile:
+            path: /etc/mongod.conf
+            block: |
+              security:
+                authorization: enabled
+                keyFile: {{ mongodb_keyfile_path }}
+            marker: "# {mark} ANSIBLE MANAGED - SECURITY"
+            insertafter: "^# replication:"
+            backup: true
+
+        # Ensure replication settings are configured
+        - name: Configure MongoDB Replication Settings
+          ansible.builtin.blockinfile:
+            path: /etc/mongod.conf
+            block: |
+              replication:
+                replSetName: {{ DbReplSetName }}
+            marker: "# {mark} ANSIBLE MANAGED - REPLICATION"
+            insertafter: "^security:"
+            backup: true
+          notify: Restart MongoDB
+
+    # TODO: Add multi replica set support
+    - name: Initialize MongoDB replica set and admin user
+      community.mongodb.mongodb_shell:
+        login_host: "{{ DbHost }}"
+        login_port: "{{ DbPort }}"
+        login_user: "{{ DbUser }}"
+        login_password: "{{ DbPassword }}"
+        eval: |
+          config = {
+            "_id": "{{ DbReplSetName }}",
+            "members": [
+              {
+                "_id": 0,
+                "host": "{{ DbHost }}:{{ DbPort }}",
+              }
+              # Other nodes
+            ]
+          }
+          rs.initiate()
+      notify: Restart MongoDB
+
+  handlers:
+    - name: Update package cache
+      ansible.builtin.package:
+        update_cache: true
+      listen: "Update package cache"
+
+    - name: Start MongoDB
+      ansible.builtin.systemd:
+        name: mongod
+        enabled: true
+        state: started
+      listen: "Start MongoDB"
+
+    - name: Restart MongoDB
+      ansible.builtin.systemd:
+        name: mongod
+        state: restarted
+      listen: "Restart MongoDB"
+
+- name: Compute node crane
+  hosts: compute
+  become: true
+
+  tasks:
+    - name: Install Craned
+      ansible.builtin.package:
+        name: cranesched-craned
+        state: present
+
+- name: Login node crane
+  hosts: login
+  become: true
+  vars:
+    # replace url after update
+    frontend_url: "https://github.com/PKUHPC/CraneSched/actions/runs/15969457087/artifacts/3430726207"
+
+  tasks:
+    - name: Check unzip installed
+      ansible.builtin.package:
+        name: unzip
+        state: present
+
+    - name: Get frontend pre-built package
+      ansible.builtin.get_url:
+        url: "{{ frontend_url }}"
+        dest: "/tmp/crane-frontend.zip"
+        mode: '0644'
+
+    - name: Unzip frontend package
+      ansible.builtin.unarchive:
+        src: "/tmp/crane-frontend.zip"
+        dest: "{{ frontend_path }}"
+        remote_src: true
+        mode: '0755'
+
+    # TODO: cfored systemd unit files not included in package now, update after it's done.
+
+- name: Sync config
+  hosts: all
+  become: true
+
+  tasks:
+    - name: Ensure crane config directory exists
+      ansible.builtin.file:
+        path: /etc/crane
+        state: directory
+        mode: '0755'
+        owner: crane
+        group: crane
+
+    - name: Config crane config
+      ansible.builtin.template:
+        src: crane.config.j2
+        dest: /etc/crane/crane.config
+        mode: '0644'
+        owner: crane
+        group: crane
+
+    - name: Config crane database
+      ansible.builtin.template:
+        src: crane.database.j2
+        dest: /etc/crane/database.yaml
+        mode: '0600'
+        owner: crane
+        group: crane
+
+    - name: Start CraneCtld on management node
+      when: inventory_hostname in groups['management']
+      ansible.builtin.systemd:
+        name: cranectld
+        state: restarted
+        enabled: true
+
+    - name: Start Craned on compute nodes
+      when: inventory_hostname in groups['compute']
+      ansible.builtin.systemd:
+        name: craned
+        state: restarted
+        enabled: true

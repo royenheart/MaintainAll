@@ -1,0 +1,133 @@
+# Cluster settings (This must be identical across all nodes)
+# the hostname of node which is running cranectld
+ControlMachine: {{ hostvars[groups['management'][0]].inventory_hostname }}
+# the name of this cluster
+ClusterName: {{ cluster_name }}
+
+# Other configurations to be used
+DbConfigPath: /etc/crane/database.yaml
+
+# Data storage settings
+CraneBaseDir: /var/crane/
+
+# Tls settings
+UseTls: false
+ServerCertFilePath: /etc/crane/server.crt
+ServerKeyFilePath: /etc/crane/server.key
+CaCertFilePath: /etc/crane/ca.crt
+DomainSuffix: riley.local
+
+# Ctld settings
+# the listening address of control machine
+CraneCtldListenAddr: 0.0.0.0
+# the port of control machine to listen
+CraneCtldListenPort: 10011
+CraneCtldForInternalListenPort: 10013
+# debug level of cranectld
+CraneCtldDebugLevel: trace
+# file path of cranectld log file (relative to CraneBaseDir)
+CraneCtldLogFile: cranectld/cranectld.log
+# file path of cranectld lock file (relative to CraneBaseDir)
+CraneCtldMutexFilePath: cranectld/cranectld.lock
+# whether the cranectld is running in the background
+CraneCtldForeground: true
+
+# Craned settings
+# the listening address of control machine
+CranedListenAddr: 0.0.0.0
+# the port of control machine to listen
+CranedListenPort: 10010
+# debug level of craned
+CranedDebugLevel: trace
+# file path of craned log file (relative to CraneBaseDir)
+CranedLogFile: craned/craned.log
+# file path of craned lock file (relative to CraneBaseDir)
+CranedMutexFilePath: craned/craned.lock
+# file path of craned go module unix socket path (relative to CraneBaseDir)
+CranedCforedSockPath: craned/cfored.sock
+# whether the craned is running in the background
+CranedForeground: true
+
+# Scheduling settings
+# Current implemented scheduling algorithms are:
+# priority/basic, priority/multifactor
+PriorityType: priority/multifactor
+
+# Default value is true
+PriorityFavorSmall: true
+
+PriorityMaxAge: 14-0
+PriorityWeightAge: 500
+PriorityWeightFairShare: 10000
+
+# 0 means that job size factor is not used.
+PriorityWeightJobSize: 0
+
+PriorityWeightPartition: 1000
+PriorityWeightQ0S: 1000000
+
+# list of configuration information of the computing machine
+# Nodes and partitions settings
+Nodes:
+  {% for host in groups['compute'] %}
+  - name: "{{ hostvars[host].inventory_hostname }}"
+    cpu: {{ hostvars[host].cpu | default(1) }}
+    memory: {{ hostvars[host].memory | default('1G') }}
+    {% if hostvars[host].gres is defined %}
+    gres:
+      - {{ hostvars[host].gres | to_nice_yaml(indent=2) | indent(6) | trim }}
+    {% endif %}
+  {% endfor %}
+
+Partitions:
+  # 动态生成分区配置（自动聚合相同分区的节点）
+  {% set partition_nodes = {} %}
+  {% for host in groups['compute'] %}
+    {% set part_name = hostvars[host].partition %}
+    {% if part_name not in partition_nodes %}
+      {% set _ = partition_nodes.update({part_name: []}) %}
+    {% endif %}
+    {% set _ = partition_nodes[part_name].append(hostvars[host].inventory_hostname) %}
+  {% endfor %}
+
+  {% for part_name, part_config in hostvars['compute'].get('partitions', {}).items() %}
+  - name: "{{ part_config.name }}"
+    nodes: "{{ partition_nodes[part_name] | join(',') }}"
+    {% for key, value in part_config.items() if key != 'name' %}
+    {{ key }}: {{ value | to_json }}
+    {% endfor %}
+  {% endfor %}
+
+DefaultPartition: CPU
+
+# Advanced options:
+
+# Maximum size of Pending Queue and must <=900000.
+PendingQueueMaxSize: 900000
+
+# Maximum size of jobs which the scheduler will attempt to schedule
+# and its upper limit is 200000.
+# Default value is 100000.
+ScheduledBatchSize: 100000
+
+# Scheduler will reject all jobs beyond processing capacity set by PendingQueueMaxSize
+# if this option is set to true.
+# Default value is false.
+RejectJobsBeyondCapacity: false
+
+# Set the mode for opening output and error files
+# Default value is false.
+JobFileAppend: false
+
+Plugin:
+  # Toggle the plugin module in CraneSched
+  Enabled: false
+  # Relative to CraneBaseDir
+  PlugindSockPath: "cplugind/cplugind.sock"
+  # Debug level of Plugind
+  PlugindDebugLevel: "trace"
+  # Plugins to be loaded in Plugind
+  Plugins:
+    - Name: "dummy"
+      Path: "/path/to/dummy.so"
+      Config: "/path/to/dummy.yaml"
