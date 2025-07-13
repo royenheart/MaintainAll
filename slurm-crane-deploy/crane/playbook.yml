@@ -35,6 +35,7 @@
           ansible.builtin.dnf:
             name: '*'
             state: latest
+          register: update_all_pkgs
 
         - name: Reboot
           ansible.builtin.reboot:
@@ -43,6 +44,7 @@
             reboot_timeout: 600
             pre_reboot_delay: 0
             post_reboot_delay: 30
+          when: update_all_pkgs is changed
 
     - name: Update Ubuntu/Debian
       when: ansible_os_family == 'Debian'
@@ -180,12 +182,20 @@
         group: root
         mode: "0644"
       when: >
-        not all(x in cgroup_status.stdout for x in ['cpuset', 'cpu', 'io', 'memory', 'pids'])
+        'cpuset' not in cgroup_status.stdout or
+        'cpu' not in cgroup_status.stdout or
+        'io' not in cgroup_status.stdout or
+        'memory' not in cgroup_status.stdout or
+        'pids' not in cgroup_status.stdout
 
     - name: Apply tmpfiles configuration
       ansible.builtin.command: systemd-tmpfiles --create /etc/tmpfiles.d/cgroup-subtree-control.conf
       when: >
-        not all(x in cgroup_status.stdout for x in ['cpuset', 'cpu', 'io', 'memory', 'pids'])
+        'cpuset' not in cgroup_status.stdout or
+        'cpu' not in cgroup_status.stdout or
+        'io' not in cgroup_status.stdout or
+        'memory' not in cgroup_status.stdout or
+        'pids' not in cgroup_status.stdout
       changed_when: false
 
     # TODO: Add CGroup v1 compatibility
