@@ -150,7 +150,6 @@
             path: /etc/selinux/config
             regexp: '^SELINUX='
             line: 'SELINUX=disabled'
-            validate: '/usr/sbin/sestatus -v'
 
     # TODO: Check if AppArmor work correctly in ansible
     # - name: Disable AppArmor (Ubuntu/Debian)
