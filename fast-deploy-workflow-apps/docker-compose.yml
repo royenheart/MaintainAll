@@ -54,27 +54,42 @@ services:
       - services_jupyterhub_shared:/srv/shared
       - ./configs/jupyterhub:/srv/jupyterhub
     networks:
+  gitea:
+    container_name: services-gitea
+    image: gitea/gitea:1.21.1
+    environment:
+      - USER_UID=1000
+      - USER_GID=1000
+    restart: unless-stopped
+    volumes:
+      - services_gitea_data:/data
+      - /etc/timezone:/etc/timezone:ro
+      - /etc/localtime:/etc/localtime:ro
+    ports:
+      - "80:3000"
+      - "10022:22"
+    networks:
       - services
-      # gitlab:
-      # container_name: services-gitlab
-      # image: gitlab/gitlab-ee:17.1.0-ee.0
-      # hostname: 'xxx'
-      # ports:
+  # gitlab:
+    # container_name: services-gitlab
+    # image: gitlab/gitlab-ee:17.1.0-ee.0
+    # hostname: 'xxx'
+    # ports:
       # - '10080:10080'
       # - '10443:443'
       # - '10022:22'
-      # restart: always
-      # volumes:
+    # restart: always
+    # volumes:
       # - ./configs/gitlab:/etc/gitlab
       # - services_gitlab_log:/var/log/gitlab
       # - services_gitlab_data:/var/opt/gitlab
-      # environment:
+    # environment:
       #GITLAB_OMNIBUS_CONFIG: |
       #external_url 'http://xxx:10080'
       #   gitlab_rails['gitlab_ssh_host'] = 'xxx'
       #   gitlab_rails['gitlab_shell_ssh_port'] = 10022
       #shm_size: '256m'
-      #networks:
+    #networks:
       #  - services
 networks:
   services:
@@ -88,3 +103,4 @@ volumes:
   services_gitlab_data: {}
   services_jupyterhub_home: {}
   services_jupyterhub_shared: {}
+  services_gitea_data: {}
