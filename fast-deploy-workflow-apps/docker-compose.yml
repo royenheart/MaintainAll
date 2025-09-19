@@ -7,7 +7,7 @@ services:
     restart: unless-stopped
     volumes:
       - services_grafana_storage:/var/lib/grafana
-      - /home/data/sqlites:/srv/sqlites
+      - /home/data1/grafana/sqlites:/srv/sqlites
       - ./configs/grafana:/etc/grafana
     networks:
       - services
