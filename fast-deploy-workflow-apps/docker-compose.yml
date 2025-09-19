@@ -54,6 +54,7 @@ services:
       - services_jupyterhub_shared:/srv/shared
       - ./configs/jupyterhub:/srv/jupyterhub
     networks:
+      - services
   gitea:
     container_name: services-gitea
     image: gitea/gitea:1.21.1
