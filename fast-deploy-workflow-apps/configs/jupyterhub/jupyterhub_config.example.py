@@ -1,13 +1,11 @@
 # jupyterhub_config.py
+c = get_config()  # noqa
 import os
 import pwd
 import grp
 import subprocess
 from oauthenticator.generic import GenericOAuthenticator
-from jupyterhub.auth import Authenticator
 from traitlets import Bool, Integer
-
-c = get_config()  # noqa
 
 
 class CustomGiteaOAuthenticator(GenericOAuthenticator):
@@ -89,31 +87,39 @@ class CustomGiteaOAuthenticator(GenericOAuthenticator):
             self.log.error(f"Error creating user {username}: {str(e)}")
             return False
 
-    async def pre_spawn_start(self, user, spawner):
-        """在启动 spawner 之前确保用户存在"""
-        username = user.name
-        if not self._create_system_user(username):
-            raise Exception(f"Failed to create system user for {username}")
+    async def authenticate(self, handler, data=None):
+        """重写认证方法，在认证成功后创建用户"""
+        # 先进行 OAuth 认证
+        user_info = await super().authenticate(handler, data)
 
-        await super().pre_spawn_start(user, spawner)
+        if user_info:
+            username = user_info["name"]
+            # 认证成功后创建系统用户
+            if not self._create_system_user(username):
+                self.log.error(
+                    f"Authentication succeeded but failed to create system user for {username}"
+                )
+                return None
+
+        return user_info
 
 
 # 使用自定义认证器
 c.JupyterHub.authenticator_class = CustomGiteaOAuthenticator
 
 # Gitea 实例的相关信息
-GITEA_HOST = "your-gitea-host"  # 替换为你的 Gitea 域名或服务名
+GITEA_HOST = "services-gitea"  # Docker 服务名
 GITEA_PORT = "3000"
 GITEA_URL = f"http://{GITEA_HOST}:{GITEA_PORT}"
 
 # JupyterHub 配置
-JUPYTERHUB_HOST = "your-jupyterhub-host"  # 替换为你的 JupyterHub 域名或服务名
+JUPYTERHUB_HOST = "localhost"  # 外部访问地址
 JUPYTERHUB_PORT = "8000"
 c.CustomGiteaOAuthenticator.oauth_callback_url = (
     f"http://{JUPYTERHUB_HOST}:{JUPYTERHUB_PORT}/hub/oauth_callback"
 )
 
-# OAuth 配置
+# OAuth 配置 - 请替换为你的实际值
 c.CustomGiteaOAuthenticator.client_id = "your-gitea-oauth-client-id"
 c.CustomGiteaOAuthenticator.client_secret = "your-gitea-oauth-client-secret"
 
@@ -158,3 +164,7 @@ c.Authenticator.admin_users = {"your-gitea-admin-username"}
 
 # 用户访问控制
 c.Authenticator.allow_all = True
+
+# 调试配置（可选）
+c.JupyterHub.log_level = "DEBUG"
+c.Authenticator.log_level = "DEBUG"
