@@ -1,18 +1,24 @@
 #!/bin/sh
 
-IFS="
-"
-for line in `cat userlist`; do
+IFS=$'\n'
+for line in $(cat userlist); do
   test -z "$line" && continue
-  user=`echo $line | cut -f 1 -d' '`
-  echo "adding user $user"
-  useradd -m -s /bin/bash $user
-cat <<EOF | passwd $user
-123456
-123456
-EOF
-  # cp -r /srv/ipython/examples /home/$user/examples
-  # chown -R $user /home/$user/examples
-  chown -R $user:$user /home/$user
-  chmod -R 700 /home/$user
+  
+  # 提取用户名（第一个字段）
+  user=$(echo "$line" | cut -f 1 -d ' ')
+  
+  # 提取密码（第二个字段到行尾）
+  password=$(echo "$line" | cut -f 2- -d ' ')
+  
+  echo "Adding user $user"
+  
+  # 创建用户
+  useradd -m -s /bin/bash "$user"
+  
+  # 设置密码
+  echo "${user}:${password}" | chpasswd
+  
+  # 设置家目录权限
+  chown -R "$user:$user" "/home/$user"
+  chmod -R 700 "/home/$user"
 done
