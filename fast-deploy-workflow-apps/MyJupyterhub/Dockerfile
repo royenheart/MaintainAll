@@ -1,7 +1,7 @@
 FROM jupyterhub/jupyterhub:main
 
 # Install oauthenticator from git
-RUN pip install -i https://mirrors.cernet.edu.cn/pypi/web/simple oauthenticator jupyterhub jupyterlab jupyter
+RUN pip install -i https://mirrors.cernet.edu.cn/pypi/web/simple oauthenticator jupyterhub jupyterlab jupyter traitlets
 
 # Create oauthenticator directory and put necessary files in it
 # RUN mkdir /srv/jupyterhub
