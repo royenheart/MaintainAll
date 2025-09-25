@@ -1,0 +1,5 @@
+# SEE: https://zhuanlan.zhihu.com/p/871508940
+
+CompileFlags:
+    Add:
+        - "-I/path/to/xxxlib/include"
