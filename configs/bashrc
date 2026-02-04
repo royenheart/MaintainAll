@@ -88,6 +88,21 @@ function backup_file() {
     fi
 }
 
+function set_proxy() {
+    local hostip=${1-'192.168.0.1'}
+    local hostport=${2-'20170'}
+    local proxy_type=${3-'socks5'}
+    export HTTPS_PROXY="${proxy_type}://${hostip}:${hostport}";
+    export HTTP_PROXY="${proxy_type}://${hostip}:${hostport}";
+    export ALL_PROXY="${proxy_type}://${hostip}:${hostport}";
+}
+
+function unset_proxy() {
+    unset HTTPS_PROXY;
+    unset HTTP_PROXY;
+    unset ALL_PROXY;
+}
+
 function set_wsl_proxy() {
     # 1. 处理 /etc/wsl.conf
     WSL_CONF="/etc/wsl.conf"
