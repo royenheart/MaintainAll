@@ -1,0 +1,12 @@
+[Unit]
+Description=Frp Yellow
+After=network-online.target
+
+[Service]
+ExecStart=%h/softwares/frp/latest/frpc -c %h/softwares/frp/latest/frpc.toml
+Restart=always
+RestartSec=20
+StartLimitInterval=0
+
+[Install]
+WantedBy=default.target

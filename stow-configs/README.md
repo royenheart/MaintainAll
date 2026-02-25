@@ -13,6 +13,6 @@ sudo apt install stow
 ```bash
 git clone https://github.com/royenheart/MaintainAll.git
 cd MaintainAll
-# 安装 bash 配置
-stow bash
+# 安装 bash 配置至生效位置，其余 package 类似
+stow bash -t $HOME
 ```
