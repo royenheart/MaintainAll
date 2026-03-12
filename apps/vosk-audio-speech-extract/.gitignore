@@ -1,3 +1,8 @@
 audios
 speeches
 models
+pdfs
+docs
+
+.venv
+__pycache__
