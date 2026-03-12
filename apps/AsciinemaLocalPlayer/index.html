@@ -1,0 +1,229 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Asciinema Local Player</title>
+    <link rel="stylesheet" type="text/css" href="resources/asciinema-player.css" />
+    <style>
+        *, *::before, *::after {
+            box-sizing: border-box;
+        }
+
+        body {
+            margin: 0;
+            font-family: Arial, sans-serif;
+            background-color: #1a1a1a;
+            color: #e0e0e0;
+            display: flex;
+            height: 100vh;
+            overflow: hidden;
+        }
+
+        /* ── Left sidebar ── */
+        #sidebar {
+            width: 260px;
+            min-width: 180px;
+            max-width: 360px;
+            background: #242424;
+            border-right: 1px solid #333;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        #sidebar h1 {
+            margin: 0;
+            padding: 16px 16px 12px;
+            font-size: 14px;
+            font-weight: 600;
+            color: #aaa;
+            letter-spacing: 0.08em;
+            text-transform: uppercase;
+            border-bottom: 1px solid #333;
+        }
+
+        #video-list {
+            list-style: none;
+            margin: 0;
+            padding: 8px 0;
+            overflow-y: auto;
+            flex: 1;
+        }
+
+        #video-list li {
+            padding: 10px 16px;
+            cursor: pointer;
+            font-size: 13px;
+            border-left: 3px solid transparent;
+            transition: background 0.15s, border-color 0.15s;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+        }
+
+        #video-list li:hover {
+            background: #2e2e2e;
+        }
+
+        #video-list li.active {
+            background: #2e2e2e;
+            border-left-color: #f8b400;
+            color: #fff;
+        }
+
+        #video-list .empty-hint {
+            padding: 20px 16px;
+            color: #666;
+            font-size: 12px;
+            cursor: default;
+            border-left: none;
+            white-space: normal;
+        }
+
+        /* ── Main content ── */
+        #main {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 24px;
+            overflow: auto;
+        }
+
+        #player-title {
+            align-self: flex-start;
+            font-size: 15px;
+            color: #aaa;
+            margin-bottom: 12px;
+            padding-left: 4px;
+        }
+
+        #player-wrapper {
+            width: 100%;
+            max-width: 4096px;
+        }
+
+        #demo {
+            width: 100%;
+            border: 1px solid #444;
+            border-radius: 6px;
+            overflow: hidden;
+        }
+
+        #placeholder {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            color: #555;
+            gap: 12px;
+        }
+
+        #placeholder .icon {
+            font-size: 48px;
+        }
+
+        #placeholder p {
+            margin: 0;
+            font-size: 14px;
+        }
+    </style>
+</head>
+
+<body>
+    <!-- Left sidebar -->
+    <nav id="sidebar">
+        <h1>Recordings</h1>
+        <ul id="video-list">
+            <li class="empty-hint">Loading...</li>
+        </ul>
+    </nav>
+
+    <!-- Main player area -->
+    <div id="main">
+        <div id="player-wrapper">
+            <div id="player-title"></div>
+            <div id="demo"></div>
+            <div id="placeholder">
+                <div class="icon">&#9654;</div>
+                <p>Select a recording from the left to play</p>
+            </div>
+        </div>
+    </div>
+
+    <script src="resources/asciinema-player.min.js"></script>
+    <script>
+        let currentPlayer = null;
+
+        const list = document.getElementById('video-list');
+        const demo = document.getElementById('demo');
+        const placeholder = document.getElementById('placeholder');
+        const playerTitle = document.getElementById('player-title');
+
+        function playVideo(entry, listItem) {
+            // Deactivate previous
+            list.querySelectorAll('li').forEach(li => li.classList.remove('active'));
+            listItem.classList.add('active');
+
+            // Destroy previous player instance
+            if (currentPlayer) {
+                currentPlayer.dispose();
+                currentPlayer = null;
+            }
+            demo.innerHTML = '';
+
+            // Hide placeholder, show title
+            placeholder.style.display = 'none';
+            demo.style.display = 'block';
+            playerTitle.textContent = entry.title;
+
+            currentPlayer = AsciinemaPlayer.create(
+                entry.path,
+                demo,
+                { autoPlay: true, fit: 'width', theme: 'dracula' }
+            );
+        }
+
+        async function loadVideoList() {
+            let videos;
+            try {
+                const resp = await fetch('/api/videos');
+                if (!resp.ok) throw new Error('HTTP ' + resp.status);
+                videos = await resp.json();
+            } catch (e) {
+                list.innerHTML = '<li class="empty-hint">Failed to load video list.<br>Make sure the server is running.</li>';
+                return;
+            }
+
+            if (!videos || videos.length === 0) {
+                list.innerHTML = '<li class="empty-hint">No .cast files found in the <code>videos/</code> folder.</li>';
+                return;
+            }
+
+            list.innerHTML = '';
+            videos.forEach((entry, index) => {
+                const li = document.createElement('li');
+                li.title = entry.name;
+                li.textContent = entry.title;
+                li.addEventListener('click', () => playVideo(entry, li));
+                list.appendChild(li);
+
+                // Auto-play first item
+                if (index === 0) {
+                    // Use setTimeout so the DOM is ready
+                    setTimeout(() => playVideo(entry, li), 0);
+                }
+            });
+        }
+
+        // Initial hide
+        demo.style.display = 'none';
+
+        loadVideoList();
+    </script>
+</body>
+
+</html>
