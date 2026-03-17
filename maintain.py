@@ -14,6 +14,7 @@ MaintainAll TUI — 单文件 Python TUI
 from __future__ import annotations
 
 import asyncio
+import importlib.util
 import json
 import math
 import os
@@ -60,7 +61,9 @@ try:
         ListView,
         Markdown,
         RichLog,
+        Select,
         Static,
+        Switch,
         Tab,
         TabbedContent,
         TabPane,
@@ -478,6 +481,37 @@ def scan_templates(repo: Path) -> list[dict[str, Any]]:
                 "fpath": fpath,
             })
     return sorted(results, key=lambda x: x["path"])
+
+
+# ──────────────────────────────────────────────────────────────
+# 插件加载（供 ScriptPane 使用）
+# ──────────────────────────────────────────────────────────────
+
+def load_plugins(repo: Path) -> list[dict[str, Any]]:
+    """
+    扫描 scripts/**/manage_*.py，动态加载并读取 PLUGIN_META。
+    加载失败的脚本不影响主程序运行。
+    返回 [{"name": ..., "actions": [...], "_module": mod, "_path": path}, ...]
+    """
+    plugins: list[dict[str, Any]] = []
+    scripts_dir = repo / "scripts"
+    if not scripts_dir.exists():
+        return plugins
+    for py_file in sorted(scripts_dir.rglob("manage_*.py")):
+        try:
+            spec = importlib.util.spec_from_file_location(py_file.stem, py_file)
+            if spec is None or spec.loader is None:
+                continue
+            mod = importlib.util.module_from_spec(spec)
+            spec.loader.exec_module(mod)  # type: ignore[union-attr]
+            if hasattr(mod, "PLUGIN_META"):
+                meta: dict[str, Any] = dict(mod.PLUGIN_META)
+                meta["_module"] = mod
+                meta["_path"] = py_file
+                plugins.append(meta)
+        except Exception:
+            pass
+    return plugins
 
 
 # ──────────────────────────────────────────────────────────────
@@ -1318,6 +1352,492 @@ class TemplatePane(Widget):
 
 
 # ──────────────────────────────────────────────────────────────
+# 脚本工具面板
+# ──────────────────────────────────────────────────────────────
+
+class PluginActionScreen(ModalScreen[dict[str, Any] | None]):
+    """
+    根据插件 Action 的 fields 动态生成表单弹窗。
+    字段类型映射：
+        str / path  → Input
+        select      → Select
+        bool        → Switch（带 Label）
+        kvlist      → TextArea（每行 VAR=/path）
+    """
+
+    DEFAULT_CSS = """
+    PluginActionScreen {
+        align: center middle;
+    }
+    #action-dialog {
+        width: 75;
+        height: auto;
+        max-height: 90%;
+        background: $surface;
+        border: thick $primary;
+        padding: 1 2;
+    }
+    #action-title {
+        text-align: center;
+        text-style: bold;
+        color: $primary;
+        margin-bottom: 1;
+    }
+    #action-desc {
+        color: $text-muted;
+        margin-bottom: 1;
+    }
+    .field-label {
+        margin-top: 1;
+        color: $accent;
+    }
+    .field-required {
+        color: $error;
+    }
+    .bool-row {
+        layout: horizontal;
+        height: 3;
+        align: left middle;
+    }
+    .bool-row-label {
+        width: 1fr;
+        padding: 1 0;
+    }
+    #action-buttons {
+        margin-top: 1;
+        height: auto;
+        align: right middle;
+    }
+    #btn-action-run {
+        margin-right: 1;
+    }
+    .kvlist-hint {
+        color: $text-muted;
+        margin-bottom: 0;
+    }
+    """
+
+    def __init__(self, action: dict[str, Any]) -> None:
+        super().__init__()
+        self._action = action
+        # 收集各字段的 Widget，用于取值
+        self._field_widgets: dict[str, Any] = {}
+
+    def compose(self) -> ComposeResult:
+        action = self._action
+        with VerticalScroll(id="action-dialog"):
+            yield Label(action.get("label", "执行"), id="action-title")
+            desc = action.get("description", "")
+            if desc:
+                yield Static(desc, id="action-desc")
+
+            for field in action.get("fields", []):
+                fid    = field["id"]
+                label  = field.get("label", fid)
+                ftype  = field.get("type", "str")
+                req    = field.get("required", False)
+                default = field.get("default", "")
+
+                req_mark = " [red]*[/red]" if req else ""
+                yield Label(f"{label}{req_mark}", classes="field-label")
+
+                if ftype in ("str", "path"):
+                    inp = Input(
+                        value=str(default) if default else "",
+                        placeholder=f"{'路径' if ftype == 'path' else ''}{'（必填）' if req else '（选填）'}",
+                        id=f"field_{fid}",
+                    )
+                    self._field_widgets[fid] = inp
+                    yield inp
+
+                elif ftype == "select":
+                    options_raw = field.get("options", [])
+                    # Textual Select 需要 (label, value) 元组列表
+                    options = [(str(o), str(o)) for o in options_raw]
+                    sel = Select(
+                        options=options,
+                        value=str(default) if default else (options[0][1] if options else ""),
+                        id=f"field_{fid}",
+                    )
+                    self._field_widgets[fid] = sel
+                    yield sel
+
+                elif ftype == "bool":
+                    with Horizontal(classes="bool-row"):
+                        sw = Switch(value=bool(default), id=f"field_{fid}")
+                        self._field_widgets[fid] = sw
+                        yield sw
+                        yield Label("开启" if default else "关闭", classes="bool-row-label", id=f"bool_label_{fid}")
+
+                elif ftype == "kvlist":
+                    yield Static(
+                        "每行一条，格式：VAR=/path  或  setenv VAR=value",
+                        classes="kvlist-hint",
+                    )
+                    ta = TextArea(
+                        str(default) if default else "",
+                        id=f"field_{fid}",
+                    )
+                    ta.styles.height = 6
+                    self._field_widgets[fid] = ta
+                    yield ta
+
+            with Horizontal(id="action-buttons"):
+                yield Button("执行", variant="primary", id="btn-action-run")
+                yield Button("取消", id="btn-action-cancel")
+
+    @on(Switch.Changed)
+    def on_switch_changed(self, event: Switch.Changed) -> None:
+        """同步更新 bool 字段旁边的标签文字。"""
+        fid = event.switch.id
+        if fid and fid.startswith("field_"):
+            field_name = fid[len("field_"):]
+            try:
+                lbl = self.query_one(f"#bool_label_{field_name}", Label)
+                lbl.update("开启" if event.value else "关闭")
+            except NoMatches:
+                pass
+
+    def _collect_fields(self) -> dict[str, Any]:
+        result: dict[str, Any] = {}
+        for field in self._action.get("fields", []):
+            fid   = field["id"]
+            ftype = field.get("type", "str")
+            w     = self._field_widgets.get(fid)
+            if w is None:
+                result[fid] = field.get("default", "")
+                continue
+            if ftype in ("str", "path"):
+                result[fid] = w.value.strip()
+            elif ftype == "select":
+                result[fid] = w.value
+            elif ftype == "bool":
+                result[fid] = w.value
+            elif ftype == "kvlist":
+                result[fid] = w.text
+        return result
+
+    def _validate(self) -> list[str]:
+        """返回验证错误列表（空列表表示通过）。"""
+        errors: list[str] = []
+        for field in self._action.get("fields", []):
+            if not field.get("required", False):
+                continue
+            fid   = field["id"]
+            ftype = field.get("type", "str")
+            w     = self._field_widgets.get(fid)
+            if w is None:
+                errors.append(f"字段 {field.get('label', fid)} 缺少控件")
+                continue
+            if ftype in ("str", "path") and not w.value.strip():
+                errors.append(f"「{field.get('label', fid)}」不能为空")
+            elif ftype == "kvlist" and not w.text.strip():
+                errors.append(f"「{field.get('label', fid)}」不能为空")
+        return errors
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "btn-action-cancel":
+            self.dismiss(None)
+            return
+        if event.button.id == "btn-action-run":
+            errors = self._validate()
+            if errors:
+                self.app.notify("请填写必填字段：" + "；".join(errors), severity="warning")
+                return
+            self.dismiss(self._collect_fields())
+
+    def on_key(self, event: Any) -> None:
+        if event.key == "escape":
+            self.dismiss(None)
+
+
+class ScriptPane(Widget):
+    """
+    脚本工具面板。
+    左侧：插件列表（通过 PLUGIN_META 发现）
+    右侧上：Action 按钮列表
+    右侧下：执行结果（RichLog）
+    """
+
+    DEFAULT_CSS = """
+    ScriptPane {
+        layout: horizontal;
+        height: 1fr;
+    }
+    #script-plugin-list {
+        width: 30%;
+        border-right: solid $primary-darken-2;
+        overflow-y: auto;
+        padding: 0 1;
+    }
+    #script-plugin-title {
+        text-style: bold;
+        color: $primary;
+        padding: 1 0;
+    }
+    #script-right {
+        width: 70%;
+        layout: vertical;
+        height: 1fr;
+    }
+    #script-actions-area {
+        height: auto;
+        max-height: 40%;
+        overflow-y: auto;
+        padding: 1;
+        border-bottom: solid $primary-darken-2;
+    }
+    #script-action-title {
+        text-style: bold;
+        color: $accent;
+        margin-bottom: 1;
+    }
+    #script-result-area {
+        height: 1fr;
+        padding: 1;
+    }
+    #script-result-log {
+        height: 1fr;
+    }
+    #script-no-plugin {
+        color: $text-muted;
+        padding: 2 4;
+    }
+    .action-btn {
+        margin-bottom: 1;
+        width: 1fr;
+    }
+    #script-refresh-bar {
+        height: 3;
+        border-bottom: solid $primary-darken-2;
+        padding: 0 1;
+        align: right middle;
+    }
+    """
+
+    def __init__(self, plugins: list[dict[str, Any]]) -> None:
+        super().__init__()
+        self._plugins = plugins
+        self._selected_plugin: dict[str, Any] | None = None
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="script-plugin-list"):
+            yield Static("插件列表", id="script-plugin-title")
+            yield ListView(id="plugin-list-view")
+        with Vertical(id="script-right"):
+            with Horizontal(id="script-refresh-bar"):
+                yield Button("↺ 刷新插件", id="btn-refresh-plugins", variant="default")
+            with VerticalScroll(id="script-actions-area"):
+                yield Static(
+                    "← 选择左侧插件后，此处显示可用操作",
+                    id="script-no-plugin",
+                )
+            with VerticalScroll(id="script-result-area"):
+                yield RichLog(id="script-result-log", highlight=True, markup=True)
+
+    def on_mount(self) -> None:
+        self._render_plugin_list()
+        log = self.query_one("#script-result-log", RichLog)
+        if self._plugins:
+            log.write(
+                f"[green]已加载 {len(self._plugins)} 个插件。[/green]\n"
+                "点击左侧插件查看可用操作。"
+            )
+        else:
+            log.write(
+                "[yellow]未发现插件。[/yellow]\n"
+                "在 scripts/ 子目录下创建 manage_*.py 并暴露 PLUGIN_META 即可自动加载。"
+            )
+
+    def _render_plugin_list(self) -> None:
+        lv = self.query_one("#plugin-list-view", ListView)
+        lv.clear()
+        for plugin in self._plugins:
+            name = plugin.get("name", plugin.get("_path", "未知插件"))
+            desc = plugin.get("description", "")
+            text = f"[bold cyan]{name}[/bold cyan]"
+            if desc:
+                text += f"\n[dim]{desc[:50]}{'…' if len(desc) > 50 else ''}[/dim]"
+            lv.append(ListItem(Static(text)))
+
+    @on(ListView.Selected, "#plugin-list-view")
+    def on_plugin_selected(self, event: ListView.Selected) -> None:
+        lv = self.query_one("#plugin-list-view", ListView)
+        idx = lv.index
+        if idx is None or idx >= len(self._plugins):
+            return
+        self._selected_plugin = self._plugins[idx]
+        self._render_actions()
+
+    def _render_actions(self) -> None:
+        plugin = self._selected_plugin
+        if plugin is None:
+            return
+        actions_area = self.query_one("#script-actions-area", VerticalScroll)
+        actions_area.remove_children()
+
+        name = plugin.get("name", "")
+        ver  = plugin.get("version", "")
+        header = f"[bold]{name}[/bold]"
+        if ver:
+            header += f" [dim]v{ver}[/dim]"
+        actions_area.mount(Static(header, id="script-action-title"))
+
+        for action in plugin.get("actions", []):
+            btn = Button(
+                action.get("label", action["id"]),
+                id=f"action_{action['id']}",
+                classes="action-btn",
+            )
+            actions_area.mount(btn)
+
+    @on(Button.Pressed)
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        btn_id = event.button.id or ""
+
+        if btn_id == "btn-refresh-plugins":
+            self._do_refresh()
+            return
+
+        if not btn_id.startswith("action_"):
+            return
+
+        action_id = btn_id[len("action_"):]
+        plugin = self._selected_plugin
+        if plugin is None:
+            return
+
+        action = next(
+            (a for a in plugin.get("actions", []) if a["id"] == action_id),
+            None,
+        )
+        if action is None:
+            return
+
+        # 弹出表单（若无字段则直接执行）
+        if action.get("fields"):
+            self.app.push_screen(
+                PluginActionScreen(action),
+                lambda result, a=action, p=plugin: self._run_action(p, a, result),
+            )
+        else:
+            self._run_action(plugin, action, {})
+
+    def _do_refresh(self) -> None:
+        """重新扫描插件列表。"""
+        repo = Path(self.app._cfg.get("repo_path") or REPO_ROOT)  # type: ignore[attr-defined]
+        self._plugins = load_plugins(repo)
+        self._selected_plugin = None
+        self._render_plugin_list()
+        # 清空 actions 区
+        actions_area = self.query_one("#script-actions-area", VerticalScroll)
+        actions_area.remove_children()
+        actions_area.mount(Static(
+            "← 选择左侧插件后，此处显示可用操作",
+            id="script-no-plugin",
+        ))
+        log = self.query_one("#script-result-log", RichLog)
+        log.write(f"[green]插件已刷新，当前共 {len(self._plugins)} 个插件。[/green]")
+
+    def _run_action(
+        self,
+        plugin: dict[str, Any],
+        action: dict[str, Any],
+        fields: dict[str, Any] | None,
+    ) -> None:
+        """表单提交后在后台线程执行 handler，结果写入 RichLog。"""
+        if fields is None:
+            # 用户取消了表单
+            return
+        self._execute_action(plugin, action, fields)
+
+    @work(thread=True)
+    def _execute_action(
+        self,
+        plugin: dict[str, Any],
+        action: dict[str, Any],
+        fields: dict[str, Any],
+    ) -> None:
+        handler_name = action.get("handler", "")
+        mod = plugin.get("_module")
+        log: RichLog = self.query_one("#script-result-log", RichLog)  # type: ignore[assignment]
+
+        self.app.call_from_thread(
+            log.write,
+            f"\n[bold]执行：{action.get('label', handler_name)}[/bold]",
+        )
+
+        if mod is None or not handler_name:
+            self.app.call_from_thread(
+                log.write,
+                "[red]错误：插件模块未加载或 handler 未指定。[/red]",
+            )
+            return
+
+        handler = getattr(mod, handler_name, None)
+        if handler is None:
+            self.app.call_from_thread(
+                log.write,
+                f"[red]错误：插件中未找到函数 {handler_name!r}。[/red]",
+            )
+            return
+
+        try:
+            result: dict[str, Any] = handler(fields, interactive=False)
+        except Exception as e:
+            self.app.call_from_thread(
+                log.write,
+                f"[red]执行出错：{e}[/red]",
+            )
+            return
+
+        success = result.get("success", False)
+        message = result.get("message", "")
+        data    = result.get("data")
+
+        color = "green" if success else "red"
+        self.app.call_from_thread(
+            log.write,
+            f"[{color}]{message}[/{color}]",
+        )
+
+        # 若有附加数据（如文件列表），格式化展示
+        if data and isinstance(data, dict):
+            generated = data.get("generated", [])
+            skipped   = data.get("skipped", [])
+            modules   = data.get("modules", [])
+            deleted   = data.get("deleted", [])
+
+            if generated:
+                self.app.call_from_thread(
+                    log.write,
+                    "[bold]已生成文件：[/bold]\n" +
+                    "\n".join(f"  [cyan]{p}[/cyan]" for p in generated),
+                )
+            if skipped:
+                self.app.call_from_thread(
+                    log.write,
+                    "[bold]跳过：[/bold]\n" +
+                    "\n".join(f"  [yellow]{s}[/yellow]" for s in skipped),
+                )
+            if modules:
+                self.app.call_from_thread(
+                    log.write,
+                    "[bold]模块列表：[/bold]\n" +
+                    "\n".join(
+                        f"  [cyan]{m['name']}/{m['version']}[/cyan]"
+                        for m in modules
+                    ),
+                )
+            if deleted:
+                self.app.call_from_thread(
+                    log.write,
+                    "[bold]已删除：[/bold]\n" +
+                    "\n".join(f"  [red]{p}[/red]" for p in deleted),
+                )
+
+
+# ──────────────────────────────────────────────────────────────
 # 主应用
 # ──────────────────────────────────────────────────────────────
 
@@ -1350,6 +1870,7 @@ class MaintainAllApp(App):
         Binding("ctrl+l", "clear_chat", "清空对话", show=True),
         Binding("ctrl+s", "save_template", "保存模板", show=True),
         Binding("ctrl+f", "focus_search", "搜索", show=True),
+        Binding("ctrl+r", "refresh_plugins", "刷新插件", show=False),
     ]
 
     def __init__(self) -> None:
@@ -1360,6 +1881,7 @@ class MaintainAllApp(App):
         self._llm = LLMClient(self._cfg)
         self._scripts: list[dict[str, Any]] = []
         self._templates: list[dict[str, Any]] = []
+        self._plugins: list[dict[str, Any]] = []
         self._index_ready = False
 
     def compose(self) -> ComposeResult:
@@ -1373,6 +1895,8 @@ class MaintainAllApp(App):
                 yield Static("⏳ 扫描脚本中…", id="loading-commands")
             with TabPane("📝 模板填充", id="tab-templates"):
                 yield Static("⏳ 扫描模板中…", id="loading-templates")
+            with TabPane("🔧 脚本工具", id="tab-scripts"):
+                yield Static("⏳ 加载插件中…", id="loading-scripts")
         yield Footer()
 
     def on_mount(self) -> None:
@@ -1380,13 +1904,14 @@ class MaintainAllApp(App):
         threading.Thread(target=self._background_init, daemon=True).start()
 
     def _background_init(self) -> None:
-        """后台初始化：构建索引、扫描脚本和模板。"""
+        """后台初始化：构建索引、扫描脚本、扫描模板、加载插件。"""
         chunk_size = self._cfg.get("rag_chunk_size", 100)
 
-        # 并发执行三个任务
+        # 并发执行四个任务
         scripts_done = threading.Event()
         templates_done = threading.Event()
         rag_done = threading.Event()
+        plugins_done = threading.Event()
 
         def do_scripts():
             self._scripts = scan_scripts(self._repo)
@@ -1400,11 +1925,16 @@ class MaintainAllApp(App):
             self._rag_index.build(self._repo, chunk_size=chunk_size)
             rag_done.set()
 
+        def do_plugins():
+            self._plugins = load_plugins(self._repo)
+            plugins_done.set()
+
         t1 = threading.Thread(target=do_scripts, daemon=True)
         t2 = threading.Thread(target=do_templates, daemon=True)
         t3 = threading.Thread(target=do_rag, daemon=True)
-        t1.start(); t2.start(); t3.start()
-        t1.join(); t2.join(); t3.join()
+        t4 = threading.Thread(target=do_plugins, daemon=True)
+        t1.start(); t2.start(); t3.start(); t4.start()
+        t1.join(); t2.join(); t3.join(); t4.join()
 
         # 回到主线程更新 UI
         self.call_from_thread(self._on_init_done)
@@ -1429,6 +1959,15 @@ class MaintainAllApp(App):
         tpl_pane_parent = self.query_one("#tab-templates", TabPane)
         tpl_pane_parent.mount(TemplatePane(self._templates, self._repo))
 
+        # 更新脚本工具面板
+        try:
+            placeholder = self.query_one("#loading-scripts", Static)
+            placeholder.remove()
+        except NoMatches:
+            pass
+        script_pane_parent = self.query_one("#tab-scripts", TabPane)
+        script_pane_parent.mount(ScriptPane(self._plugins))
+
         # 通知对话面板索引就绪
         try:
             chat = self.query_one(ChatPane)
@@ -1440,7 +1979,8 @@ class MaintainAllApp(App):
         self.notify(
             f"✅ 初始化完成：{len(self._scripts)} 个脚本，"
             f"{len(self._templates)} 个模板，"
-            f"{len(self._rag_index.chunks)} 个 RAG 片段"
+            f"{len(self._rag_index.chunks)} 个 RAG 片段，"
+            f"{len(self._plugins)} 个插件"
         )
 
     # ── Actions ──────────────────────────────────────────────
@@ -1480,6 +2020,14 @@ class MaintainAllApp(App):
                 self.query_one("#cmd-search", Input).focus()
             elif active == "tab-chat":
                 self.query_one("#chat-input", Input).focus()
+        except NoMatches:
+            pass
+
+    def action_refresh_plugins(self) -> None:
+        """Ctrl+R：刷新脚本工具面板的插件列表。"""
+        try:
+            pane = self.query_one(ScriptPane)
+            pane._do_refresh()
         except NoMatches:
             pass
 

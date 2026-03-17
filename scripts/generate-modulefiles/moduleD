@@ -1,7 +1,0 @@
-#%Module -*- tcl -*-
-
-prepend-path     C_INCLUDE_PATH             SOFTWARES/include
-prepend-path     CXX_INCLUDE_PATH           SOFTWARES/include
-prepend-path     LD_LIBRARY_PATH            SOFTWARES/lib
-prepend-path	 PKG_CONFIG_PATH 	        SOFTWARES/lib/pkgconfig
-prepend-path	 PATH 	                    SOFTWARES/bin

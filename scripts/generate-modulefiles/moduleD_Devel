@@ -1,7 +1,0 @@
-#%Module -*- tcl -*-
-
-prepend-path  --delim " "   CFLAGS            -ISOFTWARES/include
-prepend-path  --delim " "   CXXFLAGS          -ISOFTWARES/include
-prepend-path  --delim " "   FFLAGS            -ISOFTWARES/include
-prepend-path  --delim " "   FCFLAGS           -ISOFTWARES/include
-prepend-path  --delim " "   LDFLAGS           -LSOFTWARES/lib

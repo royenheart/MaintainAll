@@ -8,6 +8,7 @@
 - 通过自然语言问答获取部署/命令/配置参考
 - 交互式填充配置模板中的占位符变量
 - 搜索并参考仓库中的关键命令片段
+- 通过插件机制运行仓库内的管理脚本（如 Environment Modules 管理）
 
 ---
 
@@ -18,6 +19,7 @@
 | TUI 框架 | **Textual** | 现代、支持鼠标、布局丰富，社区活跃 |
 | LLM 客户端 | **openai** SDK（可选依赖） | 兼容 OpenAI 接口的国内 API（DeepSeek、Qwen、SiliconFlow 等）均可直接对接 |
 | RAG 检索 | **纯 Python TF-IDF**（不引入 sklearn） | 仓库内容以配置文件和 shell 脚本为主，关键词匹配已足够，零额外依赖 |
+| 插件加载 | **importlib.util** 动态加载 | 无需修改主程序即可扩展新脚本工具 |
 
 ### 最小依赖
 
@@ -31,28 +33,28 @@ openai>=1.0     # LLM 调用（可选，不配置时自动降级为纯检索模�
 ## 整体布局
 
 ```
-┌──────────────────────────────────────────────────────────────┐
-│  MaintainAll  [浏览] [对话] [命令参考] [模板填充]   ⚙ 设置  │
-├─────────────────────┬────────────────────────────────────────┤
-│                     │                                        │
-│  📁 仓库导航树      │   内容 / 对话区                        │
-│  ├ apps/            │                                        │
-│  ├ deploy/          │   （根据 Tab 切换展示内容）             │
-│  ├ maintaince/      │                                        │
-│  ├ scripts/         │                                        │
-│  ├ stow-configs/    │                                        │
-│  └ templates/       │                                        │
-│                     │                                        │
-├─────────────────────┴────────────────────────────────────────┤
-│  状态栏 / 快捷键提示                                         │
-└──────────────────────────────────────────────────────────────┘
+┌──────────────────────────────────────────────────────────────────┐
+│  MaintainAll  [浏览] [对话] [命令参考] [模板填充] [脚本工具]  ⚙  │
+├─────────────────────┬────────────────────────────────────────────┤
+│                     │                                            │
+│  📁 仓库导航树      │   内容 / 对话区                            │
+│  ├ apps/            │                                            │
+│  ├ deploy/          │   （根据 Tab 切换展示内容）                 │
+│  ├ maintaince/      │                                            │
+│  ├ scripts/         │                                            │
+│  ├ stow-configs/    │                                            │
+│  └ templates/       │                                            │
+│                     │                                            │
+├─────────────────────┴────────────────────────────────────────────┤
+│  状态栏 / 快捷键提示                                             │
+└──────────────────────────────────────────────────────────────────┘
 ```
 
 左侧为始终可见的仓库文件导航树（`Tree` 组件），右侧根据顶部 Tab 切换不同功能面板。
 
 ---
 
-## 四大功能模块
+## 五大功能模块
 
 ### 1. 浏览（Browse）
 
@@ -104,6 +106,74 @@ openai>=1.0     # LLM 调用（可选，不配置时自动降级为纯检索模�
 3. 实时预览替换后的内容
 4. 可一键复制到剪贴板或保存为新文件
 
+### 5. 脚本工具（Scripts）
+
+通过 `importlib` 动态加载 `scripts/**/manage_*.py` 插件，提供可视化表单驱动的脚本执行界面。
+
+**布局**：
+```
+左侧：插件列表（自动发现所有 manage_*.py）
+右侧上：选中插件的 Action 按钮列表
+右侧下：执行结果（RichLog，支持颜色/高亮）
+```
+
+**执行流程**：
+1. 左侧选择插件 → 右侧显示 Action 列表
+2. 点击 Action → 弹出 `PluginActionScreen` 表单
+3. 填写参数后点击「执行」
+4. 后台线程执行 handler，结果实时输出到 RichLog
+
+**当前内置插件**：`scripts/modulefiles/manage_modules.py`（Environment Modules 管理）
+
+**快捷键**：`Ctrl+R` 刷新插件列表
+
+---
+
+## 插件开发接口（PLUGIN_META）
+
+在 `scripts/` 任意子目录下创建 `manage_*.py`，暴露 `PLUGIN_META` 字典即可被 TUI 自动发现。
+
+```python
+PLUGIN_META = {
+    "name": str,           # 插件显示名称
+    "description": str,    # 插件简介
+    "version": str,        # 插件版本
+    "actions": [
+        {
+            "id": str,           # 唯一标识
+            "label": str,        # 显示名称
+            "description": str,  # 功能简介
+            "fields": [          # 表单字段列表
+                {
+                    "id":       str,   # 字段标识
+                    "label":    str,   # 显示名称
+                    "type":     str,   # str/path/select/bool/kvlist
+                    "required": bool,
+                    "default":  Any,   # 可选
+                    "options":  list,  # type=select 时必填
+                },
+            ],
+            "handler": str,      # 模块级 handler 函数名
+        },
+    ],
+}
+
+def action_xxx(fields: dict, *, interactive: bool = False) -> dict:
+    # interactive=True：命令行模式（可打印/询问）
+    # interactive=False：TUI 调用（静默，只返回数据）
+    return {"success": bool, "message": str, "data": Any}
+```
+
+| `type` 值 | TUI Widget | 说明 |
+|---|---|---|
+| `str` | `Input` | 普通字符串 |
+| `path` | `Input` | 文件系统路径 |
+| `select` | `Select` | 单选，需配合 `options` |
+| `bool` | `Switch` | 布尔开关 |
+| `kvlist` | `TextArea` | 多行键值对，格式 `VAR=/path` |
+
+详见 `docs/modulefile-manager.md`。
+
 ---
 
 ## 配置文件
@@ -138,9 +208,19 @@ openai>=1.0     # LLM 调用（可选，不配置时自动降级为纯检索模�
 
 ```
 MaintainAll/
-├── maintain.py      # 单一入口，所有逻辑集中于此
-├── AGENTS.md        # 本文档
-└── ...              # 现有仓库内容
+├── maintain.py                    # 单一入口，所有 TUI 逻辑
+├── AGENTS.md                      # 本文档
+├── docs/
+│   └── modulefile-manager.md      # Environment Modules 管理器详细方案
+├── templates/
+│   └── modulefiles/               # Tcl 模板文件
+│       ├── generic.tcl            # 通用软件包模板
+│       ├── devel.tcl              # 编译开发版模板
+│       └── custom.tcl             # 自定义模板
+└── scripts/
+    ├── generate-modulefiles/      # 旧 Bash 脚本（归档保留）
+    └── modulefiles/
+        └── manage_modules.py      # Environment Modules 管理插件
 ```
 
 ---
@@ -152,8 +232,15 @@ MaintainAll/
 pip install textual
 pip install openai   # 可选，需要 AI 对话功能时安装
 
-# 运行
+# 运行 TUI
 python maintain.py
+
+# 独立运行 modulefile 管理工具
+python scripts/modulefiles/manage_modules.py          # 交互式菜单
+python scripts/modulefiles/manage_modules.py scan /opt/software
+python scripts/modulefiles/manage_modules.py add cuda 12.2 /usr/local/cuda-12.2
+python scripts/modulefiles/manage_modules.py list
+python scripts/modulefiles/manage_modules.py delete cuda 12.2
 ```
 
 首次运行会提示配置 API（可跳过），之后直接进入 TUI 界面。
@@ -169,5 +256,6 @@ python maintain.py
 | `Ctrl+F` | 在当前面板中搜索/过滤 |
 | `Ctrl+L` | 清空对话记录 |
 | `Ctrl+S` | 保存模板填充结果 |
+| `Ctrl+R` | 刷新脚本工具插件列表 |
 | `F1` | 打开设置面板 |
 | `Escape` | 关闭弹窗/返回上级 |
