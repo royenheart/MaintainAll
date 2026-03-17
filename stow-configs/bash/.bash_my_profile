@@ -19,14 +19,11 @@ function set_rustup_mirror() {
     export RUSTUP_DIST_SERVER=https://mirrors.cernet.edu.cn/rustup
 }
 
-. set_rustup_mirror
-
 # use ccache to speed up compilation
 
 export CMAKE_CXX_COMPILER_LAUNCHER=ccache
 
 # environment module common paths
-. /usr/share/modules/init/bash
 export MODULEPATH=${HOME}/envs:${HOME}/modulefiles:/opt/modulefiles:$MODULEPATH
 
 function do_sync() {
@@ -176,3 +173,9 @@ function unset_wsl_proxy() {
     sudo sed -i -e '/Acquire::http::Proxy/d' /etc/apt/apt.conf.d/proxy.conf;
     sudo sed -i -e '/Acquire::https::Proxy/d' /etc/apt/apt.conf.d/proxy.conf;
 }
+
+# graphical
+XIM=fcitx
+GTK_IM_MODULE=fcitx
+QT_IM_MODULE=fcitx
+XMODIFIERS=@im=fcitx
