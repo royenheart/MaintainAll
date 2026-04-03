@@ -174,6 +174,9 @@ function unset_wsl_proxy() {
     sudo sed -i -e '/Acquire::https::Proxy/d' /etc/apt/apt.conf.d/proxy.conf;
 }
 
+# scripts
+export PATH=${HOME}/softwares/scripts:$PATH
+
 # graphical
 XIM=fcitx
 GTK_IM_MODULE=fcitx
