@@ -1,0 +1,20 @@
+[Unit]
+Description=gost - GO Simple Tunnel (SOCKS5/HTTP proxy sidecar for daed)
+Documentation=https://github.com/go-gost/gost
+After=network-online.target docker.service
+Wants=network-online.target
+
+[Service]
+Type=simple
+ExecStart=/usr/local/bin/gost -L socks5://:20170 -L http://:20171
+Restart=on-abnormal
+RestartSec=5
+
+# Security
+NoNewPrivileges=yes
+ProtectSystem=strict
+ProtectHome=yes
+ReadWritePaths=/var/log
+
+[Install]
+WantedBy=multi-user.target

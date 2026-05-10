@@ -1,0 +1,13 @@
+[Unit]
+Description=gost - GO Simple Tunnel (SOCKS5/HTTP proxy sidecar for daed) [User]
+Documentation=https://github.com/go-gost/gost
+After=network-online.target
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/gost -L socks5://:20170 -L http://:20171
+Restart=on-abnormal
+RestartSec=5
+
+[Install]
+WantedBy=default.target

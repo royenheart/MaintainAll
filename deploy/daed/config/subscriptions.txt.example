@@ -1,0 +1,5 @@
+tag=<YOUR_TAG>
+link=<YOUR_SUBSCRIPTION_LINK>
+cron=10 */6 * * *
+cron_enable=1
+---

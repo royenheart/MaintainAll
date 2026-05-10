@@ -1,0 +1,6 @@
+config/wing.db
+config/*.bak
+config/*.bak2
+config/subscriptions.txt
+exported/
+__pycache__/
