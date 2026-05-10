@@ -92,6 +92,7 @@ function set_proxy() {
     export HTTPS_PROXY="${proxy_type}://${hostip}:${hostport}";
     export HTTP_PROXY="${proxy_type}://${hostip}:${hostport}";
     export ALL_PROXY="${proxy_type}://${hostip}:${hostport}";
+    export no_proxy="localhost,127.0.0.1,192.168.1.0/24,.example.com"
 }
 
 function unset_proxy() {
