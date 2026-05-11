@@ -208,8 +208,8 @@ def input_admin_account() -> tuple[str, str]:
     return user, p1
 
 
-def install_gost():
-    """下载安装 gost 到 ~/.local/bin/。"""
+def install_gost(gost_bin: str):
+    """下载安装 gost 到指定路径。"""
     print(f"{CYAN}[6/8] 安装 gost (SOCKS5/HTTP 代理)...{NC}")
 
     arch_map = {"x86_64": "amd64", "aarch64": "arm64"}
@@ -218,12 +218,8 @@ def install_gost():
     if not gost_arch:
         fail(f"不支持的架构: {arch}")
 
-    bin_dir = os.path.expanduser("~/.local/bin")
-    bin_path = os.path.join(bin_dir, "gost")
-    os.makedirs(bin_dir, exist_ok=True)
-
-    if os.path.isfile(bin_path):
-        ok("gost 已安装")
+    if os.path.isfile(gost_bin):
+        ok(f"gost 已安装 ({gost_bin})")
         print()
         return
 
@@ -238,17 +234,44 @@ def install_gost():
         urllib.request.urlretrieve(url, tarball)
         with tarfile.open(tarball) as tf:
             tf.extractall(tmp)
-        shutil.copy2(os.path.join(tmp, "gost"), bin_path)
-        os.chmod(bin_path, 0o755)
+        os.makedirs(os.path.dirname(gost_bin), exist_ok=True)
+        shutil.copy2(os.path.join(tmp, "gost"), gost_bin)
+        os.chmod(gost_bin, 0o755)
 
-    ok(f"gost 安装到 {bin_path}")
+    ok(f"gost 安装到 {gost_bin}")
     print()
 
 
-def setup_gost_service(proj_dir: str):
-    """配置 gost 用户 systemd 服务。"""
-    print(f"{CYAN}[7/8] 配置 gost 开机自启 (用户级 systemd)...{NC}")
+def choose_gost_mode() -> str:
+    """询问用户使用哪种 systemd 模式。返回 'user' 或 'system'。"""
+    print(f"{CYAN}[7/8] 配置 gost 开机自启...{NC}")
+    print()
+    print("  请选择 gost 服务类型：")
+    print(f"    {GREEN}[1]{NC} 用户级 systemd")
+    print("       免 sudo，服务在用户登录后启动")
+    print("       需要 loginctl enable-linger 实现开机免登录自启")
+    print(f"    {GREEN}[2]{NC} 系统级 systemd")
+    print("       需要 sudo，开机即启动（推荐服务器使用）")
+    print()
+    while True:
+        choice = input("  请选择 [1/2] (默认 1): ").strip() or "1"
+        if choice == "1":
+            return "user"
+        elif choice == "2":
+            return "system"
+        print(f"  {YELLOW}请输入 1 或 2{NC}")
 
+
+def setup_gost_service(proj_dir: str, mode: str):
+    """根据模式配置 gost systemd 服务。"""
+    if mode == "user":
+        _setup_gost_user(proj_dir)
+    else:
+        _setup_gost_system(proj_dir)
+
+
+def _setup_gost_user(proj_dir: str):
+    """配置 gost 用户级 systemd 服务。"""
     user_systemd = os.path.expanduser("~/.config/systemd/user")
     os.makedirs(user_systemd, exist_ok=True)
 
@@ -271,6 +294,55 @@ def setup_gost_service(proj_dir: str):
         ok("gost 用户服务已安装，开机自启（含免登录）")
     else:
         ok("gost 用户服务已安装")
+    print()
+
+
+def _setup_gost_system(proj_dir: str):
+    """配置 gost 系统级 systemd 服务（需 sudo）。"""
+    if shutil.which("sudo") is None:
+        warn("未找到 sudo，无法安装系统级服务，退回用户级")
+        _setup_gost_user(proj_dir)
+        return
+
+    # 安装二进制到 /usr/local/bin
+    user_bin = os.path.expanduser("~/.local/bin/gost")
+    sys_bin = "/usr/local/bin/gost"
+    if os.path.isfile(user_bin) and not os.path.isfile(sys_bin):
+        print("  安装 gost 到 /usr/local/bin/ (需 sudo)...")
+        try:
+            subprocess.run(
+                ["sudo", "install", "-Dm755", user_bin, sys_bin],
+                check=True, capture_output=True, timeout=30
+            )
+            ok("gost 已安装到 /usr/local/bin/")
+        except Exception as e:
+            warn(f"sudo install 失败: {e}")
+            return
+
+    # 安装 systemd 服务
+    src = os.path.join(proj_dir, "gost", "gost.service")
+    dst = "/etc/systemd/system/gost.service"
+    print("  安装 systemd 服务 (需 sudo)...")
+    try:
+        subprocess.run(
+            ["sudo", "cp", src, dst],
+            check=True, capture_output=True, timeout=10
+        )
+        subprocess.run(
+            ["sudo", "systemctl", "daemon-reload"],
+            check=True, capture_output=True, timeout=10
+        )
+        subprocess.run(
+            ["sudo", "systemctl", "enable", "gost"],
+            check=True, capture_output=True, timeout=10
+        )
+        subprocess.run(
+            ["sudo", "systemctl", "restart", "gost"],
+            check=True, capture_output=True, timeout=10
+        )
+        ok("gost 系统服务已安装，开机自启")
+    except Exception as e:
+        warn(f"sudo 操作失败: {e}")
     print()
 
 
@@ -565,10 +637,11 @@ def main():
     admin_user, admin_pass = input_admin_account()
 
     # 6
-    install_gost()
+    install_gost(os.path.expanduser("~/.local/bin/gost"))
 
     # 7
-    setup_gost_service(proj_dir)
+    gost_mode = choose_gost_mode()
+    setup_gost_service(proj_dir, gost_mode)
 
     # 8
     admin_user = start_daed_and_proxy(
