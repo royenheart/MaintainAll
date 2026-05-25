@@ -1,0 +1,154 @@
+#!/usr/bin/env bash
+set -euo pipefail
+
+mode="${1:-restore}"
+
+pause() {
+	printf '\nPress Enter to close...'
+	read -r _ || true
+}
+
+expand_resurrect_dir() {
+	local path="$1"
+	local host
+	host="$(hostname)"
+	path="${path//\$HOME/$HOME}"
+	path="${path//\$HOSTNAME/$host}"
+	path="${path/#\~/$HOME}"
+	printf '%s\n' "$path"
+}
+
+resurrect_dir_option="$(tmux show-option -gqv @resurrect-dir 2>/dev/null || true)"
+if [ -n "$resurrect_dir_option" ]; then
+	resurrect_dir="$(expand_resurrect_dir "$resurrect_dir_option")"
+elif [ -d "$HOME/.tmux/resurrect" ]; then
+	resurrect_dir="$HOME/.tmux/resurrect"
+else
+	resurrect_dir="${XDG_DATA_HOME:-$HOME/.local/share}/tmux/resurrect"
+fi
+
+restore_script="$HOME/.tmux/plugins/tmux-resurrect/scripts/restore.sh"
+
+if ! command -v fzf >/dev/null 2>&1; then
+	echo "fzf is required for the tmux-resurrect snapshot menu."
+	echo
+	echo "Install one of:"
+	echo "  sudo dnf install fzf"
+	echo "  sudo apt install fzf"
+	echo "  brew install fzf"
+	pause
+	exit 1
+fi
+
+if [ ! -d "$resurrect_dir" ]; then
+	echo "No tmux-resurrect directory found:"
+	echo "  $resurrect_dir"
+	echo
+	echo "Save once with prefix + Ctrl+s first."
+	pause
+	exit 1
+fi
+
+snapshot_rows() {
+	local file
+	for file in "$resurrect_dir"/tmux_resurrect_*.txt; do
+		[ -f "$file" ] || continue
+		printf '%s\t%s\n' "$(date -r "$file" '+%Y-%m-%d %H:%M:%S')" "$(basename "$file")"
+	done | sort -r
+}
+
+preview='
+snapshot={2}
+file="$RESURRECT_DIR/$snapshot"
+printf "Snapshot: %s\n\n" "$snapshot"
+awk -F "\t" '"'"'
+	$1 == "pane" { panes[$2]++ }
+	$1 == "window" { windows[$2]++ }
+	END {
+		for (session in panes) {
+			printf "%s: %d windows, %d panes\n", session, windows[session], panes[session]
+		}
+	}
+'"'"' "$file" | sort
+printf "\n--- raw preview ---\n"
+sed -n "1,80p" "$file"
+'
+
+export RESURRECT_DIR="$resurrect_dir"
+
+select_snapshot() {
+	snapshot_rows |
+		fzf --delimiter='\t' \
+			--with-nth=1,2 \
+			--prompt='restore snapshot> ' \
+			--header='Enter: restore selected snapshot' \
+			--preview="$preview" \
+			--preview-window='right:65%,wrap'
+}
+
+delete_snapshots() {
+	snapshot_rows |
+		fzf --multi \
+			--delimiter='\t' \
+			--with-nth=1,2 \
+			--prompt='delete snapshot> ' \
+			--header='Tab: select multiple, Enter: delete selected snapshots' \
+			--preview="$preview" \
+			--preview-window='right:65%,wrap'
+}
+
+fix_last_symlink() {
+	if [ -e "$resurrect_dir/last" ]; then
+		return
+	fi
+
+	local newest
+	newest="$(find "$resurrect_dir" -maxdepth 1 -type f -name 'tmux_resurrect_*.txt' -printf '%T@ %f\n' 2>/dev/null |
+		sort -rn |
+		awk 'NR == 1 { print $2 }')"
+	if [ -n "$newest" ]; then
+		ln -sfn "$newest" "$resurrect_dir/last"
+	else
+		rm -f "$resurrect_dir/last"
+	fi
+}
+
+case "$mode" in
+	restore)
+		selected="$(select_snapshot || true)"
+		[ -n "$selected" ] || exit 0
+		snapshot="$(printf '%s\n' "$selected" | awk -F '\t' '{ print $2 }')"
+		ln -sfn "$snapshot" "$resurrect_dir/last"
+		if [ ! -x "$restore_script" ]; then
+			echo "tmux-resurrect restore script is missing:"
+			echo "  $restore_script"
+			pause
+			exit 1
+		fi
+		exec "$restore_script"
+		;;
+	delete)
+		selected="$(delete_snapshots || true)"
+		[ -n "$selected" ] || exit 0
+		count="$(printf '%s\n' "$selected" | sed '/^$/d' | wc -l | tr -d ' ')"
+		printf 'Delete %s snapshot(s)? [y/N] ' "$count"
+		read -r answer || true
+		case "$answer" in
+			y|Y|yes|YES)
+				printf '%s\n' "$selected" |
+					awk -F '\t' '{ print $2 }' |
+					while IFS= read -r snapshot; do
+						[ -n "$snapshot" ] || continue
+						rm -f "$resurrect_dir/$snapshot"
+						printf 'Deleted %s\n' "$snapshot"
+					done
+				fix_last_symlink
+				pause
+				;;
+		esac
+		;;
+	*)
+		echo "Usage: $0 {restore|delete}"
+		exit 2
+		;;
+esac
