@@ -217,3 +217,9 @@ __marimo__/
 
 # vscode
 .vscode
+
+# codex
+start-codex.sh
+.codex
+
+temp

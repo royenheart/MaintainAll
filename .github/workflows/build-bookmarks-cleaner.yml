@@ -1,0 +1,48 @@
+name: Build BookmarksCleaner
+
+on:
+  push:
+    paths:
+      - 'apps/BookmarksCleaner/**'
+      - '.github/workflows/build-bookmarks-cleaner.yml'
+  workflow_dispatch:
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/BookmarksCleaner
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Run unit tests
+        run: make test
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    defaults:
+      run:
+        working-directory: apps/BookmarksCleaner
+
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Read version
+        id: version
+        run: echo "value=$(cat VERSION)" >> $GITHUB_OUTPUT
+
+      - name: Build
+        run: make
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: bookmarks-cleaner-v${{ steps.version.outputs.value }}
+          path: apps/BookmarksCleaner/build/bookmarks-cleaner-${{ steps.version.outputs.value }}.zip
+          if-no-files-found: error

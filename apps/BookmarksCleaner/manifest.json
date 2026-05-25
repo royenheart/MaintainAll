@@ -1,0 +1,54 @@
+{
+  "manifest_version": 3,
+  "name": "Bookmarks Cleaner",
+  "version": "$VERSION$",
+  "description": "AI-powered bookmark organizer: clean titles, generate knowledge base, backup to local/WebDAV.",
+
+  "update_url": "$UPDATE_URL$",
+
+  "permissions": [
+    "bookmarks",
+    "downloads",
+    "storage",
+    "sidePanel",
+    "alarms",
+    "notifications",
+    "identity",
+    "identity.email"
+  ],
+
+  "host_permissions": [
+    "https://api.deepseek.com/*"
+  ],
+
+  "optional_host_permissions": [
+    "*://*/*"
+  ],
+
+  "background": {
+    "service_worker": "background.js",
+    "type": "module"
+  },
+
+  "action": {
+    "default_title": "Bookmarks Cleaner",
+    "default_icon": {
+      "128": "icons/icon128.png"
+    }
+  },
+
+  "side_panel": {
+    "default_path": "sidepanel.html"
+  },
+
+  "options_ui": {
+    "page": "settings.html",
+    "open_in_tab": false
+  },
+
+  "icons": {
+    "128": "icons/icon128.png"
+  },
+
+  "minimum_chrome_version": "114"
+}

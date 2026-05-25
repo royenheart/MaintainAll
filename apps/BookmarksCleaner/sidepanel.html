@@ -1,0 +1,356 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>书签清理</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 13px;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  padding: 0;
+  min-height: 100vh;
+}
+
+/* ====== Tab Bar ====== */
+.tab-bar {
+  display: flex;
+  background: #0f0f23;
+  border-bottom: 1px solid #2a2a4a;
+  padding: 4px 8px;
+  gap: 2px;
+  position: sticky;
+  top: 0;
+  z-index: 10;
+}
+.tab {
+  padding: 6px 14px;
+  border: none;
+  background: transparent;
+  color: #888;
+  font-size: 12px;
+  font-weight: 500;
+  cursor: pointer;
+  border-radius: 6px 6px 0 0;
+  transition: all 0.15s;
+  white-space: nowrap;
+}
+.tab:hover { color: #ccc; background: #1a1a2e; }
+.tab.active { color: #7c83ff; background: #1a1a2e; }
+
+/* ====== Panel Content ====== */
+.panel { padding: 12px; display: none; }
+.panel.active { display: block; }
+
+/* ====== Shared Components ====== */
+.card {
+  background: #16213e;
+  border: 1px solid #2a2a4a;
+  border-radius: 8px;
+  padding: 14px;
+  margin-bottom: 12px;
+}
+
+.btn {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 7px 14px; border: none; border-radius: 6px;
+  cursor: pointer; font-size: 12px; font-weight: 500; transition: all 0.15s;
+}
+.btn-primary { background: #7c83ff; color: #fff; }
+.btn-primary:hover { background: #6366f1; }
+.btn-primary:disabled { background: #444; cursor: not-allowed; }
+.btn-secondary { background: #2a2a4a; color: #ccc; }
+.btn-secondary:hover { background: #3a3a5a; }
+.btn-success { background: #16a34a; color: #fff; }
+.btn-success:hover { background: #15803d; }
+.btn-warning { background: #ca8a04; color: #000; }
+.btn-warn:hover { background: #a16207; }
+.btn-row { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+
+/* Progress */
+.progress-bar { height: 6px; background: #2a2a4a; border-radius: 3px; overflow: hidden; }
+.progress-fill { height: 100%; background: linear-gradient(90deg, #7c83ff, #a78bfa); border-radius: 3px; transition: width 0.3s; }
+.progress-text { font-size: 11px; color: #888; margin-top: 4px; }
+
+/* Log */
+.log { max-height: 200px; overflow-y: auto; font-size: 11px; line-height: 1.6; }
+.log-entry { padding: 2px 0; border-bottom: 1px solid #1a1a2e; }
+.log-entry.success { color: #4ade80; }
+.log-entry.warning { color: #fbbf24; }
+.log-entry.error { color: #f87171; }
+.log-entry.info { color: #94a3b8; }
+.log-entry.stream { padding: 6px 0; color: #c4b5fd; }
+.stream-title { font-size: 10px; color: #8b93ff; margin-bottom: 4px; }
+.stream-body {
+  white-space: pre-wrap;
+  color: #d8d8f6;
+  background: #111125;
+  border: 1px solid #2a2a4a;
+  border-radius: 6px;
+  padding: 8px;
+  max-height: 160px;
+  overflow-y: auto;
+}
+
+/* Stats */
+.stats { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+.stat { background: #1a1a2e; padding: 8px; border-radius: 6px; text-align: center; }
+.stat-value { font-size: 20px; font-weight: 700; color: #7c83ff; }
+.stat-label { font-size: 10px; color: #888; margin-top: 2px; }
+
+/* Preview */
+.preview-list { max-height: 200px; overflow-y: auto; font-size: 11px; }
+.preview-item { padding: 5px 0; border-bottom: 1px solid #1a1a2e; }
+.preview-item .old { color: #f87171; text-decoration: line-through; }
+.preview-item .new { color: #4ade80; }
+.preview-item .arrow { color: #666; margin: 0 4px; }
+
+/* Settings */
+.settings-row { display: flex; align-items: center; gap: 6px; margin-bottom: 6px; }
+.settings-row > label:first-child { width: 68px; flex-shrink: 0; font-size: 11px; color: #aaa; text-align: right; }
+.settings-row input[type="text"],
+.settings-row input[type="password"],
+.settings-row textarea {
+  flex: 1; padding: 5px 7px; border: 1px solid #2a2a4a;
+  border-radius: 4px; background: #1a1a2e; color: #e0e0e0; font-size: 11px;
+  resize: vertical;
+}
+.settings-row input:focus,
+.settings-row textarea:focus { border-color: #7c83ff; outline: none; }
+
+.toggle { position: relative; width: 36px; height: 20px; flex-shrink: 0; }
+.toggle input { display: none; }
+.toggle .slider { position: absolute; inset: 0; background: #555; border-radius: 10px; cursor: pointer; transition: 0.2s; }
+.toggle input:checked + .slider { background: #7c83ff; }
+.toggle .slider::after { content: ''; position: absolute; width: 16px; height: 16px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: 0.2s; }
+.toggle input:checked + .slider::after { transform: translateX(16px); }
+
+.webdav-result { font-size: 10px; margin-left: 8px; }
+.webdav-result.ok { color: #4ade80; }
+.webdav-result.fail { color: #f87171; }
+
+/* ====== Knowledge Base Panel ====== */
+.kb-toolbar { display: flex; gap: 6px; margin-bottom: 10px; flex-wrap: wrap; }
+.kb-content {
+  max-height: calc(100vh - 120px);
+  overflow-y: auto;
+  font-size: 12px;
+  line-height: 1.7;
+  color: #d4d4d8;
+}
+.kb-content h1 { font-size: 18px; color: #7c83ff; margin: 12px 0 8px; }
+.kb-content h2 { font-size: 15px; color: #94a3b8; margin: 16px 0 6px; border-bottom: 1px solid #2a2a4a; padding-bottom: 4px; }
+.kb-content h3 { font-size: 13px; color: #a5b4fc; margin: 12px 0 4px; }
+.kb-content h4 { font-size: 12px; color: #c7d2fe; margin: 8px 0 4px; }
+.kb-content p { margin: 4px 0; }
+.kb-content code {
+  background: #1e293b; color: #f472b6; padding: 1px 4px;
+  border-radius: 3px; font-size: 11px; font-family: 'SF Mono', 'Fira Code', monospace;
+}
+.kb-content pre {
+  background: #0f172a; border: 1px solid #334155; border-radius: 6px;
+  padding: 10px; overflow-x: auto; margin: 8px 0;
+}
+.kb-content pre code {
+  background: none; color: #e2e8f0; padding: 0; font-size: 11px;
+}
+.kb-content ul, .kb-content ol { margin: 4px 0 4px 18px; }
+.kb-content li { margin: 2px 0; }
+.kb-content a { color: #818cf8; text-decoration: none; }
+.kb-content a:hover { text-decoration: underline; }
+.kb-content blockquote {
+  border-left: 3px solid #7c83ff; padding: 4px 10px;
+  margin: 8px 0; background: #1a1a2e; color: #aaa; border-radius: 0 4px 4px 0;
+}
+.kb-content table { width: 100%; border-collapse: collapse; margin: 8px 0; font-size: 11px; }
+.kb-content th { background: #1e293b; padding: 6px 8px; text-align: left; border: 1px solid #334155; }
+.kb-content td { padding: 4px 8px; border: 1px solid #1e293b; }
+.kb-content hr { border: none; border-top: 1px solid #2a2a4a; margin: 12px 0; }
+.kb-content strong { color: #f1f5f9; }
+.kb-content img { max-width: 100%; border-radius: 4px; }
+
+.kb-empty { text-align: center; padding: 40px 20px; color: #666; }
+.kb-empty h3 { color: #888; margin-bottom: 8px; }
+
+.hidden { display: none !important; }
+</style>
+</head>
+<body>
+
+<div class="tab-bar">
+  <button class="tab active" data-panel="cleaner">📑 书签整理</button>
+  <button class="tab" data-panel="knowledge">📚 知识库</button>
+  <button class="tab" data-panel="settings">⚙ 设置</button>
+</div>
+
+<!-- ============ PANEL 1: CLEANER ============ -->
+<div class="panel active" id="panel-cleaner">
+  <div class="btn-row">
+    <button class="btn btn-primary" id="regexCleanBtn" style="flex:1;">🔧 常规整理</button>
+    <button class="btn btn-primary" id="aiCleanBtn" style="flex:1;">🤖 AI 整理</button>
+  </div>
+  <div style="font-size:10px;color:#888;margin-bottom:6px;text-align:center;" id="aiStatus"></div>
+  <div class="btn-row">
+    <button class="btn btn-secondary" id="previewBtn">👁 预览</button>
+    <button class="btn btn-secondary" id="backupBtn">💾 仅备份</button>
+  </div>
+
+  <div class="card hidden" id="progressCard">
+    <div id="phaseLabel" style="font-size:11px;color:#aaa;margin-bottom:4px;"></div>
+    <div class="progress-bar"><div class="progress-fill" id="progressFill" style="width:0%"></div></div>
+    <div class="progress-text" id="progressMessage">等待开始</div>
+    <button class="btn btn-secondary hidden" id="cancelProcessingBtn" style="margin-top:8px;">取消整理</button>
+    <div class="log" id="log" style="margin-top:8px;"></div>
+  </div>
+
+  <div class="card hidden" id="resultsCard">
+    <div style="font-size:13px;font-weight:600;margin-bottom:8px;color:#7c83ff;">📊 处理结果</div>
+    <div class="stats">
+      <div class="stat"><div class="stat-value" id="statProcessed">0</div><div class="stat-label">已处理</div></div>
+      <div class="stat"><div class="stat-value" id="statRenamed">0/0/0</div><div class="stat-label">改/移/删</div></div>
+      <div class="stat"><div class="stat-value" id="statEntertainment">0</div><div class="stat-label">娱乐/保留</div></div>
+      <div class="stat"><div class="stat-value" id="statTutorials">0</div><div class="stat-label">教程文章</div></div>
+    </div>
+    <details style="margin-top:8px;" id="changeDetails">
+      <summary id="changeSummary" style="cursor:pointer;color:#aaa;font-size:11px;">查看详细修改</summary>
+      <div class="preview-list" id="changeList" style="margin-top:4px;"></div>
+    </details>
+  </div>
+
+  <div class="card hidden" id="previewCard">
+    <div style="font-size:13px;font-weight:600;margin-bottom:6px;color:#7c83ff;">👁 标题修改预览</div>
+    <div style="font-size:10px;color:#888;margin-bottom:6px;" id="previewCount"></div>
+    <div class="preview-list" id="previewList"></div>
+  </div>
+</div>
+
+<!-- ============ PANEL 2: KNOWLEDGE BASE ============ -->
+<div class="panel" id="panel-knowledge">
+  <div class="kb-toolbar">
+    <button class="btn btn-primary" id="kbGenerateBtn">🤖 生成知识库</button>
+    <button class="btn btn-secondary" id="kbRefreshBtn">🔄 刷新显示</button>
+    <button class="btn btn-secondary" id="kbImportBtn">📤 导入 .md</button>
+    <input type="file" id="kbImportFile" accept=".md,text/markdown,text/plain" class="hidden">
+    <button class="btn btn-secondary" id="kbExportBtn">📥 导出 .md</button>
+    <button class="btn btn-success" id="kbWebdavSyncBtn">☁ 同步到 WebDAV</button>
+  </div>
+  <div class="kb-toolbar" style="margin-top:4px;">
+    <span style="font-size:10px;color:#666;" id="kbInfo"></span>
+  </div>
+  <div id="kbContent" class="kb-content">
+    <div class="kb-empty">
+      <h3>📚 知识库为空</h3>
+      <p>点击「🤖 生成知识库」从书签中的教程文章自动提取知识摘要。</p>
+      <p style="font-size:11px;color:#555;margin-top:8px;">需要先在「设置」中配置 DeepSeek API Key 以启用 AI 摘要功能。</p>
+    </div>
+  </div>
+</div>
+
+<!-- ============ PANEL 3: SETTINGS ============ -->
+<div class="panel" id="panel-settings">
+  <div class="card">
+    <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:#7c83ff;">🔑 DeepSeek API</div>
+    <div class="settings-row">
+      <label>API Key</label>
+      <input type="password" id="apiKey" placeholder="sk-... (可选)">
+    </div>
+    <div class="settings-row">
+      <label>模型</label>
+      <select id="modelSelect" style="flex:1;padding:5px 7px;border:1px solid #2a2a4a;border-radius:4px;background:#1a1a2e;color:#e0e0e0;font-size:11px;">
+        <option value="deepseek-v4-flash">deepseek-v4-flash</option>
+        <option value="deepseek-v4-pro">deepseek-v4-pro</option>
+        <option value="deepseek-chat">deepseek-chat (即将弃用)</option>
+        <option value="deepseek-reasoner">deepseek-reasoner (即将弃用)</option>
+        <option value="__custom__">自定义...</option>
+      </select>
+      <input type="text" id="modelCustom" placeholder="输入模型名" style="display:none;flex:1;">
+    </div>
+    <div class="btn-row" style="margin-top:6px;">
+      <button class="btn btn-secondary" id="deepseekTestBtn">🔍 测试连接</button>
+      <span class="webdav-result" id="deepseekResult"></span>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:#7c83ff;">📋 书签整理</div>
+    <div class="settings-row">
+      <label>排除文件夹</label>
+      <textarea id="excludedFolders" rows="3" placeholder="每行一个文件夹名&#10;例如:&#10;娱乐&#10;游戏&#10;番剧"></textarea>
+    </div>
+    <div style="display:flex;gap:16px;margin-top:6px;">
+      <div class="settings-row">
+        <label>自动备份</label>
+        <label class="toggle"><input type="checkbox" id="autoBackup" checked><span class="slider"></span></label>
+      </div>
+      <div class="settings-row">
+        <label>标准化标题</label>
+        <label class="toggle"><input type="checkbox" id="standardizeTitles" checked><span class="slider"></span></label>
+      </div>
+    </div>
+  </div>
+
+  <div class="card">
+    <div style="font-size:13px;font-weight:600;margin-bottom:10px;color:#7c83ff;">☁ WebDAV 备份</div>
+    <div class="settings-row">
+      <label>服务器 URL</label>
+      <input type="text" id="webdavUrl" placeholder="https://dav.example.com/remote.php/dav/files/user/">
+    </div>
+    <div class="settings-row">
+      <label>用户名</label>
+      <input type="text" id="webdavUser" placeholder="username">
+    </div>
+    <div class="settings-row">
+      <label>密码</label>
+      <input type="password" id="webdavPass" placeholder="password">
+    </div>
+    <div style="font-size:9px;color:#555;margin:4px 0 2px 74px;">
+      浏览器标识: <span id="profileIdDisplay" style="color:#7c83ff;">检测中...</span>
+    </div>
+    <div style="font-size:9px;color:#555;margin:2px 0 6px 74px;">
+      存储路径: BookmarksCleaner/knowledge_base_<span id="webdavPathPreview" style="color:#7c83ff;">...</span>.md
+    </div>
+    <div class="btn-row" style="margin-top:6px;">
+      <button class="btn btn-secondary" id="webdavTestBtn">🔍 测试连接</button>
+      <span class="webdav-result" id="webdavResult"></span>
+    </div>
+  </div>
+
+  <button class="btn btn-primary" id="saveSettingsBtn" style="width:100%;margin-top:4px;">☁ 同步设置</button>
+
+  <div class="card" style="margin-top:12px;">
+    <div style="font-size:13px;font-weight:600;margin-bottom:6px;color:#7c83ff;">📋 正则规则</div>
+    <div style="font-size:9px;color:#666;margin-bottom:4px;">每行一个正则模式，用于移除标题中的平台/作者后缀</div>
+    <details id="rulesDetails" style="font-size:11px;">
+      <summary style="cursor:pointer;color:#aaa;margin-bottom:4px;">展开编辑规则</summary>
+      <textarea id="rulesEditor" rows="10" style="width:100%;padding:5px;border:1px solid #2a2a4a;border-radius:4px;background:#1a1a2e;color:#e0e0e0;font-size:11px;resize:vertical;"></textarea>
+      <div class="btn-row" style="margin-top:6px;">
+        <button class="btn btn-secondary" id="resetRulesBtn" style="font-size:10px;">🔄 恢复默认</button>
+        <button class="btn btn-primary" id="saveRulesBtn" style="font-size:10px;">💾 保存规则</button>
+      </div>
+    </details>
+  </div>
+
+  <div class="card" style="margin-top:12px;">
+    <div style="font-size:13px;font-weight:600;margin-bottom:6px;color:#7c83ff;">💬 AI 提示词</div>
+    <div style="font-size:9px;color:#666;margin-bottom:4px;">自定义 DeepSeek 的 system prompt，留空则使用内置默认值</div>
+    <details id="promptDetails" style="font-size:11px;">
+      <summary style="cursor:pointer;color:#aaa;margin-bottom:6px;">展开编辑提示词</summary>
+      <div id="promptList"></div>
+      <button class="btn btn-secondary" id="resetPromptsBtn" style="margin-top:8px;font-size:10px;">🔄 恢复默认</button>
+      <button class="btn btn-primary" id="savePromptsBtn" style="margin-top:4px;font-size:10px;">💾 保存提示词</button>
+    </details>
+  </div>
+
+  <div style="text-align:center;margin-top:12px;font-size:10px;color:#555;">
+    <span id="versionInfo">v1.1</span>
+    <button class="btn btn-secondary" id="checkUpdateBtn" style="font-size:10px;padding:2px 8px;margin-left:4px;">检查更新</button>
+    <span id="updateResult" style="margin-left:6px;"></span>
+  </div>
+</div>
+
+<script src="sidepanel.js" type="module"></script>
+</body>
+</html>

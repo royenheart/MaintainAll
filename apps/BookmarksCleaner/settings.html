@@ -1,0 +1,114 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>书签清理 - 设置</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+  font-size: 14px;
+  background: #1a1a2e;
+  color: #e0e0e0;
+  padding: 24px;
+  max-width: 500px;
+}
+h2 { color: #7c83ff; margin: 20px 0 12px; font-size: 16px; }
+h2:first-child { margin-top: 0; }
+.form-group { margin-bottom: 12px; }
+label { display: block; font-size: 11px; color: #888; margin-bottom: 4px; }
+input[type="text"], input[type="password"], textarea {
+  width: 100%; padding: 8px 10px; border: 1px solid #2a2a4a;
+  border-radius: 6px; background: #16213e; color: #e0e0e0; font-size: 13px;
+}
+input:focus, textarea:focus { border-color: #7c83ff; outline: none; }
+.toggle-row {
+  display: flex; align-items: center; justify-content: space-between;
+  padding: 8px 0; border-bottom: 1px solid #1a1a2e;
+}
+.toggle-row span { color: #aaa; font-size: 13px; }
+.toggle { position: relative; width: 40px; height: 22px; }
+.toggle input { display: none; }
+.toggle .slider { position: absolute; inset: 0; background: #444; border-radius: 11px; cursor: pointer; transition: 0.2s; }
+.toggle input:checked + .slider { background: #7c83ff; }
+.toggle .slider::after { content: ''; position: absolute; width: 18px; height: 18px; left: 2px; top: 2px; background: #fff; border-radius: 50%; transition: 0.2s; }
+.toggle input:checked + .slider::after { transform: translateX(18px); }
+.btn {
+  width: 100%; padding: 10px; border: none; border-radius: 6px; cursor: pointer;
+  font-size: 14px; font-weight: 500; transition: 0.2s; margin-top: 12px;
+}
+.btn-primary { background: #7c83ff; color: #fff; }
+.btn-primary:hover { background: #6366f1; }
+.btn-secondary { background: #2a2a4a; color: #ccc; }
+.btn-secondary:hover { background: #3a3a5a; }
+.toast { position: fixed; bottom: 20px; left: 50%; transform: translateX(-50%); background: #4ade80; color: #000; padding: 10px 24px; border-radius: 8px; font-size: 13px; font-weight: 500; opacity: 0; transition: opacity 0.3s; }
+.toast.show { opacity: 1; }
+.toast.error { background: #ef4444; color: #fff; }
+.test-result { font-size: 12px; margin-left: 10px; }
+.test-result.ok { color: #4ade80; }
+.test-result.fail { color: #f87171; }
+</style>
+</head>
+<body>
+
+<h2>🔑 DeepSeek API</h2>
+<div class="form-group">
+  <label>API Key</label>
+  <input type="password" id="apiKey" placeholder="sk-...">
+</div>
+<div class="form-group">
+  <label>模型</label>
+  <select id="modelSelect" style="width:100%;padding:8px 10px;border:1px solid #2a2a4a;border-radius:6px;background:#16213e;color:#e0e0e0;font-size:13px;margin-bottom:4px;">
+    <option value="deepseek-v4-flash">deepseek-v4-flash</option>
+    <option value="deepseek-v4-pro">deepseek-v4-pro</option>
+    <option value="deepseek-chat">deepseek-chat (即将弃用)</option>
+    <option value="deepseek-reasoner">deepseek-reasoner (即将弃用)</option>
+    <option value="__custom__">自定义...</option>
+  </select>
+  <input type="text" id="modelCustom" placeholder="输入模型名" style="display:none;width:100%;padding:8px 10px;border:1px solid #2a2a4a;border-radius:6px;background:#16213e;color:#e0e0e0;font-size:13px;">
+</div>
+  <button class="btn btn-secondary" id="deepseekTestBtn" style="width:auto;display:inline-flex;align-items:center;gap:6px;">🔍 测试连接</button>
+<span class="test-result" id="deepseekResult"></span>
+
+<h2>📋 书签整理</h2>
+<div class="form-group">
+  <label>排除文件夹（每行一个，不处理其中的书签）</label>
+  <textarea id="excludedFolders" rows="3" placeholder="娱乐&#10;游戏&#10;番剧"></textarea>
+</div>
+<div class="toggle-row">
+  <span>💾 修改前自动备份</span>
+  <label class="toggle"><input type="checkbox" id="autoBackup" checked><span class="slider"></span></label>
+</div>
+<div class="toggle-row">
+  <span>✏ 标准化标题</span>
+  <label class="toggle"><input type="checkbox" id="standardizeTitles" checked><span class="slider"></span></label>
+</div>
+
+<h2>☁ WebDAV 备份</h2>
+<div class="form-group">
+  <label>服务器 URL</label>
+  <input type="text" id="webdavUrl" placeholder="https://dav.example.com/remote.php/dav/files/user/">
+</div>
+<div class="form-group">
+  <label>用户名</label>
+  <input type="text" id="webdavUser" placeholder="username">
+</div>
+<div class="form-group">
+  <label>密码</label>
+  <input type="password" id="webdavPass" placeholder="password">
+</div>
+
+<button class="btn btn-primary" id="saveBtn">💾 保存设置</button>
+
+<div style="text-align:center;margin-top:16px;font-size:11px;color:#555;">
+  <span id="versionInfo">v1.1</span>
+  <button class="btn btn-secondary" id="checkUpdateBtn" style="font-size:10px;padding:2px 8px;margin-left:6px;">检查更新</button>
+  <span id="updateResult" style="margin-left:6px;"></span>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script src="settings.js"></script>
+</body>
+</html>
