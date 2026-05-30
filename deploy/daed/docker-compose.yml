@@ -1,6 +1,16 @@
 # docker-compose.yml
 services:
+  daed-config-sync:
+    build:
+      context: ./scripts/daed-config-sync
+    restart: "no"
+    volumes:
+      - ./config:/etc/daed
+
   daed:
+    depends_on:
+      daed-config-sync:
+        condition: service_completed_successfully
     image: ghcr.io/daeuniverse/daed
     container_name: daed
     privileged: true
