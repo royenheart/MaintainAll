@@ -1,6 +1,8 @@
-# stow-configs
+# configs
 
-如何使用：
+## stow 链接管理
+
+部分通过 stow 管理配置，如何使用：
 
 1. 首先安装 stow：
 
