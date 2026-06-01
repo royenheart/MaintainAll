@@ -1,0 +1,5 @@
+aspose_words==22.10.0
+md2pdf==0.5
+pypandoc==1.10
+pypandoc_binary==1.10
+PyPDF2==2.11.1
