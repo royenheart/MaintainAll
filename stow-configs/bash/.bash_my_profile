@@ -190,6 +190,9 @@ export HF_ENDPOINT="https://hf-mirror.com"
 # scripts
 export PATH=${HOME}/softwares/scripts:$PATH
 
+# local tmux
+export PATH=${HOME}/.local/tmux/bin:$PATH
+
 # graphical
 XIM=fcitx
 GTK_IM_MODULE=fcitx
