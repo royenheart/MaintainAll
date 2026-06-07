@@ -67,6 +67,7 @@ alias skills='npx skills'
 
 function sync_skills() {
     skills add https://github.com/obra/superpowers
+    npx skills add https://github.com/googleworkspace/cli
 }
 
 # =========== SET WSL VPN ===========
