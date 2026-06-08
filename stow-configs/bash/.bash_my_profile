@@ -62,6 +62,7 @@ alias legacy-ssh='OPENSSL_CONF=${HOME}/.ssh/openssl.cnf ssh'
 alias npmginstall="npm i -g --verbose --timing"
 alias killvscode='pkill -u "$USER" -f vscode'
 alias skills='npx skills'
+alias gitlog1='git log --oneline'
 
 # === my skill list ===
 
