@@ -398,12 +398,106 @@ def deploy_server(bind_address, interactive=True):
         sys.exit(1)
     click.secho("[OK] Docker + Compose", fg="green")
 
+    # Ensure .env exists and has critical values
     if not (SCRIPT_DIR / ".env").exists():
-        click.secho("\n.env not found. Running interactive setup...", fg="yellow")
-        setup_env_interactive()
+        click.secho("\n.env not found — creating...", fg="yellow")
+        write_env({})
 
     data = read_env()
+
+    # Check and prompt for missing critical values
+    needs_update = False
+
+    # CLIENT_TOKEN — from client's config.json
+    if not data.get("CLIENT_TOKEN"):
+        click.echo()
+        click.secho("CLIENT_TOKEN is required (from client's config.json)", fg="yellow")
+        click.echo("  The client auto-generates this token on first run.")
+        click.echo("  Find it at: %APPDATA%\\cua-control-plane\\config.json (Windows)")
+        click.echo("             ~/.config/cua-control-plane/config.json (Linux)")
+        if interactive:
+            token = click.prompt("Paste CLIENT_TOKEN (or Enter to skip)", default="", show_default=False)
+            if token:
+                data["CLIENT_TOKEN"] = token
+                needs_update = True
+
+    # CUACTL_ENDPOINT — where the client is reachable
+    if not data.get("CUACTL_ENDPOINT") or data["CUACTL_ENDPOINT"] == "https://your-client-ip:9110":
+        click.echo()
+        click.secho("Client endpoint not configured", fg="yellow")
+        click.echo("  This is the URL the server will use to reach the client.")
+        if interactive:
+            ep = click.prompt("Client endpoint URL (e.g. https://192.168.1.100:9110)", default="", show_default=False)
+            if ep:
+                data["CUACTL_ENDPOINT"] = ep
+                needs_update = True
+
+    # BRIDGE_AUTH_TOKEN — auto-generate if missing
+    if not data.get("BRIDGE_AUTH_TOKEN"):
+        data["BRIDGE_AUTH_TOKEN"] = generate_token()
+        needs_update = True
+
+    # LLM key
     has_llm = bool(data.get("ANTHROPIC_API_KEY") or data.get("OPENAI_API_KEY"))
+    if not has_llm and interactive:
+        click.echo()
+        click.secho("LLM API key not configured", fg="yellow")
+        click.echo("  Hermes Agent needs this to process chat messages.")
+        click.echo("  Supported: Anthropic, OpenAI, OpenRouter, Google Gemini, DeepSeek, ...")
+        q = _q()
+        if q:
+            provider = q.select("Add an API key now?", choices=[
+                q.Choice("Anthropic (Claude)", value="anthropic"),
+                q.Choice("OpenAI (GPT)", value="openai"),
+                q.Choice("Google Gemini", value="gemini"),
+                q.Choice("DeepSeek", value="deepseek"),
+                q.Choice("OpenRouter", value="openrouter"),
+                q.Choice("Skip (configure later)", value="skip"),
+            ]).ask()
+            if provider and provider != "skip":
+                key = q.password(f"Enter {provider.upper()} API key:").ask()
+                if key:
+                    if provider == "anthropic":
+                        data["ANTHROPIC_API_KEY"] = key
+                    elif provider in ("openai", "openrouter", "deepseek"):
+                        data["OPENAI_API_KEY"] = key
+                        if provider == "openrouter":
+                            base = q.text("Base URL:", default="https://openrouter.ai/api/v1").ask()
+                            if base:
+                                data["OPENAI_BASE_URL"] = base
+                        elif provider == "deepseek":
+                            base = q.text("Base URL:", default="https://api.deepseek.com/v1").ask()
+                            if base:
+                                data["OPENAI_BASE_URL"] = base
+                    elif provider == "gemini":
+                        data["OPENAI_API_KEY"] = key
+                    has_llm = True
+                    needs_update = True
+
+    if needs_update:
+        write_env(data)
+
+    # Pre-flight summary
+    click.echo()
+    click.secho("Pre-flight check:", fg="cyan")
+    items = [
+        ("CLIENT_TOKEN", bool(data.get("CLIENT_TOKEN"))),
+        ("Client endpoint", bool(data.get("CUACTL_ENDPOINT", "").replace("https://your-client-ip:9110", ""))),
+        ("BRIDGE_AUTH_TOKEN", bool(data.get("BRIDGE_AUTH_TOKEN"))),
+        ("LLM API key", has_llm),
+    ]
+    for label, ok in items:
+        status = click.style("[OK]", fg="green") if ok else click.style("[MISSING]", fg="yellow")
+        click.echo(f"  {status} {label}")
+
+    if not has_llm or not data.get("CLIENT_TOKEN"):
+        click.echo()
+        click.secho("Missing items can be configured later with:", fg="yellow")
+        click.echo("  python deploy.py setup-env")
+        click.echo("  Then: docker compose restart hermes-api")
+        if not interactive:
+            click.echo()
+            return
 
     click.secho(f"\n[1/3] Building images... (Ctrl+C to cancel)", fg="yellow")
     try:
@@ -434,19 +528,36 @@ def deploy_client():
     system = platform.system()
     click.secho(f"\n=== Client Deployment ({system}) ===", fg="cyan", bold=True)
 
+    # Select bind address first (same flow as server)
+    click.echo()
+    address = interactive_select_address()
+    if address is None:
+        return
+
+    # Persist to config
+    try:
+        import cua_control_plane.config as cfg
+        c = cfg.get_config()
+        c.api_host = address
+        c.save()
+        click.secho(f"  Bind address: {address} (saved to config)", fg="green")
+    except Exception:
+        click.secho(f"  Bind address: {address}", fg="green")
+
     if system == "Windows":
-        _deploy_client_windows()
+        _deploy_client_windows(address)
     elif system == "Linux":
-        _deploy_client_linux()
+        _deploy_client_linux(address)
     elif system == "Darwin":
-        _deploy_client_macos()
+        _deploy_client_macos(address)
     else:
         click.secho(f"Unsupported platform: {system}", fg="red")
 
 
-def _deploy_client_windows():
+def _deploy_client_windows(address):
     install_bat = SCRIPT_DIR / "client" / "install.bat"
     click.echo()
+    click.secho(f"  Client will bind to: {address}", fg="cyan")
     if install_bat.exists():
         click.secho("Recommended: Run install.bat as Administrator", fg="green")
         click.echo(f"  {install_bat}")
@@ -455,7 +566,7 @@ def _deploy_client_windows():
     click.echo()
     click.echo("  Or manually:")
     click.echo('    cd client && pip install ".[client]"')
-    click.echo("    python -m cua_control_plane.main")
+    click.echo(f"    python -m cua_control_plane.main --host {address}")
     click.echo()
     click.echo(r"  Token stored in: %APPDATA%\cua-control-plane\config.json")
 
@@ -503,11 +614,12 @@ def _deploy_client_linux():
     click.echo(f"\n  Token stored in: {config_path}")
 
 
-def _deploy_client_macos():
+def _deploy_client_macos(address):
     click.echo()
+    click.secho(f"  Client will bind to: {address}", fg="cyan")
     click.echo("  macOS: install manually —")
     click.echo('    cd client && pip install ".[client]"')
-    click.echo("    python -m cua_control_plane.main")
+    click.echo(f"    python -m cua_control_plane.main --host {address}")
     click.echo()
     click.echo("  Token stored in: ~/Library/Application Support/cua-control-plane/config.json")
 
@@ -631,9 +743,13 @@ def server(ctx, bind, yes):
 
 
 @cli.command()
-def client():
+@click.pass_context
+def client(ctx):
     """Deploy client (auto-detect OS)."""
-    deploy_client()
+    try:
+        deploy_client()
+    except (KeyboardInterrupt, DeployAborted):
+        ctx.exit(130)
 
 
 @cli.command()
