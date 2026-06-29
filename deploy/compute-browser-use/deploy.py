@@ -32,6 +32,11 @@ SCRIPT_DIR = Path(__file__).resolve().parent
 os.chdir(SCRIPT_DIR)
 
 
+class DeployAborted(Exception):
+    """Raised when user cancels deployment (Ctrl+C)."""
+    pass
+
+
 # ---------------------------------------------------------------------------
 # Network utilities
 # ---------------------------------------------------------------------------
@@ -173,6 +178,15 @@ def generate_token():
     return secrets.token_hex(32)
 
 def setup_env_interactive():
+    try:
+        _setup_env_impl()
+    except KeyboardInterrupt:
+        click.echo()
+        click.secho("Configuration cancelled.", fg="yellow")
+        raise DeployAborted()
+
+
+def _setup_env_impl():
     q = _q()
     click.secho("\n=== Configure Environment (.env) ===", fg="cyan", bold=True)
     click.echo()
@@ -263,6 +277,8 @@ def setup_env_interactive():
             data["ASTRBOT_DASHBOARD_PASSWORD"] = click.prompt("AstrBot dashboard password", default="", show_default=False)
 
     write_env(data)
+    if not mode and not address:  # not reached normally, but safe
+        pass
     click.secho("\n.env saved.", fg="green")
 
     if not data.get("ANTHROPIC_API_KEY") and not data.get("OPENAI_API_KEY"):
@@ -329,11 +345,17 @@ def deploy_server(bind_address, interactive=True):
     data = read_env()
     has_llm = bool(data.get("ANTHROPIC_API_KEY") or data.get("OPENAI_API_KEY"))
 
-    click.secho(f"\n[1/3] Building images...", fg="yellow")
-    subprocess.run(["docker", "compose", "build"], cwd=str(SCRIPT_DIR))
+    click.secho(f"\n[1/3] Building images... (Ctrl+C to cancel)", fg="yellow")
+    try:
+        subprocess.run(["docker", "compose", "build"], cwd=str(SCRIPT_DIR), check=False)
+    except KeyboardInterrupt:
+        raise
 
-    click.secho(f"\n[2/3] Starting services...", fg="yellow")
-    r = subprocess.run(["docker", "compose", "up", "-d"], cwd=str(SCRIPT_DIR))
+    click.secho(f"\n[2/3] Starting services... (Ctrl+C to cancel)", fg="yellow")
+    try:
+        r = subprocess.run(["docker", "compose", "up", "-d"], cwd=str(SCRIPT_DIR))
+    except KeyboardInterrupt:
+        raise
     if r.returncode != 0:
         click.secho("Startup failed. Check: docker compose logs", fg="red")
         sys.exit(1)
@@ -447,8 +469,12 @@ def interactive_select_address():
         choices.append(q.Choice("127.0.0.1 (localhost only)", value="127.0.0.1"))
         choices.append(q.Choice("Custom...", value="__custom__"))
         result = q.select("Server bind address:", choices=choices).ask()
+        if result is None:
+            raise DeployAborted()
         if result == "__custom__":
             result = q.text("IP:", validate=lambda x: bool(re.match(r"^\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3}$", x))).ask()
+            if result is None:
+                raise DeployAborted()
         return result or "0.0.0.0"
 
     click.echo("\nDetected interfaces:")
@@ -468,11 +494,14 @@ def interactive_select_address():
 def interactive_select_mode():
     q = _q()
     if q:
-        return q.select("What to deploy?", choices=[
+        result = q.select("What to deploy?", choices=[
             q.Choice("Server (Docker on this machine)", value="server"),
             q.Choice(f"Client ({platform.system()} — this machine)", value="client"),
             q.Choice("Full (Server + Client)", value="full"),
-        ]).ask() or "server"
+        ]).ask()
+        if result is None:
+            raise DeployAborted()
+        return result
     click.echo(f"\nModes: [s]erver  [c]lient ({platform.system()})  [f]ull")
     return {"s": "server", "c": "client", "f": "full"}.get(
         click.prompt("Choose", type=str, default="s").lower(), "server"
@@ -480,18 +509,32 @@ def interactive_select_mode():
 
 
 def interactive_deploy():
+    try:
+        _interactive_deploy_impl()
+    except KeyboardInterrupt:
+        click.echo()
+        click.secho("Deployment cancelled.", fg="yellow")
+        raise DeployAborted()
+
+
+def _interactive_deploy_impl():
     click.secho("Remote Computer Use -- Deploy", fg="cyan", bold=True)
     click.secho("=" * 50, fg="cyan")
     mode = interactive_select_mode()
     if not mode:
-        return
+        raise DeployAborted()
     if mode == "client":
         deploy_client()
         return
     address = interactive_select_address()
     if not address:
-        return
-    deploy_server(address)
+        raise DeployAborted()
+    try:
+        deploy_server(address)
+    except KeyboardInterrupt:
+        click.echo()
+        click.secho("Server deployment interrupted.", fg="yellow")
+        raise DeployAborted()
     if mode == "full":
         click.echo()
         deploy_client()
@@ -506,15 +549,22 @@ def interactive_deploy():
 def cli(ctx):
     """Remote Computer Use -- Deploy Tool."""
     if ctx.invoked_subcommand is None:
-        interactive_deploy()
+        try:
+            interactive_deploy()
+        except (KeyboardInterrupt, DeployAborted):
+            ctx.exit(130)
 
 
 @cli.command()
 @click.option("--bind", "-b", default="0.0.0.0", help="Server bind address")
 @click.option("--yes", "-y", is_flag=True, help="Skip prompts (CI mode)")
-def server(bind, yes):
+@click.pass_context
+def server(ctx, bind, yes):
     """Deploy server Docker services."""
-    deploy_server(bind, interactive=not yes)
+    try:
+        deploy_server(bind, interactive=not yes)
+    except (KeyboardInterrupt, DeployAborted):
+        ctx.exit(130)
 
 
 @cli.command()
@@ -525,11 +575,15 @@ def client():
 
 @cli.command()
 @click.option("--bind", "-b", default="0.0.0.0", help="Server bind address")
-def full(bind):
+@click.pass_context
+def full(ctx, bind):
     """Deploy server + client."""
-    deploy_server(bind)
-    click.echo()
-    deploy_client()
+    try:
+        deploy_server(bind)
+        click.echo()
+        deploy_client()
+    except (KeyboardInterrupt, DeployAborted):
+        ctx.exit(130)
 
 
 @cli.command("list-addresses")
@@ -546,9 +600,13 @@ def list_addresses():
 
 
 @cli.command("setup-env")
-def setup_env():
+@click.pass_context
+def setup_env(ctx):
     """Interactively configure .env (tokens, endpoints, LLM keys)."""
-    setup_env_interactive()
+    try:
+        setup_env_interactive()
+    except (KeyboardInterrupt, DeployAborted):
+        ctx.exit(130)
 
 
 if __name__ == "__main__":
