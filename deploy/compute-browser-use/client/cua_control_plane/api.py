@@ -14,7 +14,7 @@ from fastapi.responses import JSONResponse
 
 from . import cua_core, deterministic_ops
 from .config import get_config
-from .cua_core import check_cua_available
+from .cua_core import check_cua_available, check_uia_available
 from .permissions import AccessDeniedError, check_permission, get_allowed_ops
 from .screens import get_screens, get_screen_bounds, is_screen_allowed
 
@@ -42,7 +42,7 @@ app.add_middleware(
 async def auth_middleware(request: Request, call_next):
     cfg = get_config()
     # Skip auth for health check and OPTIONS
-    if request.url.path in ("/api/v1/health", "/health", "/tests", "/api/v1/screens", "/api/v1/status", "/api/v1/mode") or request.method == "OPTIONS":
+    if request.url.path in ("/api/v1/health", "/health", "/tests", "/api/v1/screens", "/api/v1/status", "/api/v1/mode", "/api/v1/uia") or request.method == "OPTIONS":
         return await call_next(request)
 
     token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
@@ -89,11 +89,19 @@ async def health():
 @app.get("/api/v1/status")
 async def api_status():
     cua_ok = check_cua_available()
+    uia_ok = check_uia_available() if cua_ok else False
     return {
         "cua_available": cua_ok,
+        "uia_available": uia_ok,
         "driver": "cua-driver" if cua_ok else "native",
         "warning": None if cua_ok else "cua-driver not installed. Using native PIL + ctypes. Mouse operations run on the real desktop. Install: irm https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install.ps1 | iex",
     }
+
+
+@app.get("/api/v1/uia")
+async def api_uia_status():
+    from .cua_core import check_uia_available as _uia
+    return {"uia_available": _uia(), "message": "UIAccess worker enabled — Chromium foreground swap available" if _uia() else "UIAccess worker not available — run install.bat or tray 'Enable UIAccess' (requires admin)"}
 
 
 # ---------------------------------------------------------------------------

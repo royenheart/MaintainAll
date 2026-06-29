@@ -94,6 +94,20 @@ def check_cua_available() -> bool:
     return _driver_available()
 
 
+def check_uia_available() -> bool:
+    """Check if cua-driver daemon has UIAccess (elevated integrity)."""
+    binary = _find_driver()
+    if not binary:
+        return False
+    try:
+        data = _get_driver_json("check_permissions", {}, timeout_sec=10)
+        if data:
+            return bool(data.get("elevated"))
+    except Exception:
+        pass
+    return False
+
+
 def get_last_input_seconds() -> float:
     """Seconds since last user input (Windows GetLastInputInfo)."""
     if os.name != "nt":
@@ -212,7 +226,11 @@ def _refresh_window_cache() -> list[dict]:
 def _find_window_at_point(x: int, y: int) -> Optional[dict]:
     best = None
     best_z = -1
+    skip_titles = {"Cua.AgentCursorOverlay", "CuaDriver", "cua-driver"}
     for w in _refresh_window_cache():
+        title = w.get("title", "")
+        if any(s in title for s in skip_titles):
+            continue
         wx, wy = w.get("x", 0), w.get("y", 0)
         ww, wh = w.get("width", 0), w.get("height", 0)
         z = w.get("z_index", 0)
@@ -234,13 +252,19 @@ def _driver_background_click(x: int, y: int, button: str = "left") -> Optional[d
     local_y = y - w.get("y", 0)
     logger.info("cua-driver: background %s click at pid=%d window_id=%d local=(%d,%d) screen=(%d,%d)",
                 button, pid, window_id, local_x, local_y, x, y)
+
+    dispatch = "background"
+    if not check_uia_available():
+        dispatch = "background"
+    else:
+        dispatch = "auto"
     r = _driver_call("click", {
         "pid": pid,
         "window_id": window_id,
         "x": local_x,
         "y": local_y,
         "button": button,
-        "dispatch": "background",
+        "dispatch": dispatch,
     })
     if r:
         raw = r.get("_raw", "")
@@ -284,7 +308,11 @@ def _find_top_window() -> Optional[dict]:
     windows = _refresh_window_cache()
     if not windows:
         return None
-    return max(windows, key=lambda w: w.get("z_index", -999))
+    skip_titles = {"Cua.AgentCursorOverlay", "CuaDriver", "cua-driver"}
+    filtered = [w for w in windows if not any(s in w.get("title", "") for s in skip_titles)]
+    if not filtered:
+        return None
+    return max(filtered, key=lambda w: w.get("z_index", -999))
 
 
 def _driver_background_type(text: str) -> Optional[dict]:

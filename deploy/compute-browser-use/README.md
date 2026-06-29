@@ -15,7 +15,7 @@
 │  │                                                               │   │
 │  │  ┌──────────┐ ┌───────────────┐ ┌────────────────────────┐   │   │
 │  │  │ CUA Core │ │ Deterministic │ │  REST API Server       │   │   │
-│  │  │ (截图/点击│ │  Ops          │ │  (FastAPI :9110)       │   │   │
+  │  │  │ (截图/点击│ │  Ops          │ │  (FastAPI :9111)       │   │   │
 │  │  │ /键盘)   │ │ (list_apps/   │ │                        │   │   │
 │  │  │          │ │  open_app/    │ │  POST /api/v1/cua/*    │   │   │
 │  │  │          │ │  app_info...) │ │  POST /api/v1/dops/*   │   │   │
@@ -120,7 +120,7 @@ install.bat                    # 安装 Python 依赖 + 启动服务
 安装后会：
 1. 注册为 Windows 自启动服务
 2. 在系统托盘显示控制图标
-3. 启动本地 HTTP API (`http://127.0.0.1:9110`)
+3. 启动本地 HTTP API (`http://127.0.0.1:9111`)
 
 ### Server 端（云端 Linux）
 
@@ -184,7 +184,7 @@ Hermes Agent 的 `computer_use` tool 通过 `cuactl` CLI 调用 Client Control P
 
 ```bash
 # Hermes Agent 内部调用
-cuactl --endpoint https://client-ip:9110 --token $CLIENT_TOKEN capture
+cuactl --endpoint https://client-ip:9111 --token $CLIENT_TOKEN capture
 cuactl click 100 200
 cuactl type "Hello World"
 cuactl list-apps
@@ -208,9 +208,18 @@ cuactl list-apps
 
 ---
 
-## TODO: Browser Use
+## TODO
+
+1. Browser Use
 
 - [ ] 集成 open-browser-use Chrome Extension
 - [ ] Client Control Plane 增加 browser API 端点
 - [ ] Hermes Agent 增加 browser_use tool
 - [ ] AstrBot 增加 browser skill
+
+2. Client Control Plane
+
+- [ ] **VSCode/Chromium 非抢占控制** — 目前 Chromium 应用（VSCode/Chrome/Edge）在 Collaborative 模式下仍会短暂抢焦点（UIAccess worker 提供干净的前台交换+恢复，但非真正的无侵入）。可选方向：CDP 协议 (`--remote-debugging-port`)、VSCode Extension API、Windows 无障碍 API 增强
+- [ ] Linux/macOS Client 支持
+- [ ] 配置热重载（无需重启 app）
+- [ ] 多显示器操作优化

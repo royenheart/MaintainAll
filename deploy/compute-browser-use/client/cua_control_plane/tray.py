@@ -138,19 +138,44 @@ class ControlPlaneTray:
             pass
 
         cua_ok = False
+        uia_ok = False
         try:
-            from .cua_core import check_cua_available
+            from .cua_core import check_cua_available, check_uia_available
             cua_ok = check_cua_available()
+            if cua_ok:
+                uia_ok = check_uia_available()
         except Exception:
             pass
+
+        def _enable_uia(icon, item):
+            import subprocess, os
+            binary = None
+            candidates = [
+                os.path.join(os.environ.get("LOCALAPPDATA", ""), "Programs", "Cua", "cua-driver", "bin", "cua-driver.exe"),
+            ]
+            for p in candidates:
+                if p and os.path.isfile(p):
+                    binary = p
+                    break
+            if not binary:
+                return
+            try:
+                subprocess.Popen(
+                    ["powershell", "-NoProfile", "-Command",
+                     f"Start-Process '{binary}' -ArgumentList 'autostart','kick' -Verb RunAs -Wait"],
+                    shell=False,
+                )
+            except Exception:
+                pass
 
         mode = cfg.control_mode
         mode_label = "Solo" if mode == "solo" else "Collaborative"
         driver_label = "cua-driver" if cua_ok else "native"
+        uia_label = "UIAccess ON" if uia_ok else "UIAccess OFF"
 
         items = [
             pystray.MenuItem(
-                f"Permission: {cfg.permission_level.upper()}  |  {driver_label}",
+                f"Permission: {cfg.permission_level.upper()}  |  {driver_label}  |  {uia_label}",
                 None,
                 enabled=False,
             ),
@@ -184,6 +209,12 @@ class ControlPlaneTray:
                 self._build_screen_menu(),
             ),
         ]
+        if not uia_ok and cua_ok:
+            items.append(pystray.MenuItem(
+                "Enable UIAccess (admin required)",
+                _enable_uia,
+            ))
+            items.append(pystray.Menu.SEPARATOR)
         items += [
             pystray.Menu.SEPARATOR,
             _make_perm_item("Off (Deny All)", "off"),
