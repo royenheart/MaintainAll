@@ -14,7 +14,9 @@ from fastapi.responses import JSONResponse
 
 from . import cua_core, deterministic_ops
 from .config import get_config
+from .cua_core import check_cua_available
 from .permissions import AccessDeniedError, check_permission, get_allowed_ops
+from .screens import get_screens, get_screen_bounds, is_screen_allowed
 
 logger = logging.getLogger(__name__)
 
@@ -40,7 +42,7 @@ app.add_middleware(
 async def auth_middleware(request: Request, call_next):
     cfg = get_config()
     # Skip auth for health check and OPTIONS
-    if request.url.path in ("/api/v1/health", "/health") or request.method == "OPTIONS":
+    if request.url.path in ("/api/v1/health", "/health", "/tests", "/api/v1/screens", "/api/v1/status", "/api/v1/mode") or request.method == "OPTIONS":
         return await call_next(request)
 
     token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
@@ -75,6 +77,22 @@ async def health():
         "status": "ok",
         "service": "cua-control-plane",
         "permissions": get_allowed_ops(),
+        "cua_available": check_cua_available(),
+        "driver": "cua-driver" if check_cua_available() else "native",
+    }
+
+
+# ---------------------------------------------------------------------------
+# Status
+# ---------------------------------------------------------------------------
+
+@app.get("/api/v1/status")
+async def api_status():
+    cua_ok = check_cua_available()
+    return {
+        "cua_available": cua_ok,
+        "driver": "cua-driver" if cua_ok else "native",
+        "warning": None if cua_ok else "cua-driver not installed. Using native PIL + ctypes. Mouse operations run on the real desktop. Install: irm https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install.ps1 | iex",
     }
 
 
@@ -191,3 +209,71 @@ async def api_press_key(req: dict):
     check_permission("press_key")
     key = req.get("key", "")
     return await cua_core.press_key(key)
+
+
+# ---------------------------------------------------------------------------
+# Screen management
+# ---------------------------------------------------------------------------
+
+@app.get("/api/v1/screens")
+async def api_screens():
+    screens = get_screens()
+    cfg = get_config()
+    allowed = cfg.allowed_screens or [s["index"] for s in screens]
+    return {
+        "screens": screens,
+        "allowed_screens": allowed,
+        "total_bounds": get_screen_bounds(),
+    }
+
+
+# ---------------------------------------------------------------------------
+# Control mode
+# ---------------------------------------------------------------------------
+
+@app.get("/api/v1/mode")
+async def api_get_mode():
+    from .cua_core import get_control_mode
+    return get_control_mode()
+
+
+@app.post("/api/v1/mode")
+async def api_set_mode(req: dict):
+    mode = req.get("mode", "")
+    if mode not in ("collaborative", "solo"):
+        return {"success": False, "error": "Invalid mode. Use 'collaborative' or 'solo'."}
+    cfg = get_config()
+    cfg.control_mode = mode
+    cfg.save()
+    from .cua_core import get_control_mode
+    return {"success": True, **get_control_mode()}
+
+
+@app.post("/api/v1/mode/timeout")
+async def api_set_mode_timeout(req: dict):
+    timeout = req.get("timeout", 10)
+    if not isinstance(timeout, (int, float)) or timeout < 1:
+        return {"success": False, "error": "timeout must be >= 1 second"}
+    cfg = get_config()
+    cfg.solo_idle_timeout = int(timeout)
+    cfg.save()
+    return {"success": True, "solo_idle_timeout": cfg.solo_idle_timeout}
+
+
+# ---------------------------------------------------------------------------
+# Test UI
+# ---------------------------------------------------------------------------
+
+from pathlib import Path as _Path
+_UI_PATH = _Path(__file__).resolve().parent / "test_ui.html"
+
+
+@app.get("/tests", include_in_schema=False)
+async def test_ui():
+    from fastapi.responses import HTMLResponse
+    if not _UI_PATH.exists():
+        return HTMLResponse("<h1>test_ui.html not found</h1>", status_code=404)
+    html = _UI_PATH.read_text(encoding="utf-8")
+    token = get_config().local_token
+    html = html.replace("const API = '';", f"const API = '';\nconst LOCAL_TOKEN = '{token}';")
+    return HTMLResponse(html)

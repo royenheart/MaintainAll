@@ -51,6 +51,51 @@ class ControlPlaneTray:
         self._tray: Optional[pystray.Icon] = None
         self._running = False
 
+    def _build_screen_menu(self):
+        from .config import get_config
+        from .screens import get_screens
+
+        cfg = get_config()
+        screens = get_screens()
+        allowed = cfg.allowed_screens or []
+
+        def _toggle_all(icon, item):
+            cfg.allowed_screens = []
+            cfg.save()
+            icon._menu = self._build_menu()
+            icon.update_menu()
+
+        def _make_screen_toggle(idx: int):
+            def _inner(icon, item):
+                if not cfg.allowed_screens:
+                    cfg.allowed_screens = [s["index"] for s in screens if s["index"] != idx]
+                elif idx in cfg.allowed_screens:
+                    cfg.allowed_screens.remove(idx)
+                else:
+                    cfg.allowed_screens.append(idx)
+                cfg.save()
+                icon._menu = self._build_menu()
+                icon.update_menu()
+            return _inner
+
+        items = [
+            pystray.MenuItem(
+                "All Screens",
+                _toggle_all,
+                checked=lambda item: not allowed,
+            ),
+            pystray.Menu.SEPARATOR,
+        ]
+        for s in screens:
+            name = s["name"].rstrip("\x00") if "\x00" in s["name"] else s["name"]
+            items.append(pystray.MenuItem(
+                f"{name}  {s['width']}x{s['height']}",
+                _make_screen_toggle(s["index"]),
+                checked=lambda item, idx=s["index"]: idx in (cfg.allowed_screens or []),
+            ))
+
+        return pystray.Menu(*items)
+
     def _build_menu(self):
         from .config import get_config, reload_config
         cfg = get_config()
@@ -63,9 +108,15 @@ class ControlPlaneTray:
                 icon.update_menu()
             return _inner
 
-        # Dynamic menu based on current permission
+        def _set_control_mode(mode: str):
+            def _inner(icon, item):
+                cfg.control_mode = mode
+                cfg.save()
+                icon._menu = self._build_menu()
+                icon.update_menu()
+            return _inner
+
         def _make_perm_item(label: str, level: str) -> pystray.MenuItem:
-            checked = cfg.permission_level == level
             return pystray.MenuItem(
                 label,
                 _set_permission(level),
@@ -78,19 +129,70 @@ class ControlPlaneTray:
             icon.stop()
             self._running = False
 
-        return pystray.Menu(
+        screen_count = "1 screen"
+        try:
+            from .screens import get_screens
+            sc = get_screens()
+            screen_count = f"{len(sc)} screens"
+        except Exception:
+            pass
+
+        cua_ok = False
+        try:
+            from .cua_core import check_cua_available
+            cua_ok = check_cua_available()
+        except Exception:
+            pass
+
+        mode = cfg.control_mode
+        mode_label = "Solo" if mode == "solo" else "Collaborative"
+        driver_label = "cua-driver" if cua_ok else "native"
+
+        items = [
             pystray.MenuItem(
-                f"Status: {cfg.permission_level.upper()}",
+                f"Permission: {cfg.permission_level.upper()}  |  {driver_label}",
                 None,
                 enabled=False,
             ),
+        ]
+
+        collaborative_checked = cfg.control_mode == "collaborative"
+        solo_checked = cfg.control_mode == "solo"
+
+        items += [
             pystray.Menu.SEPARATOR,
-            _make_perm_item("🔴 Off (Deny All)", "off"),
-            _make_perm_item("🟡 Readonly (View Only)", "readonly"),
-            _make_perm_item("🟢 Full Access", "full"),
+            pystray.MenuItem(
+                f"Mode: {mode_label}",
+                pystray.Menu(
+                    pystray.MenuItem(
+                        "Collaborative (non-intrusive)",
+                        _set_control_mode("collaborative"),
+                        checked=lambda item: cfg.control_mode == "collaborative",
+                        radio=True,
+                    ),
+                    pystray.MenuItem(
+                        "Solo (full control)",
+                        _set_control_mode("solo"),
+                        checked=lambda item: cfg.control_mode == "solo",
+                        radio=True,
+                    ),
+                ),
+            ),
+            pystray.Menu.SEPARATOR,
+            pystray.MenuItem(
+                f"Screen Access ({screen_count})",
+                self._build_screen_menu(),
+            ),
+        ]
+        items += [
+            pystray.Menu.SEPARATOR,
+            _make_perm_item("Off (Deny All)", "off"),
+            _make_perm_item("Readonly (View Only)", "readonly"),
+            _make_perm_item("Full Access", "full"),
             pystray.Menu.SEPARATOR,
             pystray.MenuItem("Quit", _quit),
-        )
+        ]
+        return pystray.Menu(*items)
 
     def _shutdown_all(self):
         """Shutdown uvicorn server and cleanup CUA sandbox."""

@@ -49,6 +49,13 @@ class ControlPlaneConfig:
     cua_api_key: str = ""
     cua_local: bool = True  # Use local CUA sandbox runner
 
+    # Screen access: empty list = all screens allowed
+    allowed_screens: list[int] = field(default_factory=list)
+
+    # Control mode: "collaborative" (non-intrusive) or "solo" (full control)
+    control_mode: str = "collaborative"
+    solo_idle_timeout: int = 10  # seconds of manual idle before re-entering solo
+
     def save(self) -> None:
         _config_dir().mkdir(parents=True, exist_ok=True)
         payload = asdict(self)

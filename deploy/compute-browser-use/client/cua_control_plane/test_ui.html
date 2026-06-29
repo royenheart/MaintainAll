@@ -1,0 +1,349 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CUA Control Plane — Test Panel</title>
+<style>
+  :root { --bg: #1e1e2e; --panel: #282840; --accent: #7c3aed; --text: #cdd6f4; --green: #a6e3a1; --red: #f38ba8; }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: system-ui, sans-serif; background: var(--bg); color: var(--text); height: 100vh; display: flex; flex-direction: column; }
+  header { background: var(--panel); padding: 12px 20px; display: flex; align-items: center; gap: 12px; border-bottom: 1px solid #45475a; }
+  header h1 { font-size: 16px; font-weight: 600; }
+  .badge { font-size: 11px; padding: 2px 8px; border-radius: 10px; }
+  .badge-ok { background: var(--green); color: #11111b; }
+  .badge-err { background: var(--red); color: #11111b; }
+  .badge-warn { background: #f9e2af; color: #11111b; }
+  #warning-bar { display: none; background: #3a2e00; color: #f9e2af; padding: 8px 20px; font-size: 12px; border-bottom: 1px solid #6c5a00; }
+  #warning-bar a { color: #f9e2af; }
+  #mode-bar { padding: 8px 20px; font-size: 12px; border-bottom: 1px solid #45475a; }
+  #mode-bar.collaborative { background: #1e3a1e; color: var(--green); }
+  #mode-bar.solo { background: #3a1e00; color: #f9e2af; }
+  #mode-bar.blocked { background: #3a1e1e; color: var(--red); }
+  main { flex: 1; display: flex; overflow: hidden; }
+  .canvas-wrap { flex: 1; display: flex; align-items: center; justify-content: center; background: #181825; position: relative; }
+  canvas { cursor: crosshair; }
+  .sidebar { width: 300px; background: var(--panel); display: flex; flex-direction: column; border-left: 1px solid #45475a; }
+  .sidebar-section { padding: 12px 16px; border-bottom: 1px solid #45475a; }
+  .sidebar-section h3 { font-size: 13px; margin-bottom: 8px; color: #bac2de; }
+  button { background: var(--accent); color: #fff; border: none; padding: 8px 16px; border-radius: 6px; cursor: pointer; font-size: 13px; }
+  button:hover { opacity: 0.85; }
+  button:active { opacity: 0.7; }
+  button.secondary { background: #45475a; }
+  .btn-row { display: flex; gap: 6px; flex-wrap: wrap; }
+  .btn-block { display: block; width: 100%; margin-bottom: 6px; }
+  .coords { display: grid; grid-template-columns: 1fr 1fr; gap: 6px; }
+  .coords label { font-size: 11px; color: #a6adc8; }
+  .coords input { background: #1e1e2e; border: 1px solid #45475a; color: var(--text); padding: 4px 8px; border-radius: 4px; font-size: 13px; width: 100%; }
+  #log { flex: 1; overflow-y: auto; padding: 8px 12px; font-family: monospace; font-size: 12px; }
+  #log .entry { margin-bottom: 4px; padding: 4px 8px; border-radius: 4px; }
+  .log-info { background: #313244; }
+  .log-ok { background: #1e3a1e; color: var(--green); }
+  .log-err { background: #3a1e1e; color: var(--red); }
+  .screen-legend { display: flex; gap: 12px; font-size: 11px; margin-top: 4px; }
+  .screen-legend div { display: flex; align-items: center; gap: 4px; }
+  .screen-legend span { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+  #img-preview { max-height: 200px; overflow: auto; margin-top: 8px; display: none; }
+  #img-preview img { max-width: 100%; border-radius: 4px; }
+  .click-mode { margin-top: 6px; display: flex; gap: 4px; }
+  .click-mode button { padding: 4px 10px; font-size: 11px; }
+  .click-mode button.active { background: var(--green); color: #11111b; }
+</style>
+</head>
+<body>
+<div id="warning-bar">cua-driver not installed — using <b>native PIL + ctypes</b>. Mouse ops run on real desktop. Install: <b>irm https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install.ps1 | iex</b></div>
+<div id="mode-bar" class="collaborative">Mode: Collaborative (non-intrusive) — switch via tray menu</div>
+<header>
+  <h1>CUA Control Plane — Test Panel</h1>
+  <span id="status-badge" class="badge badge-err">OFFLINE</span>
+</header>
+
+<main>
+  <div class="canvas-wrap">
+    <canvas id="screen-canvas"></canvas>
+  </div>
+
+  <div class="sidebar">
+    <div class="sidebar-section">
+      <h3>Screenshot</h3>
+      <button onclick="doCapture()" class="btn-block">Take Screenshot</button>
+      <div id="img-preview" style="margin-top: 6px;"></div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Mouse Control</h3>
+      <div class="click-mode">
+        <button id="btn-left" class="active" onclick="setClickButton('left')">Left Click</button>
+        <button id="btn-right" onclick="setClickButton('right')">Right Click</button>
+        <button id="btn-middle" onclick="setClickButton('middle')">Middle Click</button>
+        <button id="btn-dbl" onclick="setClickButton('dbl')">Double</button>
+      </div>
+      <div class="coords" style="margin-top: 8px;">
+        <label>X <input type="number" id="click-x" value="100"></label>
+        <label>Y <input type="number" id="click-y" value="100"></label>
+      </div>
+      <div class="btn-row" style="margin-top: 6px;">
+        <button onclick="doClick()">Click Here</button>
+        <button onclick="doMove()" class="secondary">Move Here</button>
+      </div>
+    </div>
+
+    <div class="sidebar-section">
+      <h3>Screens</h3>
+      <div id="screen-list">Loading...</div>
+      <div class="screen-legend" id="screen-legend"></div>
+    </div>
+
+    <div id="log"></div>
+  </div>
+</main>
+
+<script>
+const API = '';
+const canvas = document.getElementById('screen-canvas');
+const ctx = canvas.getContext('2d');
+let screens = [];
+let totalBounds = { x: 0, y: 0, width: 1920, height: 1080 };
+let clickPos = { x: 100, y: 100 };
+let clickButton = 'left';
+let scale = 1;
+let offsetX = 0, offsetY = 0;
+let statusOnline = false;
+
+function log(msg, cls = 'log-info') {
+  const d = document.getElementById('log');
+  d.innerHTML += `<div class="entry ${cls}">${new Date().toLocaleTimeString()}  ${msg}</div>`;
+  d.scrollTop = d.scrollHeight;
+}
+
+function setClickButton(btn) {
+  clickButton = btn;
+  document.querySelectorAll('.click-mode button').forEach(b => b.classList.remove('active'));
+  document.getElementById('btn-' + btn).classList.add('active');
+}
+
+async function api(method, path, body) {
+  try {
+    const opts = { method, headers: { 'Content-Type': 'application/json' } };
+    if (typeof LOCAL_TOKEN !== 'undefined') {
+      opts.headers['Authorization'] = 'Bearer ' + LOCAL_TOKEN;
+    }
+    if (body) opts.body = JSON.stringify(body);
+    const r = await fetch(API + path, opts);
+    return await r.json();
+  } catch (e) {
+    return { success: false, error: e.message };
+  }
+}
+
+async function loadScreens() {
+  try {
+    const r = await fetch(API + '/api/v1/screens');
+    const data = await r.json();
+    screens = data.screens || [];
+    totalBounds = data.total_bounds || { x: 0, y: 0, width: 1920, height: 1080 };
+    statusOnline = true;
+    document.getElementById('status-badge').className = 'badge badge-ok';
+    document.getElementById('status-badge').textContent = 'ONLINE';
+    renderScreenList();
+    renderCanvas();
+  } catch (e) {
+    statusOnline = false;
+    document.getElementById('status-badge').className = 'badge badge-err';
+    document.getElementById('status-badge').textContent = 'OFFLINE';
+    log('Cannot connect to CUA Control Plane', 'log-err');
+  }
+}
+
+function renderScreenList() {
+  const el = document.getElementById('screen-list');
+  const legend = document.getElementById('screen-legend');
+  const colors = ['#cba6f7', '#94e2d5', '#f9e2af', '#f38ba8', '#89b4fa', '#a6e3a1'];
+  el.innerHTML = screens.map((s, i) =>
+    `<div style="font-size:12px;margin:2px 0">` +
+    `<span style="display:inline-block;width:10px;height:10px;background:${colors[i%colors.length]};border-radius:2px;margin-right:4px"></span>` +
+    `${s.name || 'Screen ' + s.index} — ${s.width}x${s.height}${s.is_primary ? ' (Primary)' : ''}` +
+    `</div>`
+  ).join('');
+  legend.innerHTML = screens.map((s, i) =>
+    `<div><span style="background:${colors[i%colors.length]}"></span> ${s.name||'#'+s.index}</div>`
+  ).join('');
+  window.screenColors = colors;
+}
+
+function renderCanvas() {
+  const wrap = canvas.parentElement;
+  const maxW = wrap.clientWidth - 40;
+  const maxH = wrap.clientHeight - 40;
+  scale = Math.min(maxW / totalBounds.width, maxH / totalBounds.height, 1);
+  canvas.width = totalBounds.width * scale + 2;
+  canvas.height = totalBounds.height * scale + 2;
+  canvas.style.width = canvas.width + 'px';
+  canvas.style.height = canvas.height + 'px';
+  offsetX = -totalBounds.x * scale + 1;
+  offsetY = -totalBounds.y * scale + 1;
+
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+  ctx.fillStyle = '#11111b';
+  ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+  const colors = window.screenColors || ['#cba6f7', '#94e2d5', '#f9e2af', '#f38ba8', '#89b4fa', '#a6e3a1'];
+  screens.forEach((s, i) => {
+    const sx = offsetX + s.x * scale;
+    const sy = offsetY + s.y * scale;
+    const sw = s.width * scale;
+    const sh = s.height * scale;
+
+    ctx.fillStyle = colors[i % colors.length] + '20';
+    ctx.fillRect(sx, sy, sw, sh);
+    ctx.strokeStyle = colors[i % colors.length];
+    ctx.lineWidth = s.is_primary ? 3 : 1;
+    ctx.strokeRect(sx, sy, sw, sh);
+
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.font = `${Math.max(11, 14 * scale)}px system-ui`;
+    const label = `${s.name || 'Screen '+s.index}  ${s.width}x${s.height}`;
+    const tw = ctx.measureText(label).width;
+    ctx.fillStyle = '#11111bcc';
+    ctx.fillRect(sx + 4, sy + 4, tw + 12, 22);
+    ctx.fillStyle = colors[i % colors.length];
+    ctx.fillText(label, sx + 10, sy + 20);
+
+    if (s.is_primary) {
+      ctx.fillStyle = colors[i % colors.length];
+      ctx.font = `bold ${Math.max(10, 12 * scale)}px system-ui`;
+      ctx.fillText('★ PRIMARY', sx + 10, sy + 38);
+    }
+
+    // Grid lines
+    ctx.strokeStyle = colors[i % colors.length] + '10';
+    ctx.lineWidth = 0.5;
+    for (let gx = sx; gx < sx + sw; gx += 50 * scale) {
+      ctx.beginPath(); ctx.moveTo(gx, sy); ctx.lineTo(gx, sy + sh); ctx.stroke();
+    }
+    for (let gy = sy; gy < sy + sh; gy += 50 * scale) {
+      ctx.beginPath(); ctx.moveTo(sx, gy); ctx.lineTo(sx + sw, gy); ctx.stroke();
+    }
+  });
+
+  // Click target
+  const cx = offsetX + clickPos.x * scale;
+  const cy = offsetY + clickPos.y * scale;
+  const cr = 8;
+  ctx.beginPath();
+  ctx.arc(cx, cy, cr, 0, Math.PI * 2);
+  ctx.fillStyle = '#f38ba8';
+  ctx.fill();
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 2;
+  ctx.stroke();
+  ctx.beginPath();
+  ctx.moveTo(cx - cr - 4, cy); ctx.lineTo(cx + cr + 4, cy);
+  ctx.moveTo(cx, cy - cr - 4); ctx.lineTo(cx, cy + cr + 4);
+  ctx.strokeStyle = '#fff';
+  ctx.lineWidth = 1;
+  ctx.stroke();
+  ctx.fillStyle = '#fff';
+  ctx.font = '10px monospace';
+  ctx.fillText(`(${clickPos.x}, ${clickPos.y})`, cx + 12, cy - 8);
+
+  document.getElementById('click-x').value = clickPos.x;
+  document.getElementById('click-y').value = clickPos.y;
+}
+
+canvas.addEventListener('click', (e) => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = (e.clientX - rect.left) / (canvas.clientWidth / canvas.width);
+  const my = (e.clientY - rect.top) / (canvas.clientHeight / canvas.height);
+  clickPos.x = Math.round((mx - offsetX) / scale);
+  clickPos.y = Math.round((my - offsetY) / scale);
+  renderCanvas();
+});
+
+function doCapture() {
+  api('POST', '/api/v1/cua/capture').then(data => {
+    if (data.success && data.base64) {
+      log('Screenshot captured', 'log-ok');
+      const prev = document.getElementById('img-preview');
+      prev.style.display = 'block';
+      prev.innerHTML = `<img src="data:${data.mime_type||'image/png'};base64,${data.base64}" onclick="this.style.maxHeight=this.style.maxHeight==='200px'?'none':'200px'" title="Click to toggle size">`;
+    } else {
+      log('Capture failed: ' + (data.error || 'unknown'), 'log-err');
+    }
+  });
+}
+
+function doClick() {
+  clickPos.x = parseInt(document.getElementById('click-x').value) || clickPos.x;
+  clickPos.y = parseInt(document.getElementById('click-y').value) || clickPos.y;
+  renderCanvas();
+
+  function logResult(data, action) {
+    const m = data.method;
+    const tag = m === 'background' ? ' [bg: non-intrusive]' : m === 'injected' ? ' [pen: may affect cursor]' : m === 'native' ? ' [native: full control]' : '';
+    log(data.success ? action + tag + ' OK' : `Error: ${data.error}`, data.success ? 'log-ok' : 'log-err');
+  }
+
+  if (clickButton === 'dbl') {
+    api('POST', '/api/v1/cua/click', { x: clickPos.x, y: clickPos.y, button: 'left' }).then(data => {
+      setTimeout(() => {
+        api('POST', '/api/v1/cua/click', { x: clickPos.x, y: clickPos.y, button: 'left' }).then(d => {
+          logResult(d, `Double-click at (${clickPos.x}, ${clickPos.y})`);
+        });
+      }, 200);
+    });
+  } else {
+    api('POST', '/api/v1/cua/click', { x: clickPos.x, y: clickPos.y, button: clickButton }).then(data => {
+      logResult(data, `${clickButton} click at (${clickPos.x}, ${clickPos.y})`);
+    });
+  }
+}
+
+function doMove() {
+  clickPos.x = parseInt(document.getElementById('click-x').value) || clickPos.x;
+  clickPos.y = parseInt(document.getElementById('click-y').value) || clickPos.y;
+  renderCanvas();
+  api('POST', '/api/v1/cua/move', { x: clickPos.x, y: clickPos.y }).then(data => {
+    log(data.success ? `Moved to (${clickPos.x}, ${clickPos.y})` : `Error: ${data.error}`, data.success ? 'log-ok' : 'log-err');
+  });
+}
+
+window.addEventListener('resize', renderCanvas);
+setInterval(loadScreens, 30000);
+setInterval(checkMode, 3000);
+checkStatus();
+loadScreens();
+checkMode();
+
+async function checkMode() {
+  try {
+    const r = await fetch(API + '/api/v1/mode');
+    const data = await r.json();
+    const bar = document.getElementById('mode-bar');
+    if (data.blocked) {
+      bar.className = 'blocked';
+      bar.textContent = `Mode: Solo — BLOCKED (idle: ${data.idle_seconds}s / timeout: ${data.timeout}s)`;
+    } else if (data.mode === 'solo') {
+      bar.className = 'solo';
+      bar.textContent = `Mode: Solo (full control) — idle: ${data.idle_seconds}s`;
+    } else {
+      bar.className = 'collaborative';
+      bar.textContent = `Mode: Collaborative (non-intrusive) — switch via tray menu`;
+    }
+    if (data.warning) document.getElementById('warning-bar').style.display = 'block';
+    else document.getElementById('warning-bar').style.display = 'none';
+  } catch(e) {}
+}
+
+async function checkStatus() {
+  try {
+    const r = await fetch(API + '/api/v1/status');
+    const data = await r.json();
+    if (!data.cua_available) {
+      document.getElementById('warning-bar').style.display = 'block';
+    }
+  } catch (e) {}
+}
+</script>
+</body>
+</html>

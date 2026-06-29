@@ -80,6 +80,9 @@ async def main():
     )
     server = uvicorn.Server(uvicorn_config)
 
+    from .cua_core import start_daemon
+    start_daemon()
+
     loop = asyncio.get_running_loop()
     tray = ControlPlaneTray(loop, server=server)
     if not args.no_tray:
