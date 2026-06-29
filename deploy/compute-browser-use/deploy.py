@@ -42,15 +42,75 @@ class DeployAborted(Exception):
 # ---------------------------------------------------------------------------
 
 def get_network_interfaces():
+    """Discover active network interfaces with IPv4 addresses.
+
+    Each entry: {name, ip, iface, kind}
+    - name: hostname (fallback) or interface name
+    - iface: actual NIC name (e.g. eth0, wlan0, docker0)
+    - kind: "ethernet", "wifi", "docker", "vpn", "loopback", "unknown"
+    """
+    # Build a map: IP -> iface name from `ip addr` (most reliable source)
+    ip_to_iface = {}
+    try:
+        out = subprocess.run(["ip", "-4", "-o", "addr", "show"], capture_output=True, text=True, timeout=5)
+        for line in out.stdout.strip().split("\n"):
+            parts = line.split()
+            if len(parts) >= 4:
+                iface = parts[1]
+                ip = parts[3].split("/")[0]
+                ip_to_iface[ip] = iface
+    except Exception:
+        pass
+
+    def _kind(iface_name):
+        if iface_name.startswith("docker") or iface_name.startswith("br-"):
+            return "docker"
+        if iface_name.startswith("veth") or iface_name.startswith("virbr"):
+            return "vm"
+        if iface_name.startswith("tun") or iface_name.startswith("tap"):
+            return "vpn"
+        if iface_name.startswith("wg"):
+            return "vpn"
+        if iface_name.startswith("wl") or iface_name.startswith("wlan"):
+            return "wifi"
+        if iface_name.startswith("en") or iface_name.startswith("eth"):
+            return "ethernet"
+        if iface_name == "lo":
+            return "loopback"
+        return "unknown"
+
     interfaces, seen = [], set()
-    for _method, func in [("hostname", _get_hostname_addrs), ("ip addr", _get_ip_addr), ("ifconfig", _get_ifconfig)]:
-        try:
-            for info in func():
-                if info["ip"] not in seen and not info["ip"].startswith("127."):
-                    seen.add(info["ip"])
-                    interfaces.append(info)
-        except Exception:
-            pass
+
+    # Source 1: `ip addr` (most accurate — gives real interface name)
+    for ip, iface in sorted(ip_to_iface.items()):
+        if ip in seen or ip.startswith("127."):
+            continue
+        seen.add(ip)
+        interfaces.append({
+            "name": iface,
+            "ip": ip,
+            "iface": iface,
+            "kind": _kind(iface),
+        })
+
+    # Source 2: hostname addrinfo (catch any IPs `ip addr` missed)
+    try:
+        hostname = socket.gethostname()
+        for info in socket.getaddrinfo(hostname, None, socket.AF_INET):
+            ip = info[4][0]
+            if ip in seen or ip.startswith("127."):
+                continue
+            seen.add(ip)
+            iface = ip_to_iface.get(ip, hostname)
+            interfaces.append({
+                "name": hostname,
+                "ip": ip,
+                "iface": iface,
+                "kind": _kind(iface) if iface in ip_to_iface else "unknown",
+            })
+    except Exception:
+        pass
+
     return interfaces
 
 def _get_hostname_addrs():
@@ -461,9 +521,12 @@ def interactive_select_address():
     interfaces = get_network_interfaces()
 
     if q and interfaces:
+        kind_labels = {"ethernet": "eth", "wifi": "wifi", "docker": "docker", "vm": "vm", "vpn": "vpn", "loopback": "lo", "unknown": "net"}
         choices = [q.Separator("-- Detected interfaces --")]
         for iface in interfaces:
-            choices.append(q.Choice(f"{iface['ip']:15s} ({iface['name']})", value=iface["ip"]))
+            kind = iface.get("kind", "unknown")
+            label = f"{iface['ip']:15s} ({iface['iface']}, {kind_labels.get(kind, kind)})"
+            choices.append(q.Choice(label, value=iface["ip"]))
         choices.append(q.Separator("-- Other --"))
         choices.append(q.Choice("0.0.0.0 (all interfaces)", value="0.0.0.0"))
         choices.append(q.Choice("127.0.0.1 (localhost only)", value="127.0.0.1"))
@@ -589,11 +652,13 @@ def full(ctx, bind):
 @cli.command("list-addresses")
 def list_addresses():
     """List detected network interfaces."""
+    kind_icons = {"ethernet": "🖧", "wifi": "📶", "docker": "🐳", "vm": "📦", "vpn": "🔒", "loopback": "↩", "unknown": "🖧"}
     interfaces = get_network_interfaces()
     if interfaces:
         click.secho("Detected interfaces:", fg="cyan")
         for i in interfaces:
-            click.echo(f"  {i['ip']:15s} ({i['name']})")
+            icon = kind_icons.get(i.get("kind", "unknown"), "🖧")
+            click.echo(f"  {icon} {i['ip']:15s} ({i['iface']}, {i['kind']})")
     else:
         click.echo("No non-loopback interfaces found.")
     click.echo("Always available: 0.0.0.0 (all), 127.0.0.1 (localhost)")
