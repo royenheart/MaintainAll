@@ -30,6 +30,7 @@ services:
       - astrbot_data:/app/data
     environment:
       - ASTRBOT_DASHBOARD_PASSWORD=${ASTRBOT_DASHBOARD_PASSWORD:-}
+      - BRIDGE_AUTH_TOKEN=${BRIDGE_AUTH_TOKEN}
       - TZ=Asia/Shanghai
     networks:
       - cua-net

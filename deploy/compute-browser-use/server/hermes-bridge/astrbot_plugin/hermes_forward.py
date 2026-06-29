@@ -1,3 +1,4 @@
+import os
 """AstrBot Plugin: Forward messages to Hermes Bridge.
 
 This plugin intercepts incoming messages and forwards them to the Hermes Bridge
@@ -21,7 +22,7 @@ logger = logging.getLogger(__name__)
 
 # Configuration — set these in the plugin's config or environment
 HERMES_BRIDGE_URL = "http://hermes-bridge:8421"
-BRIDGE_AUTH_TOKEN = ""
+BRIDGE_AUTH_TOKEN = os.environ.get("BRIDGE_AUTH_TOKEN", "")
 
 
 @register("hermes_forward", "CUA Team", "Forward messages to Hermes Agent via bridge", "1.0.0")

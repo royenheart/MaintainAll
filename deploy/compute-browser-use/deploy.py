@@ -543,7 +543,18 @@ def deploy_server(bind_address, interactive=True):
         sys.exit(1)
 
     click.secho(f"\n[3/3] Waiting for services...", fg="yellow")
-    time.sleep(3)
+    # AstrBot can take 10-30s to start. Retry health check a few times.
+    for attempt in range(6):
+        time.sleep(5)
+        ok_count = sum(1 for _name, port, _path, _desc in [
+            ("AstrBot Dashboard", 6185, "/", ""),
+            ("Hermes API", 8420, "/health", ""),
+            ("Hermes Bridge", 8421, "/health", ""),
+        ] if _http_get(_path or "/health", port) == "200")
+        if ok_count >= 3:
+            break
+        if attempt < 5:
+            click.echo(f"  Waiting... ({ok_count}/3 services ready, attempt {attempt+1}/6)")
     print_service_summary(bind_address, has_llm)
 
 

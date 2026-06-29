@@ -1,0 +1,4 @@
+name: hermes_forward
+author: CUA Team
+desc: Forward messages to Hermes Agent via bridge service
+version: "1.0.0"
