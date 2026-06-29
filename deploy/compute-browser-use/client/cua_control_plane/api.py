@@ -283,5 +283,5 @@ async def test_ui():
         return HTMLResponse("<h1>test_ui.html not found</h1>", status_code=404)
     html = _UI_PATH.read_text(encoding="utf-8")
     token = get_config().local_token
-    html = html.replace("const API = '';", f"const API = '';\nconst LOCAL_TOKEN = '{token}';")
+    html = html.replace("const A=''", f"const A='',LOCAL_TOKEN='{token}'")
     return HTMLResponse(html)
