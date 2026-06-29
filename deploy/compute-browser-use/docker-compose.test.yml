@@ -1,0 +1,121 @@
+version: "3.9"
+
+# =============================================================
+# Test Environment — Mock Client + Server services
+# =============================================================
+#
+# This compose file runs a complete test stack:
+#   mock-client  — Simulates Windows Client Control Plane
+#   astrbot      — AstrBot message gateway (minimal)
+#   hermes-bridge — Message forwarding
+#   hermes-api   — Hermes Agent API wrapper
+#   cua-relay    — CLI bridge to mock client
+#
+# Usage:
+#   docker compose -f docker-compose.test.yml up -d
+#   # Wait for services
+#   docker compose -f docker-compose.test.yml ps
+#   # Run integration tests
+#   cd client && pytest tests/test_integration.py -v
+#   # Cleanup
+#   docker compose -f docker-compose.test.yml down
+
+services:
+  # ------------------------------------------------------------------
+  # Mock Client — Simulates Windows Client Control Plane
+  # ------------------------------------------------------------------
+  mock-client:
+    build:
+      context: ./client/tests
+      dockerfile: Dockerfile.mock
+    container_name: test-mock-client
+    restart: "no"
+    ports:
+      - "19110:9110"
+    environment:
+      - MOCK_CLIENT_TOKEN=test-mock-token
+    networks:
+      - test-net
+
+  # ------------------------------------------------------------------
+  # CUA Relay — Points to mock client
+  # ------------------------------------------------------------------
+  cua-relay:
+    build:
+      context: ./server/cua-relay
+      dockerfile: Dockerfile
+    container_name: test-cua-relay
+    restart: "no"
+    environment:
+      - CUACTL_ENDPOINT=http://mock-client:9110
+      - CUACTL_TOKEN=test-mock-token
+    depends_on:
+      - mock-client
+    networks:
+      - test-net
+
+  # ------------------------------------------------------------------
+  # AstrBot — Minimal deployment
+  # ------------------------------------------------------------------
+  astrbot:
+    image: soulter/astrbot:latest
+    container_name: test-astrbot
+    restart: "no"
+    ports:
+      - "16185:6185"
+    volumes:
+      - ./server/astrbot/cmd_config.json:/app/data/cmd_config.json:ro
+      - ./server/hermes-bridge/astrbot_plugin:/app/data/plugins/hermes_forward:ro
+    environment:
+      - ASTRBOT_DASHBOARD_PASSWORD=test
+    networks:
+      - test-net
+
+  # ------------------------------------------------------------------
+  # Hermes Bridge
+  # ------------------------------------------------------------------
+  hermes-bridge:
+    build:
+      context: ./server/hermes-bridge
+      dockerfile: Dockerfile
+    container_name: test-hermes-bridge
+    restart: "no"
+    ports:
+      - "18421:8421"
+    environment:
+      - HERMES_AGENT_URL=http://hermes-api:8420
+      - BRIDGE_PORT=8421
+      - AUTH_TOKEN=test-bridge-token
+    depends_on:
+      - hermes-api
+    networks:
+      - test-net
+
+  # ------------------------------------------------------------------
+  # Hermes API
+  # ------------------------------------------------------------------
+  hermes-api:
+    build:
+      context: ./server/hermes-api
+      dockerfile: Dockerfile
+    container_name: test-hermes-api
+    restart: "no"
+    ports:
+      - "18420:8420"
+    environment:
+      - ANTHROPIC_API_KEY=${ANTHROPIC_API_KEY:-fake-key}
+      - HERMES_HOME=/home/hermes/.hermes
+      - HERMES_SRC=/opt/hermes-agent
+      - HERMES_MAX_ITERATIONS=5
+      - HERMES_API_PORT=8420
+      - CUACTL_ENDPOINT=http://mock-client:9110
+      - CUACTL_TOKEN=test-mock-token
+    volumes:
+      - ../external/hermes-agent:/opt/hermes-agent:ro
+      - ./server/hermes/config.yaml:/home/hermes/.hermes/config.yaml:ro
+    networks:
+      - test-net
+
+networks:
+  test-net:
+    driver: bridge

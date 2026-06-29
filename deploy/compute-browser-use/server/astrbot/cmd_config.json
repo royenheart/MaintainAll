@@ -1,0 +1,42 @@
+{
+  "config_version": 2,
+  "platform_settings": {
+    "unique_session": false,
+    "rate_limit": {
+      "time": 60,
+      "count": 30,
+      "strategy": "stall"
+    },
+    "reply_prefix": "",
+    "forward_threshold": 1500,
+    "enable_id_white_list": false,
+    "id_whitelist": [],
+    "reply_with_mention": false,
+    "reply_with_quote": false,
+    "friend_message_needs_wake_prefix": false
+  },
+  "provider": [],
+  "provider_settings": {
+    "enable": false,
+    "default_provider_id": "",
+    "wake_prefix": "",
+    "web_search": false,
+    "identifier": false,
+    "datetime_system_prompt": false,
+    "default_personality": "default",
+    "agent_runner_type": "local",
+    "streaming_response": false,
+    "max_agent_step": 1,
+    "tool_call_timeout": 120,
+    "computer_use_runtime": "none",
+    "computer_use_require_admin": false,
+    "proactive_capability": {
+      "add_cron_tools": false
+    },
+    "context_limit_reached_strategy": "truncate_by_turns"
+  },
+  "platform_sources": [],
+  "subagent_orchestrator": {
+    "main_enable": false
+  }
+}

@@ -1,0 +1,48 @@
+[project]
+name = "computer-browser-use-deploy"
+version = "0.1.0"
+description = "Remote Computer/Browser Use — Client/Server deployment for AI agent control"
+readme = "README.md"
+requires-python = ">=3.12"
+license = { text = "MIT" }
+
+dependencies = [
+    "click>=8.0",
+    "questionary>=2.0",
+]
+
+[project.optional-dependencies]
+client = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "pystray>=0.19.0",
+    "Pillow>=10.0.0",
+]
+server = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "httpx>=0.28.0",
+]
+hermes-api = [
+    "fastapi>=0.115.0",
+    "uvicorn[standard]>=0.30.0",
+    "httpx>=0.28.0",
+    "pydantic>=2.0",
+    "pyyaml>=6.0",
+]
+dev = [
+    "pytest>=8.0",
+    "pytest-asyncio>=1.0",
+    "pytest-timeout>=2.0",
+    "httpx>=0.28.0",
+]
+
+[project.scripts]
+cua-deploy = "deploy:cli"
+
+[build-system]
+requires = ["setuptools>=75.0"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools]
+py-modules = ["deploy"]

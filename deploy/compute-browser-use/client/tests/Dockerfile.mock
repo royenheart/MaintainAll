@@ -1,0 +1,11 @@
+FROM python:3.12-slim
+
+WORKDIR /app
+
+RUN pip install --no-cache-dir fastapi uvicorn
+
+COPY mock_client.py .
+
+EXPOSE 9110
+
+CMD ["python", "mock_client.py", "--port", "9110"]
