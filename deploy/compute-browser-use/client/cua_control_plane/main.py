@@ -11,10 +11,16 @@ Usage:
 
 from __future__ import annotations
 
+import sys
+import io
+import os
+
+if sys.stderr is None:
+    sys.stderr = io.TextIOWrapper(open(os.devnull, 'w'))
+
 import argparse
 import asyncio
 import logging
-import sys
 from pathlib import Path
 
 import uvicorn
@@ -33,22 +39,20 @@ def setup_logging(config):
         datefmt="%Y-%m-%d %H:%M:%S",
     )
 
-    # File handler
+    root = logging.getLogger()
+    root.setLevel(logging.DEBUG)
+
     fh = logging.FileHandler(log_dir / "cua_control_plane.log", encoding="utf-8")
     fh.setLevel(logging.DEBUG)
     fh.setFormatter(fmt)
-
-    # Console handler
-    ch = logging.StreamHandler()
-    ch.setLevel(logging.INFO)
-    ch.setFormatter(fmt)
-
-    root = logging.getLogger()
-    root.setLevel(logging.DEBUG)
     root.addHandler(fh)
-    root.addHandler(ch)
 
-    # Quiet noisy libs
+    if sys.stderr is not None:
+        ch = logging.StreamHandler()
+        ch.setLevel(logging.INFO)
+        ch.setFormatter(fmt)
+        root.addHandler(ch)
+
     logging.getLogger("uvicorn").setLevel(logging.WARNING)
     logging.getLogger("httpx").setLevel(logging.WARNING)
 
@@ -67,21 +71,19 @@ async def main():
     host = args.host or config.api_host
     port = args.port or config.api_port
 
-    # Start system tray
-    loop = asyncio.get_running_loop()
-    tray = ControlPlaneTray(loop)
-    if not args.no_tray:
-        tray.start()
-
-    # Configure uvicorn
-    config = uvicorn.Config(
+    uvicorn_config = uvicorn.Config(
         "cua_control_plane.api:app",
         host=host,
         port=port,
         log_level="info",
         reload=False,
     )
-    server = uvicorn.Server(config)
+    server = uvicorn.Server(uvicorn_config)
+
+    loop = asyncio.get_running_loop()
+    tray = ControlPlaneTray(loop, server=server)
+    if not args.no_tray:
+        tray.start()
 
     logger.info("=" * 60)
     logger.info("CUA Control Plane v0.1.0")

@@ -23,17 +23,7 @@ if %errorlevel% neq 0 (
 
 echo.
 echo [2/4] Creating startup shortcut...
-set "PSFILE=%TEMP%\cua_create_shortcut.ps1"
-(
-echo $ws = New-Object -ComObject WScript.Shell
-echo $sc = $ws.CreateShortcut([Environment]::GetFolderPath('Startup') + '\CUA-Control-Plane.lnk')
-echo $sc.TargetPath = 'pythonw.exe'
-echo $sc.Arguments = '-m cua_control_plane.main'
-echo $sc.WorkingDirectory = '%~dp0'
-echo $sc.Save()
-) > "%PSFILE%"
-powershell -NoProfile -ExecutionPolicy Bypass -File "%PSFILE%"
-del "%PSFILE%"
+powershell -NoProfile -ExecutionPolicy Bypass -Command "$ws = New-Object -ComObject WScript.Shell; $sc = $ws.CreateShortcut([Environment]::GetFolderPath('Startup') + '\CUA-Control-Plane.lnk'); $sc.TargetPath = 'python.exe'; $sc.Arguments = '-m cua_control_plane.main'; $sc.WorkingDirectory = '%~dp0'; $sc.Save()"
 echo Startup shortcut created.
 
 echo.
@@ -43,8 +33,11 @@ echo Default config saved to %%APPDATA%%\cua-control-plane\config.json
 
 echo.
 echo [4/4] Starting CUA Control Plane...
-start "" pythonw -m cua_control_plane.main
+powershell -NoProfile -Command "$ErrorActionPreference='SilentlyContinue'; try { $r = Invoke-WebRequest 'http://127.0.0.1:9111/health' -TimeoutSec 2 -UseBasicParsing; if ($r.StatusCode -eq 200) { Write-Host 'Previous instance found. Restarting...'; $conns = netstat -ano | Select-String ':9111.*LISTENING'; foreach ($c in $conns) { $p = ($c -split '\s+' | Where-Object {$_})[-1]; Stop-Process -Id $p -Force }; Start-Sleep 2 } } catch {}; exit 0"
+powershell -WindowStyle Hidden -NoProfile -ExecutionPolicy Bypass -Command "Start-Process python -ArgumentList '-m','cua_control_plane.main' -WorkingDirectory '%~dp0' -WindowStyle Hidden"
+echo CUA Control Plane started.
 
+:install_done
 echo.
 echo ============================================
 echo  Installation complete!
@@ -52,7 +45,7 @@ echo.
 echo  Check the system tray (near the clock)
 echo  for the CUA Control Plane icon.
 echo.
-echo  Local API: http://127.0.0.1:9110
-echo  Health:    http://127.0.0.1:9110/health
+echo  Local API: http://127.0.0.1:9111
+echo  Health:    http://127.0.0.1:9111/health
 echo ============================================
 pause

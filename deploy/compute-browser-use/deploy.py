@@ -151,7 +151,7 @@ def write_env(data: dict):
         f"BRIDGE_AUTH_TOKEN={data.get('BRIDGE_AUTH_TOKEN', '')}",
         "",
         "# --- Client Connection ---",
-        f"CUACTL_ENDPOINT={data.get('CUACTL_ENDPOINT', 'https://your-client-ip:9110')}",
+        f"CUACTL_ENDPOINT={data.get('CUACTL_ENDPOINT', 'https://your-client-ip:9111')}",
         "CUACTL_TOKEN=${CLIENT_TOKEN}",
         "",
         "# --- LLM Provider ---",
@@ -188,7 +188,7 @@ def setup_env_interactive():
 
     current_ep = data.get("CUACTL_ENDPOINT", "")
     if q:
-        endpoints = ["https://your-client-ip:9110 (set later)"]
+        endpoints = ["https://your-client-ip:9111 (set later)"]
         for iface in get_network_interfaces():
             endpoints.append(f"https://{iface['ip']}:9110 ({iface['name']})")
         ep = q.select(
@@ -199,7 +199,7 @@ def setup_env_interactive():
         if ep:
             data["CUACTL_ENDPOINT"] = ep
     else:
-        new_ep = click.prompt("Client Control Plane endpoint", default=current_ep or "https://your-client-ip:9110")
+        new_ep = click.prompt("Client Control Plane endpoint", default=current_ep or "https://your-client-ip:9111")
         data["CUACTL_ENDPOINT"] = new_ep
     click.echo()
 

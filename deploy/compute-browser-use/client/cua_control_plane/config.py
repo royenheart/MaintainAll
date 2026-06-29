@@ -34,7 +34,7 @@ class ControlPlaneConfig:
 
     # Local API
     api_host: str = "127.0.0.1"
-    api_port: int = 9110
+    api_port: int = 9111
 
     # Auth — local token for the API
     local_token: str = field(default_factory=lambda: secrets.token_hex(32))

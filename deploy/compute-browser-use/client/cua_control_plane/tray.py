@@ -45,8 +45,9 @@ def _create_icon_image(color: str = "green") -> Image.Image:
 class ControlPlaneTray:
     """System tray controller."""
 
-    def __init__(self, loop: asyncio.AbstractEventLoop):
+    def __init__(self, loop: asyncio.AbstractEventLoop, server=None):
         self.loop = loop
+        self._server = server
         self._tray: Optional[pystray.Icon] = None
         self._running = False
 
@@ -58,7 +59,7 @@ class ControlPlaneTray:
             def _inner(icon, item):
                 cfg.permission_level = level
                 cfg.save()
-                # Update all menu items
+                icon._menu = self._build_menu()
                 icon.update_menu()
             return _inner
 
@@ -73,12 +74,9 @@ class ControlPlaneTray:
             )
 
         def _quit(icon, item):
+            self.loop.call_soon_threadsafe(self._shutdown_all)
             icon.stop()
             self._running = False
-            # Schedule shutdown
-            self.loop.call_soon_threadsafe(
-                lambda: asyncio.ensure_future(self._shutdown())
-            )
 
         return pystray.Menu(
             pystray.MenuItem(
@@ -94,8 +92,14 @@ class ControlPlaneTray:
             pystray.MenuItem("Quit", _quit),
         )
 
+    def _shutdown_all(self):
+        """Shutdown uvicorn server and cleanup CUA sandbox."""
+        import asyncio as _asyncio
+        task = _asyncio.ensure_future(self._shutdown())
+        self._server.should_exit = True
+
     async def _shutdown(self):
-        """Shutdown cleanup."""
+        """Cleanup CUA sandbox resources."""
         from .cua_core import shutdown as cua_shutdown
         await cua_shutdown()
 
