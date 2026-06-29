@@ -64,10 +64,9 @@ services:
     ports:
       - "16185:6185"
     volumes:
-      - ./server/astrbot/cmd_config.json:/app/data/cmd_config.json:ro
-      - ./server/hermes-bridge/astrbot_plugin:/app/data/plugins/hermes_forward:ro
+      - ./server/hermes-bridge/astrbot_plugin:/AstrBot/data/plugins/hermes_forward:ro
     environment:
-      - ASTRBOT_DASHBOARD_PASSWORD=test
+      - ASTRBOT_DASHBOARD_INITIAL_PASSWORD=test
     networks:
       - test-net
 

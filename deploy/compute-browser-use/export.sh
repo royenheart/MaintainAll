@@ -108,7 +108,9 @@ else
 fi
 
 # Server configs
-for conf in server/astrbot/cmd_config.json server/hermes/config.yaml; do
+# Note: astrbot's cmd_config.json is stored in the astrbot_data Docker volume
+# and is already included in the volume export above.
+for conf in server/hermes/config.yaml; do
     if [ -f "$conf" ]; then
         mkdir -p "$EXPORT_DATA/configs/$(dirname "$conf")"
         cp "$conf" "$EXPORT_DATA/configs/$conf"

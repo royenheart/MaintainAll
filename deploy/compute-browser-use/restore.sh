@@ -139,7 +139,7 @@ fi
 if ! $FORCE; then
     echo -e "${RED}This will overwrite existing data!${NC}"
     echo "  Docker volumes will be replaced."
-    echo "  Config files (.env, cmd_config.json, config.yaml) will be overwritten."
+    echo "  Config files (.env, config.yaml) will be overwritten."
     echo "  Running containers should be stopped first."
     echo
     echo -n "Continue? [y/N] "
@@ -256,7 +256,9 @@ if [ -d "$EXTRACT_DIR/configs" ]; then
     fi
 
     # Restore server configs
-    for conf in server/astrbot/cmd_config.json server/hermes/config.yaml; do
+    # Note: astrbot's cmd_config.json is in the astrbot_data Docker volume
+    # and is restored via the volume restore step above.
+    for conf in server/hermes/config.yaml; do
         restore_file "$conf"
     done
 

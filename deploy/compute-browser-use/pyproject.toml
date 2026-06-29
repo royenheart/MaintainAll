@@ -46,3 +46,13 @@ build-backend = "setuptools.build_meta"
 
 [tool.setuptools]
 py-modules = ["deploy"]
+
+[tool.pytest.ini_options]
+pythonpath = ["client"]
+testpaths = ["tests", "client/tests"]
+addopts = "-v --tb=short"
+markers = [
+    "unit: fast tests with no external dependencies",
+    "integration: tests needing mock client or services",
+    "e2e: end-to-end tests needing real CUA control plane",
+]

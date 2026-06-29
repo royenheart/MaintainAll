@@ -30,7 +30,7 @@ class HermesForwardPlugin(Star):
     def __init__(self, context: Context):
         super().__init__(context)
 
-    @filter.on_message_event()
+    @filter.event_message_type(filter.EventMessageType.ALL)
     async def forward_to_hermes(self, event: AstrMessageEvent):
         """Forward every incoming message to Hermes Agent."""
         message_str = event.get_message_str()

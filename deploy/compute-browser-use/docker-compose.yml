@@ -6,58 +6,48 @@ version: "3.9"
 #
 # Components:
 #   1. astrbot        — Message platform gateway (minimal)
-#   2. hermes-bridge  — AstrBot → Hermes message forwarding
-#   3. hermes-api     — HTTP API wrapper around Hermes Agent
-#   cuactl CLI is installed inside hermes-api container
+#   2. hermes-api     — Hermes Hub (CLI wrapper + REST API + SSE)
+#
+# Primary connector: astrbot_plugin_hermes_connector (Hub mode)
+#   - Pre-installed as AstrBot plugin, talks to hermes-api via HTTPS/HTTP
+#   - Full feature set: commands, approval, progress monitor, LLM tools
+#
+# Fallback: hermes-bridge (disabled by default)
+#   - Start with: docker compose --profile bridge up -d
+#   - Minimal message forwarding AstrBot → Hermes
 #
 # Prerequisites:
 #   cp .env.example .env && edit .env
 #   docker compose up -d
 
 services:
-  # ------------------------------------------------------------------
-  # AstrBot — Multi-platform messaging gateway (minimal deployment)
-  # ------------------------------------------------------------------
+  # ================================================================
+  # AstrBot — Multi-platform messaging gateway
+  # ================================================================
   astrbot:
-    image: soulter/astrbot:latest
+    build:
+      context: .
+      dockerfile: ./server/astrbot/Dockerfile
     container_name: cua-astrbot
     restart: unless-stopped
     ports:
       - "6185:6185"
     volumes:
-      - ./server/astrbot/cmd_config.json:/app/data/cmd_config.json:ro
-      - ./server/hermes-bridge/astrbot_plugin:/app/data/plugins/hermes_forward:ro
-      - astrbot_data:/app/data
+      - ./server/hermes-bridge/astrbot_plugin:/AstrBot/data/plugins/hermes_forward:ro
+      # NOTE: DO NOT bind-mount cmd_config.json here.
+      # AstrBot auto-creates it on first run and MUST own it
+      # for password/config persistence across redeploys.
+      - astrbot_data:/AstrBot/data
     environment:
-      - ASTRBOT_DASHBOARD_PASSWORD=${ASTRBOT_DASHBOARD_PASSWORD:-}
+      - ASTRBOT_DASHBOARD_INITIAL_PASSWORD=${ASTRBOT_DASHBOARD_PASSWORD:-}
       - BRIDGE_AUTH_TOKEN=${BRIDGE_AUTH_TOKEN}
       - TZ=Asia/Shanghai
     networks:
       - cua-net
 
-  # ------------------------------------------------------------------
-  # Hermes Bridge — AstrBot → Hermes API message forwarding
-  # ------------------------------------------------------------------
-  hermes-bridge:
-    build:
-      context: ./server/hermes-bridge
-      dockerfile: Dockerfile
-    container_name: cua-hermes-bridge
-    restart: unless-stopped
-    ports:
-      - "8421:8421"
-    environment:
-      - HERMES_AGENT_URL=http://hermes-api:8420
-      - BRIDGE_PORT=8421
-      - AUTH_TOKEN=${BRIDGE_AUTH_TOKEN:-}
-    depends_on:
-      - hermes-api
-    networks:
-      - cua-net
-
-  # ------------------------------------------------------------------
-  # Hermes API — HTTP wrapper around Hermes Agent
-  # ------------------------------------------------------------------
+  # ================================================================
+  # Hermes Hub — HTTP wrapper around Hermes Agent (via CLI)
+  # ================================================================
   hermes-api:
     build:
       context: .
@@ -78,23 +68,47 @@ services:
       - HERMES_HOME=/home/hermes/.hermes
       - HERMES_SRC=/opt/hermes-agent
       - HERMES_MAX_ITERATIONS=30
-      - HERMES_API_PORT=8420
+      # Hub settings
+      - HERMES_HOST=0.0.0.0
+      - HERMES_PORT=8420
+      - HERMES_ACCESS_TOKEN=${HERMES_ACCESS_TOKEN}
+      - HERMES_BINARY=hermes
+      # CUA settings
       - CUACTL_ENDPOINT=${CUACTL_ENDPOINT}
       - CUACTL_TOKEN=${CUACTL_TOKEN:-}
       - TZ=Asia/Shanghai
-    # Resource limits
     deploy:
       resources:
         limits:
           memory: 2G
         reservations:
           memory: 512M
-    # Security hardening
     security_opt:
       - no-new-privileges:true
-    # Container-level isolation — /opt/hermes-agent is read-only from volume
     tmpfs:
       - /tmp:exec
+    networks:
+      - cua-net
+
+  # ================================================================
+  # Hermes Bridge — Fallback AstrBot → Hermes forwarding
+  # ================================================================
+  hermes-bridge:
+    build:
+      context: ./server/hermes-bridge
+      dockerfile: Dockerfile
+    container_name: cua-hermes-bridge
+    restart: unless-stopped
+    profiles:
+      - bridge
+    ports:
+      - "8421:8421"
+    environment:
+      - HERMES_AGENT_URL=http://hermes-api:8420
+      - BRIDGE_PORT=8421
+      - AUTH_TOKEN=${BRIDGE_AUTH_TOKEN:-}
+    depends_on:
+      - hermes-api
     networks:
       - cua-net
 

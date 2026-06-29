@@ -97,8 +97,7 @@ deploy/compute-browser-use/
 │   ├── cua-relay/                     # Client Control Server
 │   │   ├── relay_server.py           # 对 Hermes 暴露 CLI 命令
 │   │   └── requirements.txt
-│   ├── astrbot/                       # AstrBot 最小化配置
-│   │   └── cmd_config.json
+│   └── astrbot/                       # AstrBot 最小化配置（配置在卷内管理）
 │   └── hermes/                        # Hermes Agent 配置
 │       └── config.yaml
 └── skills/                            # Hermes Skills（操作指南）
