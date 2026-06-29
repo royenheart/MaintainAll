@@ -216,7 +216,7 @@ def write_env(data: dict):
         f"BRIDGE_AUTH_TOKEN={data.get('BRIDGE_AUTH_TOKEN', '')}",
         "",
         "# --- Client Connection ---",
-        f"CUACTL_ENDPOINT={data.get('CUACTL_ENDPOINT', 'https://your-client-ip:9111')}",
+        f"CUACTL_ENDPOINT={data.get('CUACTL_ENDPOINT', '')}",
         "CUACTL_TOKEN=${CLIENT_TOKEN}",
         "",
         "# --- LLM Provider ---",
@@ -264,7 +264,7 @@ def _setup_env_impl():
     if q:
         endpoints = ["https://your-client-ip:9111 (set later)"]
         for iface in get_network_interfaces():
-            endpoints.append(f"https://{iface['ip']}:9110 ({iface['name']})")
+            endpoints.append(f"https://{iface['ip']}:9111 ({iface['name']})")
         ep = q.select(
             "Client Control Plane endpoint:",
             choices=[q.Choice(e, value=e.split()[0]) for e in endpoints],
@@ -466,13 +466,13 @@ def deploy_server(bind_address, interactive=True):
                 needs_update = True
 
     # CUACTL_ENDPOINT — where the client is reachable
-    if not data.get("CUACTL_ENDPOINT") or data["CUACTL_ENDPOINT"] == "https://your-client-ip:9110":
+    if not data.get("CUACTL_ENDPOINT"):
         click.echo()
         click.secho("Client endpoint not configured", fg="yellow")
         click.echo("  This is the URL the server will use to reach the client.")
         if interactive:
             try:
-                ep = click.prompt("Client endpoint URL (e.g. https://192.168.1.100:9110)", default="", show_default=False)
+                ep = click.prompt("Client endpoint URL (e.g. https://192.168.1.100:9111)", default="", show_default=False)
             except click.exceptions.Abort:
                 raise DeployAborted()
             if ep:
@@ -595,106 +595,142 @@ def _deploy_client_windows(address):
         sys.path.insert(0, str(client_dir))
     click.echo()
 
-    # Check & install deps
+    click.secho("[1/6] Installing dependencies...", fg="yellow")
     deps_ok = True
     try:
-        import fastapi  # noqa: F401
+        import fastapi, uvicorn  # noqa: F401
     except ImportError:
         deps_ok = False
-
     if not deps_ok:
-        click.secho("Installing dependencies...", fg="yellow")
         subprocess.run(
             [sys.executable, "-m", "pip", "install", "-e", f"{SCRIPT_DIR}[client]"],
             cwd=str(SCRIPT_DIR), check=False,
         )
 
-    # Save bind address
+    click.secho("[2/6] Checking cua-driver...", fg="yellow")
+    ps_check = (
+        '$d=join-path $env:LOCALAPPDATA "Programs\\Cua\\cua-driver\\bin\\cua-driver.exe"; '
+        '$h=join-path $env:USERPROFILE ".cua-driver\\packages\\current\\cua-driver.exe"; '
+        'if ((Test-Path $d) -or (Test-Path $h) -or (Get-Command cua-driver -ea 0)) { '
+        '  Write-Host "  already installed" '
+        '} else { '
+        '  Write-Host "  downloading from GitHub..."; '
+        '  $ProgressPreference="SilentlyContinue"; '
+        '  $s=irm https://raw.githubusercontent.com/trycua/cua/main/libs/cua-driver/scripts/install.ps1; '
+        '  $t="$env:TEMP\\install-cua-driver.ps1"; '
+        '  [IO.File]::WriteAllText($t,$s); '
+        '  & powershell -NoProfile -ExecutionPolicy Bypass -File $t -NoAutoStart; '
+        '  Remove-Item $t -ErrorAction SilentlyContinue '
+        '}'
+    )
+    subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_check],
+                   cwd=str(client_dir), check=False, timeout=120)
+    click.secho("  cua-driver ok", fg="green")
+
+    click.secho("[3/6] Saving configuration...", fg="yellow")
     try:
         import cua_control_plane.config as cfg
-        c = cfg.get_config()
-        c.api_host = address
-        c.save()
-        click.secho(f"  Bind address: {address} (saved)", fg="green")
+        c2 = cfg.get_config()
+        c2.api_host = address
+        c2.save()
+        click.secho(f"  Bind address: {address}", fg="green")
         click.echo()
-        click.secho("  Copy this token to server .env as CLIENT_TOKEN:", fg="yellow")
-        click.secho(f"  {c.local_token}", fg="cyan")
-    except Exception:
-        pass
+        click.secho("  === CLIENT TOKEN (copy to server .env) ===", fg="cyan")
+        click.secho(f"  CLIENT_TOKEN={c2.local_token}", fg="cyan")
+    except Exception as e:
+        click.secho(f"  Config error: {e}", fg="red")
 
-    # Create startup shortcut
+    click.secho("[4/6] Creating startup shortcut...", fg="yellow")
     ps_cmd = (
-        f'$ws = New-Object -ComObject WScript.Shell; '
-        f'$sc = $ws.CreateShortcut([Environment]::GetFolderPath(\"Startup\") + \"\\CUA-Control-Plane.lnk\"); '
-        f'$sc.TargetPath = \"pythonw.exe\"; '
-        f'$sc.Arguments = \"-m cua_control_plane.main\"; '
-        f'$sc.WorkingDirectory = \"{client_dir}\"; '
-        f'$sc.Save()'
+        '$ws = New-Object -ComObject WScript.Shell; '
+        '$sc = $ws.CreateShortcut([Environment]::GetFolderPath("Startup") + "\\CUA-Control-Plane.lnk"); '
+        '$sc.TargetPath = "python.exe"; '
+        '$sc.Arguments = "-m cua_control_plane.main"; '
+        f'$sc.WorkingDirectory = "{client_dir}"; '
+        '$sc.Save()'
     )
-    try:
-        subprocess.run(
-            ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_cmd],
-            cwd=str(client_dir), check=False, timeout=10,
-        )
-        click.secho("  Startup shortcut created", fg="green")
-    except Exception:
-        click.echo("  (Skipped startup shortcut — this may not be Windows)")
+    subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_cmd],
+                   cwd=str(client_dir), check=False, timeout=10)
+    click.secho("  Startup shortcut created", fg="green")
 
-    # Start
-    q = _q()
-    start_msg = f"Start Client Control Plane on http://{address}:9110?"
-    start = q.confirm(start_msg).ask() if q else click.confirm(start_msg, default=True)
+    click.secho("[5/6] Stopping existing instance...", fg="yellow")
+    ps_kill = (
+        'try { $r = Invoke-WebRequest http://127.0.0.1:9111/health -TimeoutSec 2 -UseBasicParsing; '
+        'if ($r.StatusCode -eq 200) { '
+        '  Write-Host "  previous instance found - stopping..."; '
+        '  $conns = netstat -ano | Select-String ":9111.*LISTENING"; '
+        '  foreach ($c in $conns) { $p = ($c -split "\\s+" | Where-Object {$_})[-1]; Stop-Process -Id $p -Force }; '
+        '  Start-Sleep 2 '
+        '} } catch {}; exit 0'
+    )
+    subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_kill],
+                   cwd=str(client_dir), check=False, timeout=10)
 
-    if start:
-        click.secho(f"  Starting on http://{address}:9110 (Ctrl+C to stop)", fg="green")
-        import uvicorn
-        uvicorn.run("cua_control_plane.api:app", host=address, port=9110, log_level="info")
-    else:
-        click.echo(f"  Start manually: python -m cua_control_plane.main --host {address}")
+    click.secho("[6/6] Starting background service...", fg="yellow")
+    ps_start = (
+        'Start-Process python -ArgumentList "-m","cua_control_plane.main" '
+        f'-WorkingDirectory "{client_dir}" -WindowStyle Hidden'
+    )
+    subprocess.run(["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_start],
+                   cwd=str(client_dir), check=False, timeout=10)
+    click.secho(f"  Background service running on http://{address}:9111", fg="green")
 
+    click.echo()
+    click.secho("=== Installation Complete ===", fg="green", bold=True)
+    click.echo(f"  API:      http://{address}:9111")
+    click.echo(f"  Health:   http://{address}:9111/health")
+    click.echo(f"  Test UI:  http://{address}:9111/tests")
+    click.echo()
+    click.secho("Tips:", fg="cyan")
+    click.echo("  [UIAccess] Right-click tray icon -> Enable UIAccess")
+    click.echo("             Grants admin elevation for cleaner clicks on")
+    click.echo("             Chrome / VSCode (Chromium-based apps).")
+    click.echo("  [VSCode / Chrome] Chromium apps may briefly grab focus")
+    click.echo("             during clicks — this is a known UIA limitation.")
+    click.echo("             Workaround: switch to Solo mode via tray menu")
+    click.echo("             for predictable full-control behavior.")
+    click.echo("  [Tray]    Right-click tray icon to switch modes:")
+    click.echo("             Collaborative = non-intrusive (default)")
+    click.echo("             Solo = full control with idle detection")
+    click.echo("  [Restart] python -m cua_control_plane.main")
+    click.echo("  [Stop]    kill the python process or reboot")
 
-def _deploy_client_linux():
+def _deploy_client_linux(address):
+    if str(SCRIPT_DIR / "client") not in sys.path:
+        sys.path.insert(0, str(SCRIPT_DIR / "client"))
     click.echo()
 
-    # Check & install deps
     deps_ok = True
     try:
         import fastapi  # noqa: F401
     except ImportError:
         deps_ok = False
-
     if not deps_ok:
-        click.secho("Installing client dependencies...", fg="yellow")
+        click.secho("[1/2] Installing dependencies...", fg="yellow")
         subprocess.run(
             [sys.executable, "-m", "pip", "install", "-e", f"{SCRIPT_DIR}[client]"],
             cwd=str(SCRIPT_DIR), check=False,
         )
 
-    # Check if already running
+    click.secho("[2/2] Checking existing instance...", fg="yellow")
     try:
         import httpx
-        r = httpx.get("http://127.0.0.1:9110/health", timeout=2)
+        r = httpx.get(f"http://127.0.0.1:9111/health", timeout=2)
         if r.status_code == 200:
-            click.secho("Client Control Plane is already running on :9110", fg="green")
+            click.secho("  Already running on :9111", fg="yellow")
             return
     except Exception:
         pass
 
-    # Offer to start
     q = _q()
-    start = q.confirm("Start Client Control Plane now?").ask() if q else click.confirm("Start Client Control Plane now?", default=True)
+    start_srv = q.confirm("Start Client Control Plane now?").ask() if q else click.confirm("Start Client Control Plane now?", default=True)
 
-    if start:
-        click.secho("Starting on http://127.0.0.1:9110 (Ctrl+C to stop)", fg="green")
+    if start_srv:
+        click.secho(f"  Starting on http://{address}:9111 (Ctrl+C to stop)", fg="green")
         import uvicorn
-        uvicorn.run("cua_control_plane.api:app", host="127.0.0.1", port=9110, log_level="info")
+        uvicorn.run("cua_control_plane.api:app", host=address, port=9111, log_level="info")
     else:
-        click.echo("  Start manually:")
-        click.echo("    cd client && python -m cua_control_plane.main")
-
-    config_path = Path.home() / ".config" / "cua-control-plane" / "config.json"
-    click.echo(f"\n  Token stored in: {config_path}")
-
+        click.echo(f"  Start manually: python -m cua_control_plane.main --host {address}")
 
 def _deploy_client_macos(address):
     click.echo()
