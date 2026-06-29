@@ -8,7 +8,7 @@ version: "3.9"
 #   1. astrbot        — Message platform gateway (minimal)
 #   2. hermes-bridge  — AstrBot → Hermes message forwarding
 #   3. hermes-api     — HTTP API wrapper around Hermes Agent
-#   4. cua-relay      — Hermes Agent → Client Control Plane
+#   cuactl CLI is installed inside hermes-api container
 #
 # Prerequisites:
 #   cp .env.example .env && edit .env
@@ -59,10 +59,8 @@ services:
   # ------------------------------------------------------------------
   hermes-api:
     build:
-      context: ./server/hermes-api
-      dockerfile: Dockerfile
-      args:
-        - HERMES_SRC=/opt/hermes-agent
+      context: .
+      dockerfile: ./server/hermes-api/Dockerfile
     container_name: cua-hermes-api
     restart: unless-stopped
     ports:
@@ -80,7 +78,7 @@ services:
       - HERMES_SRC=/opt/hermes-agent
       - HERMES_MAX_ITERATIONS=30
       - HERMES_API_PORT=8420
-      - CUACTL_ENDPOINT=${CUACTL_ENDPOINT:-http://cua-relay:9110}
+      - CUACTL_ENDPOINT=${CUACTL_ENDPOINT}
       - CUACTL_TOKEN=${CUACTL_TOKEN:-}
       - TZ=Asia/Shanghai
     # Resource limits
@@ -99,20 +97,6 @@ services:
     networks:
       - cua-net
 
-  # ------------------------------------------------------------------
-  # CUA Relay — CLI bridge: Hermes Agent → Client Control Plane
-  # ------------------------------------------------------------------
-  cua-relay:
-    build:
-      context: ./server/cua-relay
-      dockerfile: Dockerfile
-    container_name: cua-cua-relay
-    restart: unless-stopped
-    environment:
-      - CUACTL_ENDPOINT=${CUACTL_ENDPOINT:-http://host.docker.internal:9110}
-      - CUACTL_TOKEN=${CUACTL_TOKEN:-}
-    networks:
-      - cua-net
 
 networks:
   cua-net:
