@@ -28,6 +28,8 @@ services:
     build:
       context: .
       dockerfile: ./server/astrbot/Dockerfile
+      args:
+        - HERMES_ACCESS_TOKEN=${HERMES_ACCESS_TOKEN}
     container_name: cua-astrbot
     restart: unless-stopped
     ports:
@@ -41,7 +43,10 @@ services:
     environment:
       - ASTRBOT_DASHBOARD_INITIAL_PASSWORD=${ASTRBOT_DASHBOARD_PASSWORD:-}
       - BRIDGE_AUTH_TOKEN=${BRIDGE_AUTH_TOKEN}
+      - HERMES_ACCESS_TOKEN=${HERMES_ACCESS_TOKEN}
       - TZ=Asia/Shanghai
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
     networks:
       - cua-net
 
@@ -57,8 +62,7 @@ services:
     ports:
       - "8420:8420"
     volumes:
-      - ../external/hermes-agent:/opt/hermes-agent:ro
-      - ./server/hermes/config.yaml:/home/hermes/.hermes/config.yaml:ro
+      - ./server/hermes/config.yaml:/home/hermes/.hermes/config.yaml
       - ./skills:/home/hermes/.hermes/skills:ro
       - hermes_data:/home/hermes/.hermes
     environment:
@@ -66,7 +70,6 @@ services:
       - OPENAI_API_KEY=${OPENAI_API_KEY:-}
       - OPENAI_BASE_URL=${OPENAI_BASE_URL:-}
       - HERMES_HOME=/home/hermes/.hermes
-      - HERMES_SRC=/opt/hermes-agent
       - HERMES_MAX_ITERATIONS=30
       # Hub settings
       - HERMES_HOST=0.0.0.0

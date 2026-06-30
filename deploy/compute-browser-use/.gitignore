@@ -6,3 +6,8 @@ __pycache__/
 .pytest_cache/
 export-cua-*.tar.gz
 .restore-backup-*/
+
+# server/hermes/config.yaml is generated at deploy time from config.yaml.example
+# by _configure_hermes_env(). It contains provider-specific runtime values
+# (model, base_url) and should not be committed.
+server/hermes/config.yaml

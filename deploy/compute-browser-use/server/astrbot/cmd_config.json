@@ -17,8 +17,8 @@
   },
   "provider": [],
   "provider_settings": {
-    "enable": false,
-    "default_provider_id": "",
+    "enable": true,
+    "default_provider_id": "cua_openai_compat",
     "wake_prefix": "",
     "web_search": false,
     "identifier": false,
@@ -35,6 +35,17 @@
     },
     "context_limit_reached_strategy": "truncate_by_turns"
   },
+  "provider": [
+    {
+      "id": "cua_openai_compat",
+      "type": "openai_chat_completion",
+      "enable": true,
+      "model": "",
+      "api_key": "",
+      "base_url": "",
+      "desc": "CUA provider (configured by deploy.py)"
+    }
+  ],
   "platform_sources": [],
   "subagent_orchestrator": {
     "main_enable": false

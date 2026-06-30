@@ -1,32 +1,26 @@
 # Hermes Agent — Headless mode configuration for CUA deployment
-# 
-# In headless mode, Hermes Agent does not run its own gateway (TG/Discord/etc).
-# Instead, it receives messages from AstrBot via Hermes Bridge.
+#
+# This file is a bind-mounted template. deploy.py overwrites it inside the
+# container at runtime via _configure_hermes_env(), filling in the correct
+# model.provider / model.default / model.base_url from PROVIDER_REGISTRY.
+# The values below are fallbacks used only if deploy.py hasn't run yet.
+#
+# In headless mode, Hermes Agent does not run its own gateway.
+# It receives messages from AstrBot via the Hermes Hub (port 8420).
 # Computer Use operations go through cuactl to the Client Control Plane.
+# API keys live in ~/.hermes/.env (written by deploy.py).
 
-# Provider configuration
-providers:
-  # Set your LLM provider here (Anthropic, OpenAI, etc.)
-  anthropic:
-    api_key: "${ANTHROPIC_API_KEY}"
-    default_model: "claude-sonnet-4-20250514"
-  # Or use OpenAI-compatible:
-  # openai:
-  #   api_key: "${OPENAI_API_KEY}"
-  #   base_url: "${OPENAI_BASE_URL}"
-  #   default_model: "gpt-4o"
+model:
+  default: ""
+  provider: "auto"
+  base_url: ""
 
-# Tool configuration
 tools:
   computer_use:
     enabled: true
-    # Path to cuactl CLI
     cli_path: "/usr/local/bin/cuactl"
-    # Client Control Plane connection
     endpoint: "${CUACTL_ENDPOINT}"
     token: "${CUACTL_TOKEN}"
-
-  # Disable tools that don't apply in this deployment
   terminal:
     enabled: false
   browser:
@@ -34,14 +28,13 @@ tools:
   web_search:
     enabled: true
 
-# Agent settings
 agent:
   max_iterations: 30
   tool_timeout_seconds: 120
   system_prompt_append: |
     You have access to a remote Windows desktop via the `computer_use` tool.
     Use the `cuactl` CLI commands to control it:
-    
+
     - `cuactl capture` — take a screenshot
     - `cuactl click X Y` — click at coordinates
     - `cuactl type "text"` — type text
@@ -50,17 +43,15 @@ agent:
     - `cuactl open-app "AppName"` — open/activate an application
     - `cuactl app-info "AppName"` — get application details
     - `cuactl app-position "AppName"` — get window position
-    
+
     Before clicking, always take a screenshot first to understand the current state.
     Use deterministic operations (list-apps, app-info, open-app) when possible
     to avoid unnecessary screenshot+click cycles.
 
-# Server mode (headless)
 server:
   enabled: true
   host: "0.0.0.0"
   port: 8420
 
-# Disable built-in gateway
 gateway:
   enabled: false

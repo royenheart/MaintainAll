@@ -222,4 +222,8 @@ __marimo__/
 start-codex.sh
 .codex
 
+# ai
+.sisyphus
+.omo
+
 temp
