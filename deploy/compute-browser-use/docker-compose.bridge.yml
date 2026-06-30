@@ -1,0 +1,14 @@
+# =============================================================
+# Bridge fallback — hermes_forward plugin + hermes-bridge service
+# =============================================================
+#
+# Usage:
+#   docker compose -f docker-compose.yml -f docker-compose.bridge.yml --profile bridge up -d
+#
+# Adds the simple message-forwarding plugin as a fallback when
+# the primary hermes_connector is unavailable.
+
+services:
+  astrbot:
+    volumes:
+      - ./server/hermes-bridge/astrbot_plugin:/AstrBot/data/plugins/hermes_forward:ro
