@@ -17,6 +17,8 @@ import os
 
 if sys.stderr is None:
     sys.stderr = io.TextIOWrapper(open(os.devnull, 'w'))
+if sys.stdout is None:
+    sys.stdout = io.TextIOWrapper(open(os.devnull, 'w'))
 
 import argparse
 import asyncio

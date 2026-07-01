@@ -2186,10 +2186,23 @@ def _deploy_client_windows(address):
         click.secho(f"  Config error: {e}", fg="red")
 
     click.secho("[4/6] Creating startup shortcut...", fg="yellow")
+    # Resolve pythonw.exe (windowless Python) next to python.exe so the
+    # autostart shortcut does NOT spawn a console window on reboot.
+    # Falling back to python.exe + WindowStyle=7 (minimized) if pythonw is absent.
+    ps_resolve_pythonw = (
+        "$pw = (Get-Command pythonw.exe -ErrorAction SilentlyContinue).Source; "
+        "if (-not $pw) { "
+        "  $py = (Get-Command python.exe -ErrorAction SilentlyContinue).Source; "
+        "  if ($py) { $pw = Join-Path (Split-Path $py) 'pythonw.exe'; "
+        "    if (-not (Test-Path $pw)) { $pw = $null } "
+        "  } "
+        "}"
+    )
     ps_cmd = (
-        "$ws = New-Object -ComObject WScript.Shell; "
+        ps_resolve_pythonw + "; "
+        '$ws = New-Object -ComObject WScript.Shell; '
         '$sc = $ws.CreateShortcut([Environment]::GetFolderPath("Startup") + "\\CUA-Control-Plane.lnk"); '
-        '$sc.TargetPath = "python.exe"; '
+        'if ($pw) { $sc.TargetPath = $pw } else { $sc.TargetPath = "python.exe"; $sc.WindowStyle = 7 }; '
         '$sc.Arguments = "-m cua_control_plane.main"; '
         f'$sc.WorkingDirectory = "{client_dir}"; '
         "$sc.Save()"
@@ -2200,7 +2213,7 @@ def _deploy_client_windows(address):
         check=False,
         timeout=10,
     )
-    click.secho("  Startup shortcut created", fg="green")
+    click.secho("  Startup shortcut created (windowless)", fg="green")
 
     click.secho("[5/6] Stopping existing instance...", fg="yellow")
     ps_kill = (
@@ -2220,9 +2233,20 @@ def _deploy_client_windows(address):
     )
 
     click.secho("[6/6] Starting background service...", fg="yellow")
+    # Use pythonw.exe if available so the live-launched process has no console
+    # window. Falls back to python.exe -WindowStyle Hidden when pythonw is missing.
     ps_start = (
-        'Start-Process python -ArgumentList "-m","cua_control_plane.main" '
-        f'-WorkingDirectory "{client_dir}" -WindowStyle Hidden'
+        "$pw = (Get-Command pythonw.exe -ErrorAction SilentlyContinue).Source; "
+        "if (-not $pw) { $py = (Get-Command python.exe -ErrorAction SilentlyContinue).Source; "
+        "  if ($py) { $cand = Join-Path (Split-Path $py) 'pythonw.exe'; "
+        "    if (Test-Path $cand) { $pw = $cand } } }; "
+        "if ($pw) { "
+        f'  $p = Start-Process $pw -ArgumentList "-m","cua_control_plane.main" -WorkingDirectory "{client_dir}" -PassThru'
+        "; if ($p) { Write-Host ('  pid=' + $p.Id) } else { Write-Host '  WARN: Start-Process returned null' } "
+        "} else { "
+        f'  $p = Start-Process python.exe -ArgumentList "-m","cua_control_plane.main" -WorkingDirectory "{client_dir}" -WindowStyle Hidden -PassThru'
+        "; if ($p) { Write-Host ('  pid=' + $p.Id) } else { Write-Host '  WARN: Start-Process returned null' } "
+        "}"
     )
     subprocess.run(
         [

@@ -22,6 +22,10 @@ from typing import Optional
 
 logger = logging.getLogger(__name__)
 
+# Suppress the console window that Windows allocates for each child process
+# when the parent has no console (pythonw.exe). 0 on POSIX.
+_NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+
 
 # ---------------------------------------------------------------------------
 # Platform detection
@@ -75,7 +79,7 @@ def _require_tool(name: str, hint: str = "") -> None:
 def _run(cmd: list[str], timeout: int = 15) -> subprocess.CompletedProcess:
     """Run a command and return CompletedProcess. Raises on non-zero exit."""
     logger.debug("Running: %s", " ".join(cmd))
-    result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout)
+    result = subprocess.run(cmd, capture_output=True, text=True, timeout=timeout, creationflags=_NO_WINDOW)
     if result.returncode != 0:
         stderr = result.stderr.strip()
         if stderr:
@@ -111,6 +115,7 @@ def _pwsh(script: str) -> str:
         capture_output=True,
         text=True,
         timeout=15,
+        creationflags=_NO_WINDOW,
     )
     if result.returncode != 0:
         stderr = result.stderr.strip()
@@ -540,7 +545,7 @@ def _open_app_linux(app_name: str) -> dict:
     # Strategy 4: Try the app_name as a command directly
     if _check_tool(app_name):
         try:
-            subprocess.Popen([app_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL)
+            subprocess.Popen([app_name], stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL, creationflags=_NO_WINDOW)
             return {"success": True, "action": "launched", "method": "direct"}
         except Exception:
             pass

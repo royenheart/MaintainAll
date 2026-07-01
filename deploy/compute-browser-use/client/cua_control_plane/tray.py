@@ -160,10 +160,12 @@ class ControlPlaneTray:
             if not binary:
                 return
             try:
+                no_window = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
                 subprocess.Popen(
                     ["powershell", "-NoProfile", "-Command",
                      f"Start-Process '{binary}' -ArgumentList 'autostart','kick' -Verb RunAs -Wait"],
                     shell=False,
+                    creationflags=no_window,
                 )
             except Exception:
                 pass

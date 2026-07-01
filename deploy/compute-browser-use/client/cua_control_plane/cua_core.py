@@ -21,6 +21,10 @@ from typing import Any, Optional
 
 logger = logging.getLogger(__name__)
 
+# Suppress the console window that Windows allocates for each child process
+# when the parent has no console (pythonw.exe). 0 on POSIX.
+_NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+
 _driver_binary: Optional[str] = None
 _driver_available_checked: bool = False
 _daemon_started: bool = False
@@ -69,6 +73,7 @@ def _driver_call(tool: str, args: dict, timeout_sec: int = 15) -> Optional[dict]
         result = subprocess.run(
             [binary, "call", tool, json.dumps(args)],
             capture_output=True, text=True, timeout=timeout_sec,
+            creationflags=_NO_WINDOW,
         )
         if result.returncode == 0 and result.stdout.strip():
             return {"_raw": result.stdout.strip()}
@@ -177,7 +182,7 @@ def _ensure_daemon() -> bool:
     if not binary:
         return False
     try:
-        result = subprocess.run([binary, "status"], capture_output=True, text=True, timeout=5)
+        result = subprocess.run([binary, "status"], capture_output=True, text=True, timeout=5, creationflags=_NO_WINDOW)
         if "is running" in result.stdout:
             _daemon_started = True
             logger.info("cua-driver daemon already running")
@@ -185,7 +190,7 @@ def _ensure_daemon() -> bool:
     except Exception:
         pass
     try:
-        subprocess.Popen([binary, "serve"], creationflags=subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0)
+        subprocess.Popen([binary, "serve"], creationflags=_NO_WINDOW)
         time.sleep(2)
         _daemon_started = True
         logger.info("cua-driver daemon started")
@@ -428,7 +433,7 @@ def _native_type_text(text: str) -> dict:
     escaped = text.replace('"', '""').replace('%', '%%')
     script = 'Add-Type -AssemblyName System.Windows.Forms;' + f'[System.Windows.Forms.SendKeys]::SendWait("{escaped}")'
     try:
-        subprocess.run(["powershell", "-NoProfile", "-Command", script], capture_output=True, timeout=10)
+        subprocess.run(["powershell", "-NoProfile", "-Command", script], capture_output=True, timeout=10, creationflags=_NO_WINDOW)
         return {"success": True, "text": text}
     except Exception as e:
         logger.error("type_text failed: %s", e)
@@ -450,7 +455,7 @@ def _native_press_key(key: str) -> dict:
     send_key = key_map.get(key.lower(), "{" + key.upper() + "}")
     script = 'Add-Type -AssemblyName System.Windows.Forms;' + f'[System.Windows.Forms.SendKeys]::SendWait("{send_key}")'
     try:
-        subprocess.run(["powershell", "-NoProfile", "-Command", script], capture_output=True, timeout=5)
+        subprocess.run(["powershell", "-NoProfile", "-Command", script], capture_output=True, timeout=5, creationflags=_NO_WINDOW)
         return {"success": True, "key": key}
     except Exception as e:
         logger.error("press_key(%s) failed: %s", key, e)
