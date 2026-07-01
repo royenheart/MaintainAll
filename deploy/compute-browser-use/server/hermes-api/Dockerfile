@@ -25,9 +25,12 @@ RUN curl -fsSL https://hermes-agent.nousresearch.com/install.sh | \
     bash -s -- --skip-browser --skip-setup
 ENV HERMES_HOME=/home/hermes/.hermes
 
-# ── cuactl relay (CLI tool called by hermes-agent) ──────────────────────
-COPY ./server/cua-relay/relay_server.py /usr/local/bin/relay_server.py
-RUN printf '#!/bin/sh\nexec python3 /usr/local/bin/relay_server.py "$@"\n' > /usr/local/bin/cuactl && chmod +x /usr/local/bin/cuactl
+# ── cuactl relay ─────────────────────────────────────────────────────────
+# cuactl no longer lives in this image. It runs as a separate HTTP
+# microservice (see server/cua-relay/Dockerfile.http + the `cuactl`
+# service in docker-compose.yml). Hermes Agent reaches it at
+# http://cuactl:8000/cuactl/<command> via curl in terminal_tool, driven
+# by the system_prompt_append in server/hermes/config.yaml.
 
 # Keep old hermes_api.py for fallback use
 COPY ./server/hermes-api/hermes_api.py /app/hermes_api_fallback.py

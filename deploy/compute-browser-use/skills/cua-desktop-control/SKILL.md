@@ -1,69 +1,173 @@
 ---
 name: cua-desktop-control
-description: Remote Windows desktop control via CUA Control Plane. Use this skill when the user asks you to perform actions on their remote Windows PC.
-version: 1.0.0
+description: Remote Windows desktop control via the cuactl HTTP service. Use this skill when the user asks you to perform actions on their remote Windows PC (screenshot, click, type, open/close apps, list apps). Call the cuactl service directly via curl in your shell tool.
+version: 3.0.0
 ---
 
 # CUA Desktop Control
 
-You have remote control of a Windows desktop through the CUA Control Plane.
+You control a remote Windows desktop through the **`cuactl` HTTP microservice**.
+It runs as a separate Docker container (`cua-cuactl`) on the same network as
+you, reachable at `http://cuactl:8000`. You call it with `curl` in your shell
+tool — no special package, no `pip install`, no `cua` binary, and **no need to
+forward requests through Hermes**. You call it directly.
 
-## Available Commands
+> **Do NOT** invent substitute commands. There is no `cuactl` binary on your
+> path, no `cua` pip package to install, and no `cua do switch host` command.
+> Those are hallucinations. The only correct way is `curl http://cuactl:8000/...`.
 
-All commands are invoked via `cuactl`:
+## Architecture (so you understand what happens)
+
+```
+You (AstrBot LLM, in cua-astrbot container)
+  │  curl http://cuactl:8000/cuactl/<cmd>
+  ▼
+cuactl HTTP service (cua-cuactl container, FastAPI :8000)
+  │  HTTPS + Bearer Token (configured in the cuactl container's env)
+  ▼
+Client Control Plane (on the Windows PC, port 9111)
+  │
+  ▼
+Windows desktop (click / type / screenshot / apps)
+```
+
+- `cuactl` is its own container. It does NOT live inside AstrBot, and it
+  does NOT live inside Hermes. Any container on the `cua-net` docker network
+  can call it.
+- Auth between cuactl and the Windows PC is handled inside the cuactl
+  container (`CUACTL_TOKEN` env). You do not need to pass any token when
+  calling `http://cuactl:8000` — internal network trust.
+- Hermes Agent has the same `curl` patterns in its own system prompt, so
+  Hermes can also call cuactl directly. You are not going through Hermes.
+
+## Endpoints (all return JSON: `{"success": bool, "error": str, ...}`)
+
+### Health check — run this first if unsure
+```bash
+curl -s http://cuactl:8000/health
+```
+Returns `{"status":"ok","endpoint":"<client-ip>:9111","token_configured":true/false}`.
+If `status != ok` or the curl fails, the cuactl service is down — tell the
+user to check `docker compose ps cuactl`.
 
 ### Screen
-- `cuactl capture` — Take a screenshot (saves to temp dir, returns path + base64)
-- `cuactl screen-size` — Get screen dimensions
+```bash
+# Screenshot — returns base64 + writes PNG to /tmp in the cuactl container
+curl -s -X POST http://cuactl:8000/cuactl/capture
+
+# Screen dimensions
+curl -s -X POST http://cuactl:8000/cuactl/screen-size
+```
 
 ### Mouse
-- `cuactl click X Y [left|right|middle]` — Click at coordinates
-- `cuactl move X Y` — Move cursor to coordinates
-- `cuactl scroll [dx] [dy]` — Scroll mouse wheel
-- `cuactl drag fromX fromY toX toY` — Drag from one point to another
+```bash
+curl -s -X POST http://cuactl:8000/cuactl/click \
+  -H 'Content-Type: application/json' \
+  -d '{"x":100,"y":200,"button":"left"}'
+# button: left | right | middle (default left)
+
+curl -s -X POST http://cuactl:8000/cuactl/move \
+  -H 'Content-Type: application/json' -d '{"x":100,"y":200}'
+
+curl -s -X POST http://cuactl:8000/cuactl/scroll \
+  -H 'Content-Type: application/json' -d '{"dx":0,"dy":-3}'
+
+curl -s -X POST http://cuactl:8000/cuactl/drag \
+  -H 'Content-Type: application/json' \
+  -d '{"from_x":10,"from_y":10,"to_x":500,"to_y":500}'
+```
 
 ### Keyboard
-- `cuactl type "text to type"` — Type text (supports Unicode)
-- `cuactl press_key KEY` — Press a key (e.g., "enter", "escape", "tab", "F5")
+```bash
+curl -s -X POST http://cuactl:8000/cuactl/type \
+  -H 'Content-Type: application/json' -d '{"text":"hello world"}'
 
-### Deterministic Operations (no screenshot needed)
-- `cuactl list-apps` — List running applications with windows
-- `cuactl list-installed-apps` — List all installed applications
-- `cuactl app-info "AppName"` — Get detailed app info (PID, path, window rect)
-- `cuactl app-position "AppName"` — Get window position only
-- `cuactl open-app "AppName"` — Open/activate an application
-- `cuactl close-app "AppName"` — Close an application
-
-## Workflow Best Practices
-
-### 1. Always check current state first
-Before any action, take a screenshot or use deterministic ops to understand the current desktop state.
-
-### 2. Prefer deterministic ops over screenshots
-When you just need to open an app or find where it is, use `list-apps` / `app-info` / `open-app` instead of screenshot + click. This is faster and more reliable.
-
-### 3. Typical workflow
-```
-1. cuactl list-apps              # See what's running
-2. cuactl open-app "Chrome"      # Activate the browser
-3. cuactl capture                # Screenshot to see the page
-4. [Analyze screenshot, plan next action]
-5. cuactl click 500 300          # Click where needed
-6. cuactl type "search query"    # Type text
-7. cuactl press_key "enter"      # Press Enter
+curl -s -X POST http://cuactl:8000/cuactl/press_key \
+  -H 'Content-Type: application/json' -d '{"key":"enter"}'
+# key examples: enter, escape, tab, F5, space, backspace, up/down/left/right
 ```
 
-### 4. Coordinate system
-- Screenshots are in screen coordinates (origin at top-left of primary monitor)
-- Use `app-position` to find exactly where a window is on screen
-- Click coordinates are relative to the whole screen, not the window
+### Deterministic operations (no screenshot needed — prefer these)
+```bash
+curl -s -X POST http://cuactl:8000/cuactl/list-apps
+curl -s -X POST http://cuactl:8000/cuactl/list-installed-apps
 
-### 5. Error handling
-- If a command fails, read the error message carefully
-- Common issues: app not running, wrong coordinates, permission denied
-- Use `cuactl list-apps` to verify app state before interacting
+curl -s -X POST http://cuactl:8000/cuactl/app-info \
+  -H 'Content-Type: application/json' -d '{"app_name":"Chrome"}'
 
-### 6. Safety
-- Only perform actions the user explicitly requested
-- If unsure, ask the user before clicking or typing
-- Never type passwords or sensitive information unless explicitly asked
+curl -s -X POST http://cuactl:8000/cuactl/app-position \
+  -H 'Content-Type: application/json' -d '{"app_name":"Chrome"}'
+
+curl -s -X POST http://cuactl:8000/cuactl/open-app \
+  -H 'Content-Type: application/json' -d '{"app_name":"Chrome"}'
+
+curl -s -X POST http://cuactl:8000/cuactl/close-app \
+  -H 'Content-Type: application/json' -d '{"app_name":"Chrome"}'
+```
+
+## Workflow
+
+1. **Check state first.** `capture` or `list-apps` before any click.
+2. **Prefer deterministic ops.** `list-apps` / `app-info` / `open-app` are
+   faster and more reliable than screenshot + click.
+3. **Typical flow:** `list-apps` → `open-app "Chrome"` → `capture` →
+   analyze the screenshot → `click X Y` → `type "..."` → `press_key "enter"`.
+4. **Coordinates** are absolute screen coords, origin top-left of the
+   primary monitor. Use `app-position` to locate a window first.
+5. **Safety.** Only perform actions the user explicitly requested. Never
+   type passwords or sensitive data unless explicitly asked. When unsure,
+   ask first.
+
+## Prerequisites (the user must satisfy these)
+
+Before any command can succeed, **all** of these must be true:
+
+1. **Client Control Plane is running on the Windows PC.** Installed via
+   `client/install.bat`; lives in the system tray. The tray icon shows
+   connection status.
+2. **Permission level is not `off`.** Set via the tray menu to `readonly`
+   (screen + read ops), `full` (also click/type/open/close), or `strict`
+   (full + per-action tray confirmation).
+3. **Network reachability.** The `cuactl` container must be able to reach
+   `CUACTL_ENDPOINT` (the Windows PC's IP:9111). Recommended: Tailscale /
+   ZeroTier mesh. A bare public IP without HTTPS pinning is unsafe.
+4. **`CUACTL_TOKEN` matches** the token generated on the Client side.
+
+If any is missing, calls return `{"success": false, "error": "..."}` — see
+the table below. Do **not** retry in a loop; diagnose and surface the issue.
+
+## Troubleshooting (diagnose, don't hallucinate)
+
+| Symptom | Likely cause | What to tell the user |
+|---|---|---|
+| `curl: (6) Could not resolve host: cuactl` | cuactl container not running, or you're not on cua-net | "cuactl 服务没启动。在服务器上运行 `docker compose up -d cuactl`。" |
+| `{"success": false, "error": "client PC unreachable at ..."}` | Windows PC offline / Control Plane not running / network down | "你的 Windows 客户端 Control Plane 没有启动或网络不通。请检查托盘图标是否在运行，并确认 `CUACTL_ENDPOINT` 指向的 IP 可达。" |
+| HTTP 403 Access Denied | Permission level set to `off` on the client | "请在 Windows 托盘菜单把权限级别从 OFF 切到 readonly 或 full。" |
+| HTTP 401 Unauthorized | `CUACTL_TOKEN` mismatch between server and client | "Token 不匹配。重新生成客户端 Token 并更新服务端 `.env` 的 `CUACTL_TOKEN`，然后 `docker compose up -d` 重启。" |
+| `health` returns `token_configured: false` | `CUACTL_TOKEN` env not set in cuactl container | "cuactl 容器没配 token。检查 `.env` 里 `CUACTL_TOKEN` 是否设置，然后 `docker compose up -d cuactl`。" |
+| Screenshot returns but looks wrong / all black | Screen locked / UAC dialog foreground / multi-monitor coords off | Ask the user to unlock the screen or use `app-position` to find the window first. |
+
+**Never** respond to a failure by installing packages, switching hosts, or
+inventing alternative commands. Diagnose with the table above, or surface
+the raw error to the user.
+
+## Quick self-check (run when asked "can you control my PC?")
+
+Instead of claiming readiness, verify each layer:
+
+```bash
+# 1. cuactl service alive?
+curl -s http://cuactl:8000/health
+
+# 2. Windows PC reachable + Control Plane running?
+curl -s -X POST http://cuactl:8000/cuactl/list-apps
+```
+
+- If step 1 fails → cuactl service layer broken. Tell user to restart it.
+- If step 1 ok but step 2 returns `{"success": false}` → client PC layer
+  broken. Tell user the specific error from the table above.
+- If both ok → report the actual endpoint and permission level, then
+  proceed with the user's requested action.
+
+**Do not claim "已就绪" without running these checks.** Honest diagnostics
+beat confident-sounding fabrication.

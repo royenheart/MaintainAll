@@ -4,10 +4,15 @@
 # container at runtime via _configure_hermes_env(), filling in the correct
 # model.provider / model.default / model.base_url from PROVIDER_REGISTRY.
 # The values below are fallbacks used only if deploy.py hasn't run yet.
+# deploy.py only patches the `model:` block; everything else here is
+# preserved as-is across deploys.
 #
 # In headless mode, Hermes Agent does not run its own gateway.
 # It receives messages from AstrBot via the Hermes Hub (port 8420).
-# Computer Use operations go through cuactl to the Client Control Plane.
+# Desktop control goes through the `cuactl` HTTP microservice (a separate
+# container in docker-compose.yml), reached at http://cuactl:8000 over the
+# cua-net bridge network. Hermes Agent's LLM calls it via curl in the
+# terminal tool; the system_prompt_append below teaches it the curl shapes.
 # API keys live in ~/.hermes/.env (written by deploy.py).
 
 model:
@@ -16,13 +21,17 @@ model:
   base_url: ""
 
 tools:
+  # hermes's native computer_use backend (cua-driver via MCP stdio) is NOT
+  # used in this deployment — the cloud server has no desktop for
+  # cua-driver to control. Disable it so hermes doesn't try to spawn
+  # cua-driver and fail. Desktop control flows through the terminal tool
+  # + system_prompt_append + the cuactl HTTP service instead.
   computer_use:
-    enabled: true
-    cli_path: "/usr/local/bin/cuactl"
-    endpoint: "${CUACTL_ENDPOINT}"
-    token: "${CUACTL_TOKEN}"
-  terminal:
     enabled: false
+  # terminal tool MUST be enabled — hermes LLM uses it to curl the cuactl
+  # HTTP service. Without it the system_prompt_append below is dead text.
+  terminal:
+    enabled: true
   browser:
     enabled: false
   web_search:
@@ -32,21 +41,57 @@ agent:
   max_iterations: 30
   tool_timeout_seconds: 120
   system_prompt_append: |
-    You have access to a remote Windows desktop via the `computer_use` tool.
-    Use the `cuactl` CLI commands to control it:
+    You have access to a remote Windows desktop through the `cuactl` HTTP
+    service. Call it via curl in the terminal tool. The service is on the
+    docker network at http://cuactl:8000 — no auth needed inside the
+    network (auth happens between cuactl and the Windows Client Control
+    Plane).
 
-    - `cuactl capture` — take a screenshot
-    - `cuactl click X Y` — click at coordinates
-    - `cuactl type "text"` — type text
-    - `cuactl press_key KEY` — press a key
-    - `cuactl list-apps` — list running applications
-    - `cuactl open-app "AppName"` — open/activate an application
-    - `cuactl app-info "AppName"` — get application details
-    - `cuactl app-position "AppName"` — get window position
+    ## Endpoints (all return JSON: {"success": bool, "error": str, ...})
 
-    Before clicking, always take a screenshot first to understand the current state.
-    Use deterministic operations (list-apps, app-info, open-app) when possible
-    to avoid unnecessary screenshot+click cycles.
+    ### Screen
+    - `curl -s -X POST http://cuactl:8000/cuactl/capture`
+      → {"success": true, "base64": "...", "file_path": "/tmp/..."}
+    - `curl -s -X POST http://cuactl:8000/cuactl/screen-size`
+
+    ### Mouse
+    - `curl -s -X POST http://cuactl:8000/cuactl/click -H 'Content-Type: application/json' -d '{"x":100,"y":200,"button":"left"}'`
+    - `curl -s -X POST http://cuactl:8000/cuactl/move -H 'Content-Type: application/json' -d '{"x":100,"y":200}'`
+    - `curl -s -X POST http://cuactl:8000/cuactl/scroll -H 'Content-Type: application/json' -d '{"dx":0,"dy":-3}'`
+    - `curl -s -X POST http://cuactl:8000/cuactl/drag -H 'Content-Type: application/json' -d '{"from_x":10,"from_y":10,"to_x":500,"to_y":500}'`
+
+    ### Keyboard
+    - `curl -s -X POST http://cuactl:8000/cuactl/type -H 'Content-Type: application/json' -d '{"text":"hello world"}'`
+    - `curl -s -X POST http://cuactl:8000/cuactl/press_key -H 'Content-Type: application/json' -d '{"key":"enter"}'`
+
+    ### Deterministic ops (no screenshot needed)
+    - `curl -s -X POST http://cuactl:8000/cuactl/list-apps`
+    - `curl -s -X POST http://cuactl:8000/cuactl/list-installed-apps`
+    - `curl -s -X POST http://cuactl:8000/cuactl/app-info -H 'Content-Type: application/json' -d '{"app_name":"Chrome"}'`
+    - `curl -s -X POST http://cuactl:8000/cuactl/app-position -H 'Content-Type: application/json' -d '{"app_name":"Chrome"}'`
+    - `curl -s -X POST http://cuactl:8000/cuactl/open-app -H 'Content-Type: application/json' -d '{"app_name":"Chrome"}'`
+    - `curl -s -X POST http://cuactl:8000/cuactl/close-app -H 'Content-Type: application/json' -d '{"app_name":"Chrome"}'`
+
+    ### Health check
+    - `curl -s http://cuactl:8000/health` → {"status":"ok","endpoint":"...","token_configured":true}
+
+    ## Workflow
+    1. Before clicking, call `capture` or a deterministic op to understand
+       current state.
+    2. Prefer deterministic ops (list-apps, app-info, open-app) over
+       screenshot+click — faster and more reliable.
+    3. Typical flow: list-apps → open-app "Chrome" → capture → analyze →
+       click X Y → type "..." → press_key "enter".
+    4. Coordinates are absolute screen coords, origin top-left of primary
+       monitor. Use app-position to find a window first.
+
+    ## Error handling
+    - `{"success": false, "error": "client PC unreachable at ..."}` → the
+      Windows PC is offline or the Client Control Plane isn't running.
+      Tell the user; do NOT retry in a loop.
+    - `{"success": false, "error": "HTTP 403..."}` → permission level is
+      `off` on the client tray. Ask the user to switch to readonly/full.
+    - Never invent substitute commands. Only use the endpoints above.
 
 server:
   enabled: true

@@ -47,6 +47,9 @@ services:
       - TZ=Asia/Shanghai
     extra_hosts:
       - "host.docker.internal:host-gateway"
+    depends_on:
+      cuactl:
+        condition: service_healthy
     networks:
       - cua-net
 
@@ -76,9 +79,6 @@ services:
       - HERMES_PORT=8420
       - HERMES_ACCESS_TOKEN=${HERMES_ACCESS_TOKEN}
       - HERMES_BINARY=hermes
-      # CUA settings
-      - CUACTL_ENDPOINT=${CUACTL_ENDPOINT}
-      - CUACTL_TOKEN=${CUACTL_TOKEN:-}
       - TZ=Asia/Shanghai
     deploy:
       resources:
@@ -90,6 +90,29 @@ services:
       - no-new-privileges:true
     tmpfs:
       - /tmp:exec
+    depends_on:
+      cuactl:
+        condition: service_healthy
+    networks:
+      - cua-net
+
+  # ================================================================
+  # CUA Relay — HTTP microservice bridging agents → Windows PC
+  # ================================================================
+  # Exposes /cuactl/<command> endpoints consumed by both hermes-api and
+  # astrbot over the cua-net bridge network. Forwards each call as HTTPS
+  # + Bearer Token to the Client Control Plane on the Windows PC.
+  # No host port mapping — only intra-network access is needed.
+  cuactl:
+    build:
+      context: .
+      dockerfile: ./server/cua-relay/Dockerfile.http
+    container_name: cua-cuactl
+    restart: unless-stopped
+    environment:
+      - CUACTL_ENDPOINT=${CUACTL_ENDPOINT}
+      - CUACTL_TOKEN=${CUACTL_TOKEN:-}
+      - TZ=Asia/Shanghai
     networks:
       - cua-net
 

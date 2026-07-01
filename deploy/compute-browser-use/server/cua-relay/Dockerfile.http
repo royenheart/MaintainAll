@@ -1,0 +1,30 @@
+# CUA Relay — HTTP microservice image.
+#
+# Runs relay_server.py as a long-lived FastAPI service exposing
+# /cuactl/<command> endpoints. Other containers (hermes-api, astrbot)
+# call it over the docker network; it in turn forwards each call as HTTPS
+# to the remote Client Control Plane on the Windows PC.
+#
+# Build context should be the repo root (deploy/compute-browser-use/) so
+# the COPY path below resolves. See docker-compose.yml `cuactl` service.
+
+FROM python:3.12-slim
+
+WORKDIR /app
+
+COPY server/cua-relay/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt
+
+COPY server/cua-relay/relay_server.py /app/relay_server.py
+
+# Health probe: FastAPI /health endpoint. Docker compose uses it for
+# depends_on healthy checks without coupling to the Client Control Plane
+# being reachable (that's an application-level concern, surfaced in the
+# /health response body, not the HTTP status).
+HEALTHCHECK --interval=30s --timeout=5s --start-period=5s --retries=3 \
+    CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=3).status==200 else 1)"
+
+EXPOSE 8000
+
+# --reload off in production; flip on for local dev if needed.
+CMD ["uvicorn", "relay_server:app", "--host", "0.0.0.0", "--port", "8000"]
