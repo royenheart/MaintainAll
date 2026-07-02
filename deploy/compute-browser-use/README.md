@@ -15,7 +15,7 @@
 │  │                                                               │   │
 │  │  ┌──────────┐ ┌───────────────┐ ┌────────────────────────┐   │   │
 │  │  │ CUA Core │ │ Deterministic │ │  REST API Server       │   │   │
-  │  │  │ (截图/点击│ │  Ops          │ │  (FastAPI :9111)       │   │   │
+│  │  │ (截图/点击│ │  Ops          │ │  (FastAPI :9111)       │   │   │
 │  │  │ /键盘)   │ │ (list_apps/   │ │                        │   │   │
 │  │  │          │ │  open_app/    │ │  POST /api/v1/cua/*    │   │   │
 │  │  │          │ │  app_info...) │ │  POST /api/v1/dops/*   │   │   │
@@ -37,36 +37,39 @@
 │                           云端服务器                                  │
 │                                                                      │
 │  ┌──────────────────────────────────────────────────────────────┐   │
-│  │                     docker-compose                            │   │
+│  │                     docker-compose  (cua-net)                 │   │
 │  │                                                               │   │
-│  │  ┌──────────┐    ┌────────────────┐    ┌───────────────────┐  │   │
-│  │  │ AstrBot  │───▶│ Hermes Bridge  │───▶│  Hermes Agent     │  │   │
-│  │  │(最小部署)│    │ (消息转发服务)  │    │  (headless mode)  │  │   │
-│  │  │          │    │                │    │                   │  │   │
-│  │  │ 消息平台 │    │ AstrBot Plugin │    │ Agent Loop +      │  │   │
-│  │  │ Pipeline │    │ → Hermes API   │    │ computer_use tool │  │   │
-│  │  └──────────┘    └────────────────┘    └─────────┬─────────┘  │   │
-│  │                                                   │            │   │
-│  │  ┌────────────────────────────────────────────────┼────────┐   │   │
-│  │  │    Client Control Server (cua-relay)           │        │   │   │
-│  │  │                                                │        │   │   │
-│  │  │  对外暴露为 Hermes Agent 的 CLI 命令/工具       │        │   │   │
-│  │  │  (非 MCP，而是 shell 命令风格)                  │        │   │   │
-│  │  │                                                │        │   │   │
-│  │  │  cuactl list-apps                              │        │   │   │
-│  │  │  cuactl open-app "Chrome"                      │        │   │   │
-│  │  │  cuactl capture                                │        │   │   │
-│  │  │  cuactl click 100 200                          │◀───────┘   │   │
-│  │  │  cuactl type "hello"                           │            │   │
-│  │  └──────────────────────┬─────────────────────────┘            │   │
-│  │                         │ HTTPS + Token                        │   │
-│  └─────────────────────────┼──────────────────────────────────────┘   │
-│                            │                                          │
-└────────────────────────────┼──────────────────────────────────────────┘
-                             │
-                             ▼
-                    Client Control Plane
+│  │  ┌──────────┐         ┌────────────────┐    ┌──────────────┐ │   │
+│  │  │ AstrBot  │──┐      │  Hermes Hub    │    │   cuactl     │ │   │
+│  │  │(最小部署)│  │      │  (hermes-api)  │    │  HTTP 服务    │ │   │
+│  │  │          │  │      │                │    │  FastAPI:8000│ │   │
+│  │  │ 消息平台 │  ├─────▶│ Hermes Agent   │    │  独立容器     │ │   │
+│  │  │ Pipeline │  │      │ (headless mode)│    │              │ │   │
+│  │  │          │  │      │                │    │ /cuactl/*    │ │   │
+│  │  │ LLM +    │  │      │ terminal_tool  │    │ /health      │ │   │
+│  │  │ shell    │  │      │   curl ...     │    │              │ │   │
+│  │  └─────┬────┘  │      └───────┬────────┘    └──────┬───────┘ │   │
+│  │        │       │              │                    │         │   │
+│  │        │       │              │  curl http://      │         │   │
+│  │        │       │              │  cuactl:8000/      │         │   │
+│  │        │       └─────────────►│────────────────────►│         │   │
+│  │        │                      │                    │         │   │
+│  │        └────────────────────────────────────────────►         │   │
+│  │           curl http://cuactl:8000/                │         │   │
+│  │                                                   │         │   │
+│  │  ┌────────────────────────────────────────────────┼───────┐ │   │
+│  │  │    Hermes Bridge (可选, --profile bridge)      │       │ │   │
+│  │  │    AstrBot → Hermes 备用转发通道               │       │ │   │
+│  │  └────────────────────────────────────────────────┼───────┘ │   │
+│  └───────────────────────────────────────────────────┼─────────┘   │
+│                                                      │             │
+└──────────────────────────────────────────────────────┼─────────────┘
+                                                       │
+                                                       ▼
+                                              Client Control Plane
 ```
+
+**调用关系**：AstrBot 和 Hermes Hub 都通过 `curl http://cuactl:8000/cuactl/<cmd>` 调用 cuactl HTTP 服务（走 docker 内网 `cua-net`，不对外暴露端口）。cuactl 服务再把每个请求转发为 HTTPS + Bearer Token 调用 Client Control Plane。两者是平级消费者，不存在 AstrBot → Hermes → cuactl 的串联。
 
 ---
 
@@ -171,25 +174,28 @@ docker compose logs -f hermes-agent
 
 Hermes Agent 在 headless 模式下运行（不使用其内置 gateway），通过以下方式与系统交互：
 
-### 1. 消息通道：AstrBot → Hermes Bridge → Hermes Agent
+### 1. 消息通道：AstrBot → Hermes Hub → Hermes Agent
 
 ```
-IM平台 → AstrBot Pipeline → hermes_forward plugin → Hermes Bridge HTTP → Hermes Agent run_agent.py
+IM平台 → AstrBot Pipeline → hermes_connector plugin → Hermes Hub (:8420) → Hermes Agent run_agent.py
 ```
 
-### 2. Computer Use 工具：Hermes Agent → cua-relay → Client
+### 2. 桌面控制：AstrBot / Hermes → cuactl HTTP 服务 → Client
 
-Hermes Agent 的 `computer_use` tool 通过 `cuactl` CLI 调用 Client Control Plane：
+AstrBot 和 Hermes Agent 都通过 `curl` 调用独立运行的 cuactl HTTP 微服务容器，
+cuactl 再把请求转发为 HTTPS + Token 调用 Client Control Plane：
 
 ```bash
-# Hermes Agent 内部调用
-cuactl --endpoint https://client-ip:9111 --token $CLIENT_TOKEN capture
-cuactl click 100 200
-cuactl type "Hello World"
-cuactl list-apps
+# AstrBot 或 Hermes Agent 内部调用（terminal_tool / shell_tool 里跑 curl）
+curl -s -X POST http://cuactl:8000/cuactl/capture
+curl -s -X POST http://cuactl:8000/cuactl/click -H 'Content-Type: application/json' -d '{"x":100,"y":200}'
+curl -s -X POST http://cuactl:8000/cuactl/type -H 'Content-Type: application/json' -d '{"text":"Hello World"}'
+curl -s -X POST http://cuactl:8000/cuactl/list-apps
 ```
 
-`cuactl` 是一个轻量 Python CLI，将参数转换为对 Client Control Plane 的 HTTP 请求。
+`cuactl` 是独立 Docker 容器（FastAPI 服务，端口 8000，仅 cua-net 内网可达），
+配置通过 `CUACTL_ENDPOINT` 和 `CUACTL_TOKEN` 环境变量注入。
+宿主机上另有一份 CLI 模式的 `~/.local/bin/cuactl`（同一份代码）供 codex/opencode 等宿主机 agent 调试用。
 
 ---
 

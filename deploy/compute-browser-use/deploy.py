@@ -1644,7 +1644,7 @@ def print_service_summary(bind_address: str, has_llm: bool):
         ("AstrBot Dashboard", 6185, "/", "Web UI: platform + plugins + LLM config"),
         ("Hermes Hub", 8420, "/health", "AI Agent (Hermes CLI + REST API + SSE)"),
         ("Hermes Bridge", 8421, "/health", "Fallback forwarding (--profile bridge)"),
-        ("cuactl (host)", None, None, "Desktop control relay (codex + hermes)"),
+        ("cuactl HTTP", None, None, "Desktop control relay (cua-net only, :8000)"),
         ("Codex CLI (host)", None, None, "Coding agent (npm global)"),
     ]
     health = {}
@@ -2641,6 +2641,21 @@ print('hapi connector schema patched')
     click.echo(
         "Verify: open http://localhost:6185 → Plugins → Hermes控制器 / HAPI控制器"
     )
+
+
+@cli.command()
+@click.option("--bind", "-b", default="0.0.0.0", help="Server bind address")
+@click.pass_context
+def summary(ctx, bind):
+    """Print the service summary (addresses, status, hints) without deploying.
+
+    Re-runs the same post-deploy summary shown at the end of `deploy.py
+    server`. Use this to look up dashboard URLs, plugin config, or
+    troubleshooting steps at any time without re-running the full deploy.
+    """
+    data = read_env()
+    has_llm = bool(_resolve_providers_from_env(data))
+    print_service_summary(bind, has_llm)
 
 
 if __name__ == "__main__":
