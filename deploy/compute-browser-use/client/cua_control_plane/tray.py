@@ -163,7 +163,7 @@ class ControlPlaneTray:
                 no_window = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
                 subprocess.Popen(
                     ["powershell", "-NoProfile", "-Command",
-                     f"Start-Process '{binary}' -ArgumentList 'autostart','kick' -Verb RunAs -Wait"],
+                     f"Start-Process '{binary}' -ArgumentList 'autostart','kick' -Verb RunAs -WindowStyle Hidden -Wait"],
                     shell=False,
                     creationflags=no_window,
                 )

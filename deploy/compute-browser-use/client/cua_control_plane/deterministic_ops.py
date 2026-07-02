@@ -504,7 +504,7 @@ public class Win32 {{
         exit 0
     }}
 }}
-Start-Process "{app_name}" -ErrorAction Stop
+Start-Process "{app_name}" -WindowStyle Hidden -ErrorAction Stop
 Write-Output "launched"
 """
     try:

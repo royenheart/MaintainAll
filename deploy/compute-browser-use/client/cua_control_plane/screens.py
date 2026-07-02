@@ -16,6 +16,10 @@ from typing import Any
 
 logger = logging.getLogger(__name__)
 
+# Suppress the console window that Windows allocates for each child process
+# when the parent has no console (pythonw.exe). 0 on POSIX.
+_NO_WINDOW = subprocess.CREATE_NO_WINDOW if os.name == "nt" else 0
+
 
 class RECT(ctypes.Structure):
     _fields_ = [
@@ -86,6 +90,7 @@ def _get_screens_linux() -> list[dict[str, Any]]:
         out = subprocess.run(
             ["xrandr", "--query"],
             capture_output=True, text=True, timeout=5,
+            creationflags=_NO_WINDOW,
         )
         current = {}
         for line in out.stdout.split("\n"):

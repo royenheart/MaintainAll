@@ -2186,9 +2186,9 @@ def _deploy_client_windows(address):
     except Exception as e:
         click.secho(f"  Config error: {e}", fg="red")
 
-    click.secho("[4/6] Creating startup shortcut...", fg="yellow")
+    click.secho("[4/6] Creating startup task (background, survives reboot)...", fg="yellow")
     # Resolve pythonw.exe (windowless Python) next to python.exe so the
-    # autostart shortcut does NOT spawn a console window on reboot.
+    # autostart does NOT spawn a console window on reboot.
     # Falling back to python.exe + WindowStyle=7 (minimized) if pythonw is absent.
     ps_resolve_pythonw = (
         "$pw = (Get-Command pythonw.exe -ErrorAction SilentlyContinue).Source; "
@@ -2199,11 +2199,63 @@ def _deploy_client_windows(address):
         "  } "
         "}"
     )
+    # Register a Scheduled Task that runs at user logon, fully in the background.
+    # This is more robust than a Startup-folder .lnk: the task survives terminal
+    # closure (no console attached) and can be managed via Task Scheduler UI.
+    # We ALSO keep the Startup .lnk as a fallback in case Task Scheduler is disabled.
+    task_name = "CUA-Control-Plane"
+    ps_register_task = (
+        ps_resolve_pythonw + "; "
+        f"$taskName = '{task_name}'; "
+        # Build the command to launch
+        "$exe = if ($pw) { $pw } else { 'python.exe' }; "
+        "$arg = '-m cua_control_plane.main'; "
+        # Delete existing task if present (idempotent re-deploy)
+        f"Unregister-ScheduledTask -TaskName $taskName -Confirm:$false -ErrorAction SilentlyContinue; "
+        # Action: run pythonw/python with -m cua_control_plane.main
+        "$action = New-ScheduledTaskAction -Execute $exe -Argument $arg "
+        f"-WorkingDirectory '{client_dir}'; "
+        # Trigger: at user logon
+        "$trigger = New-ScheduledTaskTrigger -AtLogOn; "
+        # Settings: allow start on battery, don't stop on idle, restart on failure
+        "$settings = New-ScheduledTaskSettingsSet "
+        "-AllowStartIfOnBatteries -DontStopIfGoingOnBatteries "
+        "-StartWhenAvailable -RestartCount 3 -RestartInterval (New-TimeSpan -Minutes 1); "
+        # Principal: run as current user, no elevation (tray icon needs user session)
+        "$principal = New-ScheduledTaskPrincipal -UserId $env:USERNAME "
+        "-LogonType Interactive -RunLevel Limited; "
+        # Register (may fail with Access Denied under restricted group policy)
+        "try { "
+        "Register-ScheduledTask -TaskName $taskName -Action $action "
+        "-Trigger $trigger -Settings $settings -Principal $principal -Force | Out-Null; "
+        "Write-Host '  Scheduled task registered (logon, background)' "
+        "} catch { "
+        "Write-Host ('  WARN: Task Scheduler registration failed: ' + $_.Exception.Message); "
+        "Write-Host '  Falling back to Startup-folder shortcut only' "
+        "}"
+    )
+    task_result = subprocess.run(
+        ["powershell", "-NoProfile", "-ExecutionPolicy", "Bypass", "-Command", ps_register_task],
+        cwd=str(client_dir),
+        check=False,
+        timeout=15,
+        capture_output=True, text=True,
+    )
+    if task_result.stdout:
+        for line in task_result.stdout.strip().splitlines():
+            click.echo(f"  {line}")
+    if "WARN" in (task_result.stdout or ""):
+        click.secho("  (Startup shortcut will still handle autostart)", fg="cyan")
+    # Also keep the Startup .lnk as a fallback (in case Task Scheduler is disabled).
+    # WindowStyle=7 (minimized) is set on BOTH branches for defense-in-depth:
+    # - pythonw.exe: no console anyway, but WindowStyle=7 is harmless
+    # - python.exe fallback: minimized so any flash is less visible
     ps_cmd = (
         ps_resolve_pythonw + "; "
         '$ws = New-Object -ComObject WScript.Shell; '
         '$sc = $ws.CreateShortcut([Environment]::GetFolderPath("Startup") + "\\CUA-Control-Plane.lnk"); '
-        'if ($pw) { $sc.TargetPath = $pw } else { $sc.TargetPath = "python.exe"; $sc.WindowStyle = 7 }; '
+        'if ($pw) { $sc.TargetPath = $pw; $sc.WindowStyle = 7 } '
+        'else { $sc.TargetPath = "python.exe"; $sc.WindowStyle = 7 }; '
         '$sc.Arguments = "-m cua_control_plane.main"; '
         f'$sc.WorkingDirectory = "{client_dir}"; '
         "$sc.Save()"
@@ -2214,7 +2266,7 @@ def _deploy_client_windows(address):
         check=False,
         timeout=10,
     )
-    click.secho("  Startup shortcut created (windowless)", fg="green")
+    click.secho("  Startup task + fallback shortcut created (windowless)", fg="green")
 
     click.secho("[5/6] Stopping existing instance...", fg="yellow")
     ps_kill = (
@@ -2242,7 +2294,7 @@ def _deploy_client_windows(address):
         "  if ($py) { $cand = Join-Path (Split-Path $py) 'pythonw.exe'; "
         "    if (Test-Path $cand) { $pw = $cand } } }; "
         "if ($pw) { "
-        f'  $p = Start-Process $pw -ArgumentList "-m","cua_control_plane.main" -WorkingDirectory "{client_dir}" -PassThru'
+        f'  $p = Start-Process $pw -ArgumentList "-m","cua_control_plane.main" -WorkingDirectory "{client_dir}" -WindowStyle Hidden -PassThru'
         "; if ($p) { Write-Host ('  pid=' + $p.Id) } else { Write-Host '  WARN: Start-Process returned null' } "
         "} else { "
         f'  $p = Start-Process python.exe -ArgumentList "-m","cua_control_plane.main" -WorkingDirectory "{client_dir}" -WindowStyle Hidden -PassThru'
