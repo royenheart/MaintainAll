@@ -175,7 +175,21 @@ class ControlPlaneTray:
         driver_label = "cua-driver" if cua_ok else "native"
         uia_label = "UIAccess ON" if uia_ok else "UIAccess OFF"
 
+        def _open_settings(icon, item):
+            """Open the /settings web UI in the default browser."""
+            import webbrowser
+            from .config import get_config as _get_cfg
+            cfg = _get_cfg()
+            host = cfg.api_host or "127.0.0.1"
+            port = cfg.api_port or 9111
+            url = f"http://{host}:{port}/settings"
+            try:
+                webbrowser.open(url)
+            except Exception:
+                pass
+
         items = [
+            pystray.Menu.SEPARATOR,
             pystray.MenuItem(
                 f"Permission: {cfg.permission_level.upper()}  |  {driver_label}  |  {uia_label}",
                 None,
@@ -218,6 +232,7 @@ class ControlPlaneTray:
             ))
             items.append(pystray.Menu.SEPARATOR)
         items += [
+            pystray.MenuItem("Open Settings...", _open_settings),
             pystray.Menu.SEPARATOR,
             _make_perm_item("Off (Deny All)", "off"),
             _make_perm_item("Readonly (View Only)", "readonly"),

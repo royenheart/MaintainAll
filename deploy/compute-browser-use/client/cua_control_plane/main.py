@@ -20,6 +20,47 @@ if sys.stderr is None:
 if sys.stdout is None:
     sys.stdout = io.TextIOWrapper(open(os.devnull, 'w'))
 
+# Enable per-monitor DPI awareness as early as possible.
+# Without this, Win32 APIs (GetSystemMetrics, EnumDisplayMonitors,
+# GetMonitorInfoW) return LOGICAL pixels (scaled by DPI factor), while
+# PIL.ImageGrab returns PHYSICAL pixels. This mismatch breaks screen
+# coordinate mapping (click positions, region overlays, screenshots)
+# on multi-monitor setups where one monitor has DPI scaling (e.g. 200%).
+# With DPI awareness, both Win32 and PIL return physical pixels consistently.
+if os.name == "nt":
+    try:
+        ctypes = __import__("ctypes")
+        user32 = ctypes.windll.user32
+        _dpi_set = False
+        # Method 1: SetProcessDpiAwarenessContext (Win10 1607+)
+        # PER_MONITOR_AWARE_V2 = -4. This handle is passed as a pointer-sized
+        # integer, so we must set argtypes/restype correctly (default c_int
+        # truncates on 64-bit, causing failure).
+        try:
+            user32.SetProcessDpiAwarenessContext.argtypes = [ctypes.c_void_p]
+            user32.SetProcessDpiAwarenessContext.restype = ctypes.c_bool
+            if user32.SetProcessDpiAwarenessContext(ctypes.c_void_p(-4)):
+                _dpi_set = True
+        except (AttributeError, OSError, ValueError):
+            pass
+        # Method 2: SetProcessDpiAwareness (Win 8.1+), PER_MONITOR_AWARE = 2
+        if not _dpi_set:
+            try:
+                hresult = ctypes.windll.shcore.SetProcessDpiAwareness(2)
+                if hresult == 0:  # S_OK
+                    _dpi_set = True
+            except (AttributeError, OSError):
+                pass
+        # Method 3: SetProcessDPIAware (Vista+), system DPI aware (fallback)
+        if not _dpi_set:
+            try:
+                if user32.SetProcessDPIAware():
+                    _dpi_set = True
+            except (AttributeError, OSError):
+                pass
+    except Exception:
+        pass  # Non-Windows or API unavailable — logical = physical anyway
+
 import argparse
 import asyncio
 import logging

@@ -1,0 +1,630 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>CUA Control Plane — Settings</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { font-family: -apple-system, "Segoe UI", system-ui, sans-serif; background: #1a1a2e; color: #e0e0e0; line-height: 1.6; padding: 20px; }
+  h1 { color: #00d4ff; margin-bottom: 8px; font-size: 1.5em; }
+  .subtitle { color: #888; margin-bottom: 24px; font-size: 0.9em; }
+  .card { background: #16213e; border: 1px solid #0f3460; border-radius: 8px; padding: 20px; margin-bottom: 20px; }
+  .card h2 { color: #00d4ff; font-size: 1.1em; margin-bottom: 12px; border-bottom: 1px solid #0f3460; padding-bottom: 8px; }
+  .preset-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 10px; }
+  .preset-btn { background: #0f3460; border: 2px solid transparent; color: #e0e0e0; padding: 12px; border-radius: 6px; cursor: pointer; font-size: 0.95em; transition: all 0.15s; text-align: center; }
+  .preset-btn:hover { background: #1a4a7a; }
+  .preset-btn.active { border-color: #00d4ff; background: #0a2a4a; }
+  .preset-btn .desc { font-size: 0.75em; color: #888; margin-top: 4px; }
+  .ops-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(180px, 1fr)); gap: 8px; }
+  .op-toggle { display: flex; align-items: center; gap: 8px; background: #0f3460; padding: 8px 12px; border-radius: 6px; cursor: pointer; user-select: none; }
+  .op-toggle:hover { background: #1a4a7a; }
+  .op-toggle input { accent-color: #00d4ff; }
+  .op-toggle .op-name { font-weight: 500; }
+  .op-toggle .op-tag { font-size: 0.7em; padding: 2px 6px; border-radius: 3px; margin-left: auto; }
+  .op-tag.read { background: #2a4a2a; color: #6f6; }
+  .op-tag.write { background: #4a2a2a; color: #f66; }
+  .op-toggle.coord::before { content: "📍"; font-size: 0.8em; opacity: 0.6; }
+  .op-toggle.disabled { opacity: 0.4; }
+  .region-canvas-wrap { position: relative; background: #11111b; border: 1px solid #1a4a7a; border-radius: 6px; overflow: hidden; height: 400px; }
+  .region-canvas-wrap canvas { cursor: crosshair; display: block; }
+  .region-toolbar { display: flex; gap: 8px; align-items: center; margin-bottom: 10px; flex-wrap: wrap; }
+  .region-toolbar .coord-display { font-family: monospace; font-size: 0.85em; color: #00d4ff; background: #0f3460; padding: 4px 10px; border-radius: 4px; min-width: 200px; }
+  .region-toolbar .hint { font-size: 0.8em; color: #888; }
+  .region-actions { margin-top: 12px; display: flex; gap: 10px; align-items: center; flex-wrap: wrap; }
+  .region-status { font-size: 0.85em; color: #888; }
+  .region-status.active { color: #6f6; }
+  .app-section { display: grid; grid-template-columns: 1fr 1fr; gap: 20px; }
+  @media (max-width: 768px) { .app-section { grid-template-columns: 1fr; } }
+  .app-allowlist textarea { width: 100%; background: #0f3460; border: 1px solid #1a4a7a; color: #e0e0e0; padding: 10px; border-radius: 4px; font-family: monospace; font-size: 0.9em; min-height: 120px; resize: vertical; }
+  .app-allowlist textarea:focus { outline: none; border-color: #00d4ff; }
+  .app-allowlist .hint { font-size: 0.8em; color: #888; margin-top: 6px; }
+  .app-list { max-height: 300px; overflow-y: auto; border: 1px solid #1a4a7a; border-radius: 4px; background: #0a1628; }
+  .app-item { padding: 8px 12px; border-bottom: 1px solid #0f3460; cursor: pointer; display: flex; align-items: center; gap: 8px; }
+  .app-item:hover { background: #16213e; }
+  .app-item:last-child { border-bottom: none; }
+  .app-item .add-btn { margin-left: auto; background: #0f3460; border: 1px solid #1a4a7a; color: #00d4ff; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8em; }
+  .app-item .add-btn:hover { background: #1a4a7a; }
+  .app-item .app-name { font-weight: 500; }
+  .app-item .app-title { font-size: 0.8em; color: #888; }
+  .btn { background: #00d4ff; color: #1a1a2e; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; font-weight: 600; font-size: 0.95em; }
+  .btn:hover { background: #00b8d9; }
+  .btn.secondary { background: #0f3460; color: #e0e0e0; }
+  .btn.secondary:hover { background: #1a4a7a; }
+  .btn.danger { background: #e74c3c; color: #fff; }
+  .actions-bar { display: flex; gap: 10px; margin-top: 20px; justify-content: flex-end; }
+  .toast { position: fixed; bottom: 20px; right: 20px; padding: 12px 20px; border-radius: 6px; color: #fff; font-weight: 500; z-index: 1000; opacity: 0; transition: opacity 0.3s; pointer-events: none; }
+  .toast.show { opacity: 1; }
+  .toast.success { background: #27ae60; }
+  .toast.error { background: #e74c3c; }
+  .refresh-btn { background: transparent; border: 1px solid #1a4a7a; color: #888; padding: 4px 10px; border-radius: 4px; cursor: pointer; font-size: 0.8em; float: right; }
+  .refresh-btn:hover { color: #00d4ff; border-color: #00d4ff; }
+  .mode-indicator { display: inline-block; padding: 2px 8px; border-radius: 3px; font-size: 0.8em; font-weight: 600; }
+  .mode-indicator.preset { background: #2a4a6a; color: #6cf; }
+  .mode-indicator.custom { background: #4a3a2a; color: #fc6; }
+</style>
+</head>
+<body>
+
+<h1>CUA Control Plane — Settings</h1>
+<div class="subtitle">
+  Fine-grained permission control ·
+  Current mode: <span id="modeIndicator" class="mode-indicator preset">loading...</span>
+</div>
+
+<!-- Section 1: Presets -->
+<div class="card">
+  <h2>Presets <span style="font-weight:normal;font-size:0.85em;color:#888">(selecting a preset resets the operation whitelist)</span></h2>
+  <div class="preset-grid" id="presetGrid">
+    <button class="preset-btn" data-preset="off">Off<span class="desc">Deny all</span></button>
+    <button class="preset-btn" data-preset="readonly">Readonly<span class="desc">View only</span></button>
+    <button class="preset-btn" data-preset="full">Full<span class="desc">All operations</span></button>
+    <button class="preset-btn" data-preset="strict">Strict<span class="desc">Full + confirm</span></button>
+  </div>
+</div>
+
+<!-- Section 2: Operation Whitelist -->
+<div class="card">
+  <h2>Operation Whitelist <span style="font-weight:normal;font-size:0.85em;color:#888">(toggle individual operations — changes mode to "custom")</span></h2>
+  <div class="ops-grid" id="opsGrid"></div>
+</div>
+
+<!-- Section 3: Region Restriction -->
+<div class="card">
+  <h2>Region Restriction <span style="font-weight:normal;font-size:0.85em;color:#888">(drag a rectangle on the screen below — coordinate ops only allowed within it)</span></h2>
+  <div class="region-toolbar">
+    <button class="btn secondary" onclick="regionCapture()">📸 Screenshot</button>
+    <button class="btn secondary" onclick="regionFit()">⊞ Fit</button>
+    <button class="btn secondary" onclick="regionClearDrawing()">✕ Clear Drawing</button>
+    <span class="coord-display" id="regionCoordDisplay">Drag on canvas to draw region</span>
+    <span class="hint">Alt+drag or middle-drag to pan · wheel to zoom</span>
+  </div>
+  <div class="region-canvas-wrap">
+    <canvas id="regionCanvas"></canvas>
+  </div>
+  <div class="region-actions">
+    <button class="btn" onclick="applyRegion()">Apply Region</button>
+    <button class="btn secondary" onclick="clearRegion()">Clear Region</button>
+    <span class="region-status" id="regionStatus">No restriction</span>
+  </div>
+</div>
+
+<!-- Section 4: App Allowlist + Current Apps -->
+<div class="card">
+  <h2>App Allowlist</h2>
+  <div class="app-section">
+    <div class="app-allowlist">
+      <h3 style="font-size:0.95em;margin-bottom:8px;">Allowed Apps <span style="color:#888;font-weight:normal">(one per line, case-insensitive substring match)</span></h3>
+      <textarea id="appAllowlist" placeholder="chrome&#10;vscode&#10;explorer"></textarea>
+      <div class="hint">When non-empty, coordinate operations are only allowed on windows belonging to these apps.</div>
+      <div style="margin-top:8px;"><button class="btn secondary" onclick="applyApps()">Apply App Allowlist</button></div>
+    </div>
+    <div>
+      <h3 style="font-size:0.95em;margin-bottom:8px;">Current Running Apps <button class="refresh-btn" onclick="loadApps()">↻ Refresh</button></h3>
+      <div class="app-list" id="appList"><div style="padding:12px;color:#888;text-align:center;">Loading...</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- Section 5: Screenshot Compression -->
+<div class="card">
+  <h2>Screenshot Compression <span style="font-weight:normal;font-size:0.85em;color:#888">(affects capture response size)</span></h2>
+  <div style="display:flex;gap:30px;align-items:center;flex-wrap:wrap;">
+    <div>
+      <label for="captureFormat" style="font-size:0.8em;color:#888;display:block;margin-bottom:4px;">Format</label>
+      <select id="captureFormat" style="background:#0f3460;border:1px solid #1a4a7a;color:#e0e0e0;padding:8px;border-radius:4px;font-size:0.95em;">
+        <option value="jpeg">JPEG (lossy, small)</option>
+        <option value="webp">WebP (lossy, smallest)</option>
+        <option value="png">PNG (lossless, large)</option>
+      </select>
+    </div>
+    <div style="min-width:250px;flex:1;">
+      <label for="captureQuality" style="font-size:0.8em;color:#888;display:block;margin-bottom:4px;">Quality: <span id="qualityVal" style="color:#00d4ff;">85</span></label>
+      <input type="range" id="captureQuality" min="1" max="100" value="85" style="width:100%;accent-color:#00d4ff;">
+    </div>
+    <button class="btn" onclick="applyCapture()">Apply Compression</button>
+  </div>
+  <div class="hint" style="font-size:0.8em;color:#888;margin-top:8px;">JPEG/WebP quality is ignored for PNG. Default: JPEG @ 85 — good balance for AI vision vs transfer size.</div>
+</div>
+
+<!-- Actions -->
+<div class="actions-bar">
+  <button class="btn secondary" onclick="loadSettings()">↻ Reload Settings</button>
+  <button class="btn" onclick="saveAll()">Save All Changes</button>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+const LOCAL_TOKEN='';
+const API = window.location.origin;
+const headers = { 'Content-Type': 'application/json' };
+if (LOCAL_TOKEN) headers['Authorization'] = 'Bearer ' + LOCAL_TOKEN;
+
+let currentSettings = null;
+let allOps = [], readOps = [], writeOps = [], coordOps = ['click','doubleclick','move','scroll','drag'];
+
+async function api(path, method='GET', body=null) {
+  const opts = { method, headers };
+  if (body) opts.body = JSON.stringify(body);
+  const r = await fetch(API + path, opts);
+  if (!r.ok) {
+    const e = await r.json().catch(() => ({error: r.statusText}));
+    throw new Error(e.error || e.detail || 'Request failed');
+  }
+  return r.json();
+}
+
+function toast(msg, type='success') {
+  const t = document.getElementById('toast');
+  t.textContent = msg;
+  t.className = 'toast show ' + type;
+  setTimeout(() => t.className = 'toast ' + type, 3000);
+}
+
+async function loadSettings() {
+  try {
+    const s = await api('/api/v1/settings');
+    currentSettings = s;
+    allOps = s.all_operations;
+    readOps = s.read_ops;
+    writeOps = s.write_ops;
+    renderPresets(s);
+    renderOps(s);
+    renderRegion(s);
+    renderApps(s);
+    regionSyncFromConfig(s);
+    renderCapture(s);
+  } catch (e) {
+    toast('Failed to load settings: ' + e.message, 'error');
+  }
+}
+
+function renderPresets(s) {
+  const active = s.allowed_operations.length === 0 ? s.permission_level : null;
+  document.querySelectorAll('.preset-btn').forEach(btn => {
+    btn.classList.toggle('active', btn.dataset.preset === active);
+  });
+  const indicator = document.getElementById('modeIndicator');
+  if (s.mode === 'custom') {
+    indicator.textContent = 'custom';
+    indicator.className = 'mode-indicator custom';
+  } else {
+    indicator.textContent = s.permission_level;
+    indicator.className = 'mode-indicator preset';
+  }
+}
+
+function renderOps(s) {
+  const grid = document.getElementById('opsGrid');
+  grid.innerHTML = '';
+  const allowed = new Set(s.allowed_operations);
+  allOps.forEach(op => {
+    const label = document.createElement('label');
+    label.className = 'op-toggle';
+    if (coordOps.includes(op)) label.classList.add('coord');
+    const isRead = readOps.includes(op);
+    const cb = document.createElement('input');
+    cb.type = 'checkbox';
+    cb.checked = allowed.has(op);
+    cb.dataset.op = op;
+    cb.addEventListener('change', () => {
+      // Mark as custom — user is editing the whitelist directly
+      document.querySelectorAll('.preset-btn').forEach(b => b.classList.remove('active'));
+      const ind = document.getElementById('modeIndicator');
+      ind.textContent = 'custom (unsaved)';
+      ind.className = 'mode-indicator custom';
+    });
+    const name = document.createElement('span');
+    name.className = 'op-name';
+    name.textContent = op;
+    const tag = document.createElement('span');
+    tag.className = 'op-tag ' + (isRead ? 'read' : 'write');
+    tag.textContent = isRead ? 'read' : 'write';
+    label.appendChild(cb);
+    label.appendChild(name);
+    label.appendChild(tag);
+    grid.appendChild(label);
+  });
+}
+
+function renderRegion(s) {
+  const r = s.region_restriction;
+  const status = document.getElementById('regionStatus');
+  if (r) {
+    status.textContent = `Active: (${r.x},${r.y}) ${r.width}×${r.height}`;
+    status.className = 'region-status active';
+  } else {
+    status.textContent = 'No restriction';
+    status.className = 'region-status';
+  }
+}
+
+// --- Interactive region canvas (modeled on test_ui.html) ---
+let rScreens = [], rBounds = {x:0,y:0,w:1920,h:1080};
+let rZoom = 1, rPanX = 0, rPanY = 0;
+let rDrawing = false, rDragPan = false;
+let rDrawStart = null, rDragStart = null;
+let rRect = null;        // {x, y, w, h} in world coords — the drawn rectangle
+let rAppliedRect = null; // {x, y, width, height} — currently applied region from config
+let rSsImg = null;       // screenshot Image
+const rCanvas = document.getElementById('regionCanvas');
+const rCtx = rCanvas.getContext('2d');
+
+async function regionLoadScreens() {
+  try {
+    const r = await fetch(API + '/api/v1/screens');
+    const d = await r.json();
+    rScreens = d.screens || [];
+    const tb = d.total_bounds || {x:0,y:0,width:1920,height:1080};
+    rBounds = {x: tb.x, y: tb.y, w: tb.width, h: tb.height};
+    regionFit();
+  } catch (e) { /* keep defaults */ }
+}
+
+function regionFit() {
+  if (!rCanvas.parentElement.clientWidth) return;
+  const ww = rCanvas.parentElement.clientWidth;
+  const wh = rCanvas.parentElement.clientHeight;
+  rCanvas.width = ww; rCanvas.height = wh;
+  // Compute zoom to fit
+  const zx = (ww - 40) / rBounds.w;
+  const zy = (wh - 40) / rBounds.h;
+  rZoom = Math.min(zx, zy, 1);
+  rPanX = 0; rPanY = 0;
+  regionRender();
+}
+
+function regionToWorld(mx, my) {
+  const w = rCanvas.width, h = rCanvas.height;
+  return {
+    x: Math.round((mx - w/2 - rPanX) / rZoom + rBounds.w/2 + rBounds.x),
+    y: Math.round((my - h/2 - rPanY) / rZoom + rBounds.h/2 + rBounds.y)
+  };
+}
+
+function regionRender() {
+  const w = rCanvas.width, h = rCanvas.height;
+  rCtx.clearRect(0,0,w,h);
+  rCtx.fillStyle = '#11111b'; rCtx.fillRect(0,0,w,h);
+  const sc = ['#cba6f7','#94e2d5','#f9e2af','#f38ba8','#89b4fa','#a6e3a1'];
+  rCtx.save();
+  rCtx.translate(w/2 + rPanX, h/2 + rPanY);
+  rCtx.scale(rZoom, rZoom);
+  rCtx.translate(-rBounds.w/2 - rBounds.x, -rBounds.h/2 - rBounds.y);
+
+  // Screenshot background
+  if (rSsImg) {
+    rCtx.globalAlpha = 0.8;
+    try { rCtx.drawImage(rSsImg, rBounds.x, rBounds.y); } catch(e) {}
+    rCtx.globalAlpha = 1;
+  }
+
+  // Screen outlines
+  rScreens.forEach((s, i) => {
+    const sx = s.x, sy = s.y, sw = s.width, sh = s.height;
+    if (!rSsImg) { rCtx.fillStyle = sc[i%6] + '12'; rCtx.fillRect(sx, sy, sw, sh); }
+    rCtx.strokeStyle = sc[i%6]; rCtx.lineWidth = (s.is_primary ? 3 : 2) / rZoom;
+    rCtx.setLineDash(s.is_primary ? [] : [4/rZoom, 4/rZoom]);
+    rCtx.strokeRect(sx, sy, sw, sh); rCtx.setLineDash([]);
+    const fs = Math.max(9, 12/rZoom);
+    rCtx.font = (s.is_primary ? 'bold ' : '') + fs + 'px system-ui';
+    const lb = s.name || '#' + s.index;
+    const tw = rCtx.measureText(lb).width;
+    rCtx.fillStyle = '#000000cc'; rCtx.fillRect(sx+2, sy+2, tw+10, fs+8);
+    rCtx.fillStyle = sc[i%6]; rCtx.fillText(lb, sx+7, sy+fs+2);
+  });
+
+  // Applied region (green dashed)
+  if (rAppliedRect) {
+    rCtx.strokeStyle = '#a6e3a1'; rCtx.lineWidth = 3/rZoom;
+    rCtx.setLineDash([8/rZoom, 4/rZoom]);
+    rCtx.strokeRect(rAppliedRect.x, rAppliedRect.y, rAppliedRect.width, rAppliedRect.height);
+    rCtx.setLineDash([]);
+    rCtx.fillStyle = 'rgba(166,227,161,0.08)';
+    rCtx.fillRect(rAppliedRect.x, rAppliedRect.y, rAppliedRect.width, rAppliedRect.height);
+    const fs = Math.max(8, 11/rZoom);
+    rCtx.font = fs + 'px monospace';
+    const lbl = `applied (${rAppliedRect.x},${rAppliedRect.y}) ${rAppliedRect.width}×${rAppliedRect.height}`;
+    const tw = rCtx.measureText(lbl).width;
+    rCtx.fillStyle = '#000000dd'; rCtx.fillRect(rAppliedRect.x, rAppliedRect.y - fs - 4, tw + 8, fs + 4);
+    rCtx.fillStyle = '#a6e3a1'; rCtx.fillText(lbl, rAppliedRect.x + 4, rAppliedRect.y - 4);
+  }
+
+  // Drawn rectangle (cyan solid)
+  if (rRect) {
+    rCtx.strokeStyle = '#00d4ff'; rCtx.lineWidth = 3/rZoom;
+    rCtx.strokeRect(rRect.x, rRect.y, rRect.w, rRect.h);
+    rCtx.fillStyle = 'rgba(0,212,255,0.10)';
+    rCtx.fillRect(rRect.x, rRect.y, rRect.w, rRect.h);
+    // Coordinate labels
+    const fs = Math.max(8, 11/rZoom);
+    rCtx.font = fs + 'px monospace';
+    const lbl = `(${rRect.x},${rRect.y}) ${rRect.w}×${rRect.h}`;
+    const tw = rCtx.measureText(lbl).width;
+    rCtx.fillStyle = '#000000dd'; rCtx.fillRect(rRect.x, rRect.y - fs - 4, tw + 8, fs + 4);
+    rCtx.fillStyle = '#00d4ff'; rCtx.fillText(lbl, rRect.x + 4, rRect.y - 4);
+  }
+
+  rCtx.restore();
+}
+
+rCanvas.addEventListener('mousedown', e => {
+  const rect = rCanvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  if (e.button === 1 || e.altKey) {
+    // Pan
+    rDragPan = true; rDragStart = {x: e.clientX - rPanX, y: e.clientY - rPanY};
+    rCanvas.style.cursor = 'grabbing'; e.preventDefault();
+  } else if (e.button === 0) {
+    // Start drawing rectangle
+    rDrawing = true;
+    const p = regionToWorld(mx, my);
+    rDrawStart = p;
+    rRect = {x: p.x, y: p.y, w: 0, h: 0};
+    e.preventDefault();
+  }
+});
+
+rCanvas.addEventListener('mousemove', e => {
+  const rect = rCanvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  if (rDragPan) {
+    rPanX = e.clientX - rDragStart.x; rPanY = e.clientY - rDragStart.y;
+    regionRender(); return;
+  }
+  // Show live coordinate under cursor
+  const p = regionToWorld(mx, my);
+  const disp = document.getElementById('regionCoordDisplay');
+  if (rDrawing && rDrawStart) {
+    // Update drawn rectangle (normalize negative dimensions)
+    const x1 = Math.min(rDrawStart.x, p.x), x2 = Math.max(rDrawStart.x, p.x);
+    const y1 = Math.min(rDrawStart.y, p.y), y2 = Math.max(rDrawStart.y, p.y);
+    rRect = {x: x1, y: y1, w: x2 - x1, h: y2 - y1};
+    disp.textContent = `Drawing: (${rRect.x},${rRect.y}) ${rRect.w}×${rRect.h}`;
+    regionRender();
+  } else {
+    disp.textContent = `Cursor: (${p.x}, ${p.y})`;
+  }
+});
+
+rCanvas.addEventListener('mouseup', e => {
+  if (rDragPan) { rDragPan = false; rCanvas.style.cursor = 'crosshair'; return; }
+  if (rDrawing) {
+    rDrawing = false;
+    if (rRect && (rRect.w < 5 || rRect.h < 5)) {
+      // Too small — treat as click, clear drawing
+      rRect = null; regionRender();
+      document.getElementById('regionCoordDisplay').textContent = 'Drag on canvas to draw region';
+    } else if (rRect) {
+      document.getElementById('regionCoordDisplay').textContent = `Selected: (${rRect.x},${rRect.y}) ${rRect.w}×${rRect.h} — click Apply Region`;
+    }
+  }
+});
+
+rCanvas.addEventListener('mouseleave', () => {
+  if (rDrawing) { rDrawing = false; }
+  if (!rRect) document.getElementById('regionCoordDisplay').textContent = 'Drag on canvas to draw region';
+});
+
+rCanvas.addEventListener('contextmenu', e => e.preventDefault());
+
+rCanvas.addEventListener('wheel', e => {
+  e.preventDefault();
+  const rect = rCanvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left, my = e.clientY - rect.top;
+  const before = regionToWorld(mx, my);
+  rZoom = Math.max(0.1, Math.min(3, rZoom * (e.deltaY < 0 ? 1.15 : 1/1.15)));
+  regionRender();
+  const after = regionToWorld(mx, my);
+  rPanX += (after.x - before.x) * rZoom;
+  rPanY += (after.y - before.y) * rZoom;
+  regionRender();
+}, { passive: false });
+
+async function regionCapture() {
+  try {
+    const d = await api('/api/v1/cua/capture', 'POST', {});
+    if (d.success && d.base64) {
+      const img = new Image();
+      img.onload = () => { rSsImg = img; regionRender(); toast('Screenshot captured'); };
+      img.src = 'data:' + (d.mime_type || 'image/png') + ';base64,' + d.base64;
+    } else { toast('Capture failed: ' + (d.error || ''), 'error'); }
+  } catch (e) { toast('Capture failed: ' + e.message, 'error'); }
+}
+
+function regionClearDrawing() {
+  rRect = null; regionRender();
+  document.getElementById('regionCoordDisplay').textContent = 'Drag on canvas to draw region';
+}
+
+function regionSyncFromConfig(s) {
+  // Reflect the applied region from config onto the canvas
+  rAppliedRect = s.region_restriction ? {
+    x: s.region_restriction.x, y: s.region_restriction.y,
+    width: s.region_restriction.width, height: s.region_restriction.height
+  } : null;
+  // Also set rRect to match applied (so user can see/edit it)
+  if (rAppliedRect && !rRect) {
+    rRect = {x: rAppliedRect.x, y: rAppliedRect.y, w: rAppliedRect.width, h: rAppliedRect.height};
+  }
+  regionRender();
+}
+
+function renderCapture(s) {
+  const fmt = s.capture_format || 'jpeg';
+  const q = s.capture_quality || 85;
+  document.getElementById('captureFormat').value = fmt;
+  document.getElementById('captureQuality').value = q;
+  document.getElementById('qualityVal').textContent = q;
+  // Disable quality slider for PNG
+  const slider = document.getElementById('captureQuality');
+  slider.disabled = (fmt === 'png');
+  slider.style.opacity = slider.disabled ? '0.4' : '1';
+}
+
+document.getElementById('captureQuality').addEventListener('input', e => {
+  document.getElementById('qualityVal').textContent = e.target.value;
+});
+document.getElementById('captureFormat').addEventListener('change', e => {
+  const slider = document.getElementById('captureQuality');
+  slider.disabled = (e.target.value === 'png');
+  slider.style.opacity = slider.disabled ? '0.4' : '1';
+});
+
+async function applyCapture() {
+  const fmt = document.getElementById('captureFormat').value;
+  const q = parseInt(document.getElementById('captureQuality').value) || 85;
+  try {
+    await api('/api/v1/settings', 'POST', { capture_format: fmt, capture_quality: q });
+    toast(`Compression applied: ${fmt} @ ${q}`);
+  } catch (e) {
+    toast('Failed: ' + e.message, 'error');
+  }
+}
+
+function renderApps(s) {
+  document.getElementById('appAllowlist').value = (s.allowed_apps || []).join('\n');
+}
+
+async function loadApps() {
+  const list = document.getElementById('appList');
+  list.innerHTML = '<div style="padding:12px;color:#888;text-align:center;">Loading...</div>';
+  try {
+    const r = await api('/api/v1/dops/list_apps', 'POST', {});
+    const apps = r.apps || [];
+    if (apps.length === 0) {
+      list.innerHTML = '<div style="padding:12px;color:#888;text-align:center;">No apps with windows</div>';
+      return;
+    }
+    list.innerHTML = '';
+    apps.forEach(app => {
+      const item = document.createElement('div');
+      item.className = 'app-item';
+      const name = app.name || app.ProcessName || 'unknown';
+      const title = app.window_title || app.MainWindowTitle || '';
+      const nameEl = document.createElement('span');
+      nameEl.className = 'app-name';
+      nameEl.textContent = name;
+      item.appendChild(nameEl);
+      if (title) {
+        const titleEl = document.createElement('span');
+        titleEl.className = 'app-title';
+        titleEl.textContent = title;
+        item.appendChild(titleEl);
+      }
+      const addBtn = document.createElement('button');
+      addBtn.className = 'add-btn';
+      addBtn.textContent = '+ Add';
+      addBtn.addEventListener('click', () => {
+        const ta = document.getElementById('appAllowlist');
+        const lines = ta.value.split('\n').filter(l => l.trim());
+        if (!lines.some(l => l.toLowerCase() === name.toLowerCase())) {
+          lines.push(name);
+          ta.value = lines.join('\n');
+        }
+        addBtn.textContent = '✓ Added';
+        addBtn.disabled = true;
+      });
+      item.appendChild(addBtn);
+      list.appendChild(item);
+    });
+  } catch (e) {
+    list.innerHTML = `<div style="padding:12px;color:#f66;">Error: ${e.message}</div>`;
+  }
+}
+
+async function applyPreset(preset) {
+  try {
+    await api('/api/v1/settings', 'POST', { permission_level: preset });
+    toast(`Preset "${preset}" applied`);
+    loadSettings();
+  } catch (e) {
+    toast('Failed: ' + e.message, 'error');
+  }
+}
+
+async function applyRegion() {
+  if (!rRect || rRect.w <= 0 || rRect.h <= 0) {
+    toast('Draw a rectangle on the canvas first (drag to draw)', 'error');
+    return;
+  }
+  const { x, y, w, h } = rRect;
+  try {
+    await api('/api/v1/settings', 'POST', { region_restriction: { x, y, width: w, height: h } });
+    toast(`Region applied: (${x},${y}) ${w}×${h}`);
+    loadSettings();
+  } catch (e) {
+    toast('Failed: ' + e.message, 'error');
+  }
+}
+
+async function clearRegion() {
+  rRect = null;
+  try {
+    await api('/api/v1/settings', 'POST', { region_restriction: null });
+    toast('Region restriction cleared');
+    loadSettings();
+    regionRender();
+  } catch (e) {
+    toast('Failed: ' + e.message, 'error');
+  }
+}
+
+async function applyApps() {
+  const text = document.getElementById('appAllowlist').value;
+  const apps = text.split('\n').map(l => l.trim()).filter(l => l);
+  try {
+    await api('/api/v1/settings', 'POST', { allowed_apps: apps });
+    toast(`App allowlist ${apps.length ? 'set (' + apps.length + ' apps)' : 'cleared'}`);
+    loadSettings();
+  } catch (e) {
+    toast('Failed: ' + e.message, 'error');
+  }
+}
+
+async function saveAll() {
+  // Save operation whitelist from checkboxes
+  const checked = Array.from(document.querySelectorAll('.op-toggle input:checked')).map(cb => cb.dataset.op);
+  try {
+    await api('/api/v1/settings', 'POST', { allowed_operations: checked });
+    toast('Operation whitelist saved (' + checked.length + ' ops)');
+    loadSettings();
+  } catch (e) {
+    toast('Failed: ' + e.message, 'error');
+  }
+}
+
+// Preset button handlers
+document.querySelectorAll('.preset-btn').forEach(btn => {
+  btn.addEventListener('click', () => applyPreset(btn.dataset.preset));
+});
+
+// Initial load
+loadSettings();
+loadApps();
+regionLoadScreens();
+window.addEventListener('resize', () => { if (rCanvas.parentElement.clientWidth) regionFit(); });
+</script>
+</body>
+</html>

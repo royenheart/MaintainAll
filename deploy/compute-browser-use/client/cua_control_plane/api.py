@@ -13,9 +13,18 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 
 from . import cua_core, deterministic_ops
-from .config import get_config
+from .config import get_config, reload_config
 from .cua_core import check_cua_available, check_uia_available
-from .permissions import AccessDeniedError, check_permission, get_allowed_ops
+from .permissions import (
+    AccessDeniedError,
+    check_permission,
+    check_spatial_permission,
+    get_allowed_ops,
+    ALL_OPS,
+    READ_OPS,
+    WRITE_OPS,
+    PRESETS,
+)
 from .screens import get_screens, get_screen_bounds, is_screen_allowed
 
 logger = logging.getLogger(__name__)
@@ -42,7 +51,7 @@ app.add_middleware(
 async def auth_middleware(request: Request, call_next):
     cfg = get_config()
     # Skip auth for health check and OPTIONS
-    if request.url.path in ("/api/v1/health", "/health", "/tests", "/api/v1/screens", "/api/v1/status", "/api/v1/mode", "/api/v1/uia") or request.method == "OPTIONS":
+    if request.url.path in ("/api/v1/health", "/health", "/tests", "/settings", "/api/v1/screens", "/api/v1/status", "/api/v1/mode", "/api/v1/uia") or request.method == "OPTIONS":
         return await call_next(request)
 
     token = request.headers.get("Authorization", "").removeprefix("Bearer ").strip()
@@ -172,36 +181,37 @@ async def api_screen_size():
 
 @app.post("/api/v1/cua/click")
 async def api_click(req: dict):
-    check_permission("click")
     x = int(req.get("x", 0))
     y = int(req.get("y", 0))
     button = req.get("button", "left")
+    check_spatial_permission("click", x, y)
     return await cua_core.click(x, y, button)
 
 
 @app.post("/api/v1/cua/move")
 async def api_move(req: dict):
-    check_permission("move")
     x = int(req.get("x", 0))
     y = int(req.get("y", 0))
+    check_spatial_permission("move", x, y)
     return await cua_core.move(x, y)
 
 
 @app.post("/api/v1/cua/scroll")
 async def api_scroll(req: dict):
-    check_permission("scroll")
     dx = int(req.get("dx", 0))
     dy = int(req.get("dy", 0))
+    # Scroll uses current cursor position for spatial check
+    check_spatial_permission("scroll", 0, 0)
     return await cua_core.scroll(dx, dy)
 
 
 @app.post("/api/v1/cua/drag")
 async def api_drag(req: dict):
-    check_permission("drag")
     from_x = int(req.get("from_x", 0))
     from_y = int(req.get("from_y", 0))
     to_x = int(req.get("to_x", 0))
     to_y = int(req.get("to_y", 0))
+    check_spatial_permission("drag", from_x, from_y)
     return await cua_core.drag(from_x, from_y, to_x, to_y)
 
 
@@ -285,3 +295,154 @@ async def test_ui():
     token = get_config().local_token
     html = html.replace("const A=''", f"const A='',LOCAL_TOKEN='{token}'")
     return HTMLResponse(html)
+
+
+# ---------------------------------------------------------------------------
+# Settings UI & API
+# ---------------------------------------------------------------------------
+
+_SETTINGS_UI_PATH = _Path(__file__).resolve().parent / "settings_ui.html"
+
+
+@app.get("/settings", include_in_schema=False)
+async def settings_ui():
+    """Web UI for fine-grained permission control (operation whitelist,
+    region restriction, app allowlist) and live app list."""
+    from fastapi.responses import HTMLResponse, RedirectResponse
+    if not _SETTINGS_UI_PATH.exists():
+        return HTMLResponse("<h1>settings_ui.html not found</h1>", status_code=404)
+    html = _SETTINGS_UI_PATH.read_text(encoding="utf-8")
+    token = get_config().local_token
+    # Inject token for client-side API calls (same pattern as /tests)
+    # Match both "const LOCAL_TOKEN=''" and "const LOCAL_TOKEN = ''" variants
+    import re as _re
+    html = _re.sub(r"const LOCAL_TOKEN\s*=\s*''", f"const LOCAL_TOKEN='{token}'", html)
+    return HTMLResponse(html)
+
+
+@app.get("/api/v1/settings")
+async def api_get_settings():
+    """Get current permission/operation/region/app settings."""
+    cfg = get_config()
+    allowed = _resolve_allowed_operations_for_api()
+    return {
+        "permission_level": cfg.permission_level,
+        "mode": "custom" if cfg.allowed_operations else cfg.permission_level,
+        "allowed_operations": sorted(allowed),
+        "all_operations": sorted(ALL_OPS),
+        "read_ops": sorted(READ_OPS),
+        "write_ops": sorted(WRITE_OPS),
+        "presets": {k: sorted(v) for k, v in PRESETS.items()},
+        "region_restriction": cfg.region_restriction,
+        "allowed_apps": cfg.allowed_apps,
+        "control_mode": cfg.control_mode,
+        "allowed_screens": cfg.allowed_screens,
+        "capture_format": cfg.capture_format,
+        "capture_quality": cfg.capture_quality,
+    }
+
+
+@app.post("/api/v1/settings")
+async def api_update_settings(req: dict):
+    """Update permission/operation/region/app settings.
+
+    Accepts partial updates — only provided fields are changed.
+    Returns the updated settings state.
+    """
+    cfg = get_config()
+    changed = []
+
+    # permission_level: sets the preset (clears allowed_operations to let preset take effect)
+    if "permission_level" in req:
+        level = req["permission_level"]
+        if level in PRESETS:
+            cfg.permission_level = level
+            # Setting a preset clears custom whitelist so preset takes effect
+            cfg.allowed_operations = []
+            changed.append(f"permission_level={level}")
+        else:
+            return {"success": False, "error": f"Invalid permission_level '{level}'. Valid: {list(PRESETS.keys())}"}
+
+    # allowed_operations: custom whitelist (takes precedence over preset)
+    if "allowed_operations" in req:
+        ops = req["allowed_operations"]
+        if not isinstance(ops, list):
+            return {"success": False, "error": "allowed_operations must be a list of strings"}
+        # Validate operation names
+        invalid = [o for o in ops if o not in ALL_OPS]
+        if invalid:
+            return {"success": False, "error": f"Unknown operations: {invalid}. Valid: {sorted(ALL_OPS)}"}
+        cfg.allowed_operations = ops
+        changed.append(f"allowed_operations={ops}")
+
+    # region_restriction: None or {"x","y","width","height"}
+    if "region_restriction" in req:
+        region = req["region_restriction"]
+        if region is None or region == {}:
+            cfg.region_restriction = None
+            changed.append("region_restriction=cleared")
+        elif isinstance(region, dict):
+            try:
+                cfg.region_restriction = {
+                    "x": int(region.get("x", 0)),
+                    "y": int(region.get("y", 0)),
+                    "width": int(region.get("width", 0)),
+                    "height": int(region.get("height", 0)),
+                }
+                changed.append(f"region_restriction={cfg.region_restriction}")
+            except (TypeError, ValueError) as e:
+                return {"success": False, "error": f"Invalid region_restriction: {e}"}
+        else:
+            return {"success": False, "error": "region_restriction must be null or an object"}
+
+    # allowed_apps: list of app name patterns
+    if "allowed_apps" in req:
+        apps = req["allowed_apps"]
+        if not isinstance(apps, list):
+            return {"success": False, "error": "allowed_apps must be a list of strings"}
+        cfg.allowed_apps = [str(a) for a in apps]
+        changed.append(f"allowed_apps={apps}")
+
+    # capture_format: "png" | "jpeg" | "webp"
+    if "capture_format" in req:
+        fmt = str(req["capture_format"]).lower()
+        if fmt not in ("png", "jpeg", "webp"):
+            return {"success": False, "error": f"Invalid capture_format '{fmt}'. Valid: png, jpeg, webp"}
+        cfg.capture_format = fmt
+        changed.append(f"capture_format={fmt}")
+
+    # capture_quality: 1-100 (only used by jpeg/webp)
+    if "capture_quality" in req:
+        q = req["capture_quality"]
+        try:
+            q = int(q)
+        except (TypeError, ValueError):
+            return {"success": False, "error": "capture_quality must be an integer 1-100"}
+        if not 1 <= q <= 100:
+            return {"success": False, "error": "capture_quality must be 1-100"}
+        cfg.capture_quality = q
+        changed.append(f"capture_quality={q}")
+
+    if changed:
+        cfg.save()
+        logger.info("Settings updated: %s", ", ".join(changed))
+
+    # Return updated state
+    allowed = _resolve_allowed_operations_for_api()
+    return {
+        "success": True,
+        "changed": changed,
+        "permission_level": cfg.permission_level,
+        "mode": "custom" if cfg.allowed_operations else cfg.permission_level,
+        "allowed_operations": sorted(allowed),
+        "region_restriction": cfg.region_restriction,
+        "allowed_apps": cfg.allowed_apps,
+        "capture_format": cfg.capture_format,
+        "capture_quality": cfg.capture_quality,
+    }
+
+
+def _resolve_allowed_operations_for_api() -> frozenset:
+    """Helper for API responses — returns the effective operation set."""
+    from .permissions import _resolve_allowed_operations
+    return _resolve_allowed_operations()

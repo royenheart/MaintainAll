@@ -40,7 +40,27 @@ class ControlPlaneConfig:
     local_token: str = field(default_factory=lambda: secrets.token_hex(32))
 
     # Permission level: off | readonly | full | strict
+    # Acts as a PRESET that sets allowed_operations when that list is empty.
+    # If allowed_operations is non-empty, it takes precedence over the preset.
     permission_level: str = "full"
+
+    # Fine-grained operation whitelist (takes precedence over permission_level).
+    # Empty list = fall back to permission_level preset semantics.
+    # Operations: capture, list_apps, app_info, app_position, health,
+    #   click, doubleclick, type, press_key, move, scroll, drag,
+    #   open_app, close_app, start_app
+    allowed_operations: list[str] = field(default_factory=list)
+
+    # Region restriction: only allow coordinate-based ops within this rect.
+    # None or empty dict = no region restriction.
+    # Format: {"x": int, "y": int, "width": int, "height": int}
+    region_restriction: Optional[dict] = None
+
+    # App restriction: only allow operations targeting these app names.
+    # Empty list = no app restriction (all apps allowed).
+    # App name matching is case-insensitive substring match against
+    # the process name or window title of the window at the click point.
+    allowed_apps: list[str] = field(default_factory=list)
 
     # Logging
     log_dir: str = field(default_factory=lambda: str(_config_dir() / "logs"))
@@ -55,6 +75,12 @@ class ControlPlaneConfig:
     # Control mode: "collaborative" (non-intrusive) or "solo" (full control)
     control_mode: str = "collaborative"
     solo_idle_timeout: int = 10  # seconds of manual idle before re-entering solo
+
+    # Screenshot compression
+    # capture_format: "png" (lossless, large) | "jpeg" (lossy, small, default) | "webp" (lossy, smallest)
+    # capture_quality: 1-100, only used by jpeg/webp. Ignored for png.
+    capture_format: str = "jpeg"
+    capture_quality: int = 85
 
     def save(self) -> None:
         _config_dir().mkdir(parents=True, exist_ok=True)

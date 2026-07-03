@@ -356,10 +356,27 @@ def _driver_background_press_key(key: str) -> Optional[dict]:
 
 def _native_capture() -> dict:
     from PIL import ImageGrab
+    from .config import get_config as _get_cfg
     img = ImageGrab.grab(all_screens=True)
+    cfg = _get_cfg()
+    fmt = (cfg.capture_format or "jpeg").lower()
+    quality = max(1, min(100, int(cfg.capture_quality or 85)))
     buf = io.BytesIO()
-    img.save(buf, format="PNG")
-    return {"success": True, "base64": base64.b64encode(buf.getvalue()).decode(), "mime_type": "image/png"}
+    if fmt == "png":
+        img.save(buf, format="PNG", optimize=True)
+        mime = "image/png"
+    elif fmt == "webp":
+        img.save(buf, format="WEBP", quality=quality)
+        mime = "image/webp"
+    else:
+        # jpeg (default) — convert RGBA to RGB (JPEG has no alpha channel)
+        if img.mode in ("RGBA", "LA", "P"):
+            img = img.convert("RGB")
+        img.save(buf, format="JPEG", quality=quality, optimize=True)
+        mime = "image/jpeg"
+    raw = buf.getvalue()
+    logger.debug("capture: format=%s quality=%d size=%d bytes", fmt, quality, len(raw))
+    return {"success": True, "base64": base64.b64encode(raw).decode(), "mime_type": mime}
 
 
 def _native_screen_size() -> dict:
@@ -548,3 +565,66 @@ async def press_key(key: str) -> dict:
 
 async def shutdown() -> None:
     pass
+
+
+def resolve_app_at_point(x: int, y: int) -> Optional[str]:
+    """Resolve the application name at screen coordinate (x, y).
+
+    Used by the permission layer's allowed_apps check. Returns the process
+    name (preferred) or window title of the topmost window at that point.
+    Returns None if no window is found or cua-driver is unavailable.
+
+    Tries cua-driver accessibility tree first, then falls back to
+    deterministic_ops window enumeration (PowerShell Get-Process on Windows).
+    """
+    # Strategy 1: cua-driver accessibility tree (fast, cached)
+    try:
+        w = _find_window_at_point(x, y)
+        if w:
+            # Prefer process name if available, else title
+            pid = w.get("pid")
+            if pid:
+                # Try to get process name from pid via ctypes
+                try:
+                    import ctypes
+                    PROCESS_QUERY_LIMITED_INFORMATION = 0x1000
+                    h = ctypes.windll.kernel32.OpenProcess(PROCESS_QUERY_LIMITED_INFORMATION, False, pid)
+                    if h:
+                        try:
+                            buf = ctypes.create_unicode_buffer(512)
+                            # QueryFullProcessImageNameW
+                            OK = ctypes.windll.kernel32.QueryFullProcessImageNameW(h, False, buf, ctypes.byref(ctypes.c_uint(512)))
+                            if OK:
+                                import os as _os
+                                name = _os.path.basename(buf.value)
+                                # Strip .exe suffix
+                                if name.lower().endswith(".exe"):
+                                    name = name[:-4]
+                                return name
+                        finally:
+                            ctypes.windll.kernel32.CloseHandle(h)
+                except Exception:
+                    pass
+            # Fall back to window title
+            title = w.get("title", "")
+            if title:
+                return title
+    except Exception as e:
+        logger.debug("resolve_app_at_point via cua-driver failed: %s", e)
+
+    # Strategy 2: deterministic_ops (PowerShell Get-Process on Windows)
+    try:
+        from . import deterministic_ops
+        apps = deterministic_ops.list_apps()
+        # Find the app whose window is topmost at (x, y)
+        # This is less precise (no z-order) but a reasonable fallback
+        for app in apps:
+            info = deterministic_ops.app_info(app.get("name", ""))
+            if info and info.get("window_rect"):
+                r = info["window_rect"]
+                if (r["left"] <= x < r["right"] and r["top"] <= y < r["bottom"]):
+                    return app.get("name", "")
+    except Exception as e:
+        logger.debug("resolve_app_at_point fallback failed: %s", e)
+
+    return None
