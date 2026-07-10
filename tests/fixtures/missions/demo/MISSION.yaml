@@ -1,0 +1,26 @@
+id: demo
+name: Demo mission
+description: Demo
+skills: [sample]
+schedule: null
+notify:
+  on_complete: true
+  on_failure: true
+allowed_commands:
+  - pattern: '^echo hello$'
+    cwd: '.'
+tasks:
+  - id: a
+    name: First
+    needs: []
+    instruction: Say hello
+    expect:
+      type: contains
+      patterns: ["hello"]
+  - id: b
+    name: Second
+    needs: [a]
+    instruction: Finish
+    expect:
+      type: contains
+      patterns: ["done"]
