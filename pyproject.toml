@@ -1,0 +1,37 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "MaintainAll"
+version = "0.2.0"
+description = "AIOps agent TUI for the MaintainAll repo"
+readme = "AGENTS.md"
+requires-python = ">=3.11"
+dependencies = [
+  "textual>=0.47",
+  "langchain>=0.3",
+  "langgraph>=0.2",
+  "langchain-deepseek>=0.1",
+  "langchain-openai>=0.2",
+  "pydantic>=2.0",
+  "pydantic-settings>=2.0",
+  "keyring>=25.0",
+  "platformdirs>=4.0",
+  "PyYAML>=6.0",
+  "croniter>=2.0",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8.0", "pytest-asyncio>=0.23"]
+
+[project.scripts]
+maintainall = "MaintainAll.tui.app:main"
+maintainall-daemon = "MaintainAll.daemon.service:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]
+testpaths = ["tests"]

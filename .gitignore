@@ -228,3 +228,8 @@ start-codex.sh
 .superpowers
 
 temp.worktrees/
+
+.agents/reports/
+.superpowers/
+.venv/
+.worktrees/
