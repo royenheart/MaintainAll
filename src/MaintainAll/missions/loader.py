@@ -119,13 +119,10 @@ def load_missions(root: Path) -> list[Mission]:
 
 
 def runnable_tasks(mission: Mission) -> list[TaskNode]:
-    done_ids = {
-        task.id
-        for task in _flatten_tasks(mission.tasks)
-        if task.status == "done"
-    }
+    flat = _flatten_tasks(mission.tasks)
+    done_ids = {task.id for task in flat if task.status == "done"}
     return [
         task
-        for task in mission.tasks
+        for task in flat
         if task.status == "pending" and all(need in done_ids for need in task.needs)
     ]
