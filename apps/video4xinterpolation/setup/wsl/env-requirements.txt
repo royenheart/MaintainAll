@@ -1,0 +1,4 @@
+# 由 setup/install.sh 安装；此处仅作参考
+# runtime: numpy, av, onnxruntime / onnxruntime-rocm
+# export:  torch, onnx, onnxscript
+# dev:     pytest

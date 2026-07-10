@@ -1,0 +1,10 @@
+models/RIFEv4.26_0921.zip
+models/RIFEv4.26_0921
+models/onnx
+vitisai_cache/
+.venv/
+.omo
+.codegraph
+
+# Local / scratch design notes (not versioned)
+docs/local/
