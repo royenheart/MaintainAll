@@ -19,6 +19,7 @@ from MaintainAll.config import (
     save_non_secrets,
     set_secret,
 )
+from MaintainAll.graph.llm import build_chat_model
 from MaintainAll.graph.workflow import run_session
 from MaintainAll.memory.session import SessionMemory
 from MaintainAll.missions import load_missions, solidify_mission
@@ -279,6 +280,30 @@ class MaintainAllApp(App[None]):
         self._show_run_sidebar()
         self.run_agent_session(user_input)
 
+    @staticmethod
+    def _session_llm_from_settings(settings: Settings) -> Any | None:
+        key = settings.api_key.get_secret_value() if settings.api_key else None
+        if not key:
+            return None
+        return build_chat_model(settings)
+
+    def _invoke_agent_session(
+        self,
+        user_input: str,
+        *,
+        event_callback: Callable[[dict[str, Any]], None],
+        review_callback: Callable[[dict[str, Any]], dict[str, Any]],
+    ) -> dict[str, Any]:
+        llm = self._session_llm_from_settings(self.settings)
+        return run_session(
+            user_input,
+            settings=self.settings,
+            memory=self.memory,
+            review_callback=review_callback,
+            event_callback=event_callback,
+            llm=llm,
+        )
+
     @work(thread=True, exclusive=True)
     def run_agent_session(self, user_input: str) -> None:
         def event_callback(event: dict[str, Any]) -> None:
@@ -287,19 +312,27 @@ class MaintainAllApp(App[None]):
         def review_callback(state: dict[str, Any]) -> dict[str, Any]:
             return self._blocking_review(state)
 
+        key = self.settings.api_key.get_secret_value() if self.settings.api_key else None
+        if not key:
+            self.call_from_thread(
+                self._write_info,
+                "No API key configured; running without LLM (stub / script path).",
+            )
+
         try:
-            result = run_session(
+            result = self._invoke_agent_session(
                 user_input,
-                settings=self.settings,
-                memory=self.memory,
-                review_callback=review_callback,
                 event_callback=event_callback,
+                review_callback=review_callback,
             )
         except Exception as exc:
             self.call_from_thread(self._write_error, str(exc))
             result = {}
 
         self.call_from_thread(self._session_finished, result)
+
+    def _write_info(self, message: str) -> None:
+        self.query_one("#chat-stream", ChatStream).write(f"[yellow]{message}[/]")
 
     def _write_error(self, message: str) -> None:
         self.query_one("#chat-stream", ChatStream).write(f"[bold red]error:[/] {message}")

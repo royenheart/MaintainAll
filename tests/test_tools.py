@@ -35,6 +35,12 @@ def test_run_denied(tmp_path):
         run_allowed("rm -rf /", gate=gate, repo_root=tmp_path)
 
 
+def test_cwd_escape_denied(tmp_path):
+    gate = CommandGate([AllowedCommand(pattern=r"^echo hello$", cwd="..")])
+    with pytest.raises(PermissionError, match="escapes repository root"):
+        run_allowed("echo hello", gate=gate, repo_root=tmp_path)
+
+
 def test_read_repo_file(tmp_path):
     f = tmp_path / "a.txt"
     f.write_text("x")

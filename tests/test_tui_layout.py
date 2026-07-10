@@ -1,7 +1,10 @@
 """Non-interactive smoke for AI-mode TUI composition."""
 
+from pydantic import SecretStr
 import pytest
 
+from MaintainAll.config import Settings
+from MaintainAll.memory.session import SessionMemory
 from MaintainAll.tui.app import MaintainAllApp
 from MaintainAll.tui.modals import DetailModal, ReviewModal, SettingsModal, SolidifyModal
 from MaintainAll.tui.panes import ChatStream, IdleSidebar, RunStatePane
@@ -26,3 +29,38 @@ def test_imports():
     assert ReviewModal is not None
     assert SettingsModal is not None
     assert SolidifyModal is not None
+
+
+def test_session_llm_from_settings_none_without_key():
+    assert MaintainAllApp._session_llm_from_settings(Settings()) is None
+
+
+def test_session_llm_from_settings_builds(monkeypatch):
+    monkeypatch.setattr(
+        "MaintainAll.tui.app.build_chat_model", lambda settings: "FAKE_LLM"
+    )
+    settings = Settings(api_key=SecretStr("sk-test"))
+    assert MaintainAllApp._session_llm_from_settings(settings) == "FAKE_LLM"
+
+
+def test_invoke_agent_session_passes_llm(monkeypatch, tmp_path):
+    captured: dict = {}
+
+    def fake_run_session(*args, **kwargs):
+        captured.update(kwargs)
+        return {"report_path": None}
+
+    monkeypatch.setattr("MaintainAll.tui.app.run_session", fake_run_session)
+    monkeypatch.setattr(
+        "MaintainAll.tui.app.build_chat_model", lambda settings: "FAKE_LLM"
+    )
+
+    app = MaintainAllApp()
+    app.settings = Settings(api_key=SecretStr("sk-test"), repo_path=str(tmp_path))
+    app.memory = SessionMemory(mode="restricted")
+    app._invoke_agent_session(
+        "hello",
+        event_callback=lambda e: None,
+        review_callback=lambda s: {"action": "approve", "feedback": ""},
+    )
+    assert captured.get("llm") == "FAKE_LLM"

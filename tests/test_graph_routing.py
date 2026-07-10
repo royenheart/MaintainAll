@@ -63,7 +63,7 @@ def test_route_after_validate_hard_fail():
         "validation_errors": ["HARD: missing mission_draft"],
         "event_log": [{"type": "validate"}],
     }
-    assert route_after_validate(state) == "end"
+    assert route_after_validate(state) == "finalize"
 
 
 def test_route_after_validate_exhausted_retries():
@@ -75,4 +75,4 @@ def test_route_after_validate_exhausted_retries():
             {"type": "validate", "ok": False},
         ],
     }
-    assert route_after_validate(state) == "end"
+    assert route_after_validate(state) == "finalize"

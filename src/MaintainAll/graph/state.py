@@ -18,6 +18,7 @@ class AgentState(TypedDict, total=False):
     validation_ok: bool | None
     validation_errors: list[str]
     observations: Annotated[list[str], operator.add]
+    report_draft: str
     report_path: str
     messages: list[dict[str, str]]
     interrupt: str | None

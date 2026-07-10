@@ -30,7 +30,10 @@ def run_allowed(
     if matched is None:
         raise PermissionError(f"command not allowed: {cmd}")
 
-    cwd = (Path(repo_root) / matched.cwd).resolve()
+    repo_resolved = Path(repo_root).resolve()
+    cwd = (repo_resolved / matched.cwd).resolve()
+    if not cwd.is_relative_to(repo_resolved):
+        raise PermissionError(f"cwd escapes repository root: {cwd}")
     completed = subprocess.run(
         shlex.split(cmd),
         cwd=cwd,

@@ -43,14 +43,17 @@ def route_after_validate(state: AgentState | dict[str, Any]) -> str:
     if state.get("validation_ok"):
         return "finalize"
     errors = state.get("validation_errors") or []
-    if any(str(err).startswith("HARD:") for err in errors):
-        return "end"
     attempts = sum(
         1 for event in (state.get("event_log") or []) if event.get("type") == "validate"
     )
-    if attempts < MAX_VALIDATE_ATTEMPTS:
+    # Soft failures may retry; hard failures and exhausted retries still finalize
+    # so a report is always written.
+    if (
+        not any(str(err).startswith("HARD:") for err in errors)
+        and attempts < MAX_VALIDATE_ATTEMPTS
+    ):
         return "react_loop"
-    return "end"
+    return "finalize"
 
 
 def build_graph(
@@ -102,7 +105,6 @@ def build_graph(
         {
             "react_loop": "react_loop",
             "finalize": "finalize",
-            "end": END,
         },
     )
     graph.add_edge("finalize", END)
@@ -128,6 +130,7 @@ def _initial_state(
         "repo_path": settings.repo_path,
         "messages": list(memory.messages) if memory else [],
         "observations": [],
+        "report_draft": "",
         "event_log": [],
         "rebuild_board": False,
         "react_done": False,

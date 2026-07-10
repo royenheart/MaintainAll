@@ -103,6 +103,7 @@ class MissionLock:
 
 def format_report_body(mission: Mission, result: dict[str, Any]) -> str:
     observations = result.get("observations") or []
+    report_draft = (result.get("report_draft") or "").strip()
     obs_lines = [f"- {obs}" for obs in observations] or ["- (none)"]
     lines = [
         f"# Mission Report: {mission.id}",
@@ -111,11 +112,17 @@ def format_report_body(mission: Mission, result: dict[str, Any]) -> str:
         f"- schedule: {mission.schedule or '(none)'}",
         f"- validation_ok: {result.get('validation_ok')}",
         "",
-        "## Observations",
-        "",
-        *obs_lines,
-        "",
     ]
+    if report_draft:
+        lines.extend([report_draft, ""])
+    lines.extend(
+        [
+            "## Observations",
+            "",
+            *obs_lines,
+            "",
+        ]
+    )
     if result.get("validation_errors"):
         lines.extend(["## Validation Errors", ""])
         lines.extend(f"- {err}" for err in result["validation_errors"])
@@ -152,7 +159,18 @@ def scan_once(settings: Settings) -> None:
             continue
 
         try:
-            result = run_mission(mission, settings=settings, skip_review=True)
+            llm = None
+            key = settings.api_key.get_secret_value() if settings.api_key else None
+            if key:
+                from MaintainAll.graph.llm import build_chat_model
+
+                try:
+                    llm = build_chat_model(settings)
+                except Exception:
+                    llm = None
+            result = run_mission(
+                mission, settings=settings, skip_review=True, llm=llm
+            )
             body = format_report_body(mission, result)
             write_report(mission.id, body, reports_dir(repo))
             _maybe_notify(mission, body, result, settings)
