@@ -1,0 +1,10 @@
+[Unit]
+Description=MaintainAll AIOps mission daemon
+
+[Service]
+Type=simple
+ExecStart=%h/.local/bin/maintainall-daemon
+Restart=on-failure
+
+[Install]
+WantedBy=default.target
