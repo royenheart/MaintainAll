@@ -1,0 +1,23 @@
+# Declarative outbound groups for daed (wing.db).
+# Synced by scripts/daed-config-sync on every `docker compose up`.
+#
+# Format (one per line):
+#   name|policy|param
+#
+# policy: random | fixed | min | min_avg10 | min_moving_avg
+# param:  for fixed = node index (0 = first node in the group)
+#         leave empty for other policies
+#
+# Nodes are NOT managed here after first seed — edit them in the Web UI (Groups).
+# On first create, empty sticky/fixed groups get exactly ONE node from proxy
+# (dae rejects fixed groups with >1 node). Later sync never overwrites membership.
+#
+# name              | policy         | param
+proxy|min_moving_avg|
+openai|fixed|0
+anthropic|fixed|0
+gemini|fixed|0
+github|min_moving_avg|
+streaming|min_moving_avg|
+telegram|min_moving_avg|
+discord|fixed|0

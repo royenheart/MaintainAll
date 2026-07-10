@@ -73,6 +73,134 @@ sync_selected_row() {
   fi
 }
 
+# Seed / upsert outbound groups from groups.txt (nodes stay UI-managed).
+# Format: name|policy|param   (# comments and blank lines ignored)
+sync_groups() {
+  groups_file="$1"
+  if [ ! -f "$groups_file" ]; then
+    echo "skip groups: $groups_file not found"
+    return 0
+  fi
+
+  table_exists="$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='groups';")"
+  if [ "$table_exists" -lt 1 ]; then
+    echo "skip groups: groups table missing (fresh DB before first daed boot?)"
+    return 0
+  fi
+
+  created=0
+  updated=0
+  unchanged=0
+
+  # Strip CR, comments, blanks
+  while IFS= read -r raw || [ -n "$raw" ]; do
+    line="$(printf '%s' "$raw" | tr -d '\r' | sed 's/#.*//;s/^[[:space:]]*//;s/[[:space:]]*$//')"
+    [ -z "$line" ] && continue
+
+    name="$(printf '%s' "$line" | cut -d'|' -f1 | sed 's/[[:space:]]*$//')"
+    policy="$(printf '%s' "$line" | cut -d'|' -f2 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+    param="$(printf '%s' "$line" | cut -d'|' -f3 | sed 's/^[[:space:]]*//;s/[[:space:]]*$//')"
+
+    if [ -z "$name" ] || [ -z "$policy" ]; then
+      echo "skip invalid groups line: $raw" >&2
+      continue
+    fi
+
+    case "$policy" in
+      random|fixed|min|min_avg10|min_moving_avg) ;;
+      *)
+        echo "skip unknown policy '$policy' for group '$name'" >&2
+        continue
+        ;;
+    esac
+
+    existing="$(sqlite3 "$DB_PATH" "SELECT id || '|' || policy FROM groups WHERE name = '$name' LIMIT 1;")"
+    if [ -z "$existing" ]; then
+      sqlite3 "$DB_PATH" "INSERT INTO groups (name, policy, version) VALUES ('$name', '$policy', 0);"
+      gid="$(sqlite3 "$DB_PATH" "SELECT id FROM groups WHERE name = '$name' LIMIT 1;")"
+      created=$((created + 1))
+      echo "created group $name (id=$gid policy=$policy)"
+    else
+      gid="$(printf '%s' "$existing" | cut -d'|' -f1)"
+      old_policy="$(printf '%s' "$existing" | cut -d'|' -f2)"
+      if [ "$old_policy" != "$policy" ]; then
+        sqlite3 "$DB_PATH" "UPDATE groups SET policy = '$policy', version = version + 1 WHERE id = $gid;"
+        updated=$((updated + 1))
+        echo "updated group $name policy ($old_policy -> $policy)"
+      else
+        unchanged=$((unchanged + 1))
+      fi
+    fi
+
+    # fixed(N) stores index in group_policy_params (empty key, value = index)
+    if [ "$policy" = "fixed" ]; then
+      idx="${param:-0}"
+      case "$idx" in
+        ''|*[!0-9]*) idx=0 ;;
+      esac
+      cur="$(sqlite3 "$DB_PATH" "SELECT value FROM group_policy_params WHERE group_id = $gid AND key = '' LIMIT 1;")"
+      if [ -z "$cur" ]; then
+        sqlite3 "$DB_PATH" "INSERT INTO group_policy_params (key, value, group_id) VALUES ('', '$idx', $gid);"
+        sqlite3 "$DB_PATH" "UPDATE groups SET version = version + 1 WHERE id = $gid;"
+        echo "  set fixed index=$idx for $name"
+      elif [ "$cur" != "$idx" ]; then
+        sqlite3 "$DB_PATH" "UPDATE group_policy_params SET value = '$idx' WHERE group_id = $gid AND key = '';"
+        sqlite3 "$DB_PATH" "UPDATE groups SET version = version + 1 WHERE id = $gid;"
+        echo "  updated fixed index ($cur -> $idx) for $name"
+      fi
+    else
+      # Non-fixed: drop leftover fixed params if any
+      orphan="$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM group_policy_params WHERE group_id = $gid;")"
+      if [ "$orphan" -gt 0 ]; then
+        sqlite3 "$DB_PATH" "DELETE FROM group_policy_params WHERE group_id = $gid;"
+        sqlite3 "$DB_PATH" "UPDATE groups SET version = version + 1 WHERE id = $gid;"
+        echo "  cleared policy params for $name"
+      fi
+    fi
+
+    # Sticky groups referenced by routing must not be empty or dae refuses to
+    # load full routing. Seed ONLY when still empty (never overwrite UI edits).
+    # dae rule: policy=fixed allows exactly ONE node (no whole subscription).
+    if [ "$name" != "proxy" ]; then
+      ncount="$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM group_nodes WHERE group_id = $gid;")"
+      scount="$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM group_subscriptions WHERE group_id = $gid;")"
+      if [ "$ncount" -eq 0 ] && [ "$scount" -eq 0 ]; then
+        proxy_id="$(sqlite3 "$DB_PATH" "SELECT id FROM groups WHERE name = 'proxy' LIMIT 1;")"
+        if [ -n "$proxy_id" ]; then
+          # Prefer anytls > tuic > other from proxy's subscription(s) / nodes
+          pick="$(sqlite3 "$DB_PATH" "
+            SELECT n.id FROM nodes n
+            WHERE n.subscription_id IN (
+              SELECT subscription_id FROM group_subscriptions WHERE group_id = $proxy_id
+            ) OR n.id IN (
+              SELECT node_id FROM group_nodes WHERE group_id = $proxy_id
+            )
+            ORDER BY CASE n.protocol
+              WHEN 'anytls' THEN 0 WHEN 'tuic' THEN 1 ELSE 2 END, n.id
+            LIMIT 1;
+          ")"
+          if [ -z "$pick" ]; then
+            pick="$(sqlite3 "$DB_PATH" "SELECT id FROM nodes ORDER BY id LIMIT 1;")"
+          fi
+          if [ -n "$pick" ]; then
+            sqlite3 "$DB_PATH" "INSERT OR IGNORE INTO group_nodes (group_id, node_id) VALUES ($gid, $pick);"
+            sqlite3 "$DB_PATH" "UPDATE groups SET version = version + 1 WHERE id = $gid;"
+            pname="$(sqlite3 "$DB_PATH" "SELECT name FROM nodes WHERE id = $pick;")"
+            echo "  seeded $name with 1 node: $pname (id=$pick)"
+          else
+            echo "  warn: group $name empty and no nodes available to seed" >&2
+          fi
+        else
+          echo "  warn: group $name is empty and proxy not found" >&2
+        fi
+      fi
+    fi
+  done < "$groups_file"
+
+  echo "groups sync: created=$created updated=$updated unchanged=$unchanged"
+  sqlite3 "$DB_PATH" "SELECT id, name, policy FROM groups ORDER BY id;" | sed 's/^/  /'
+}
+
 require_file "$DB_PATH"
 require_file "$CONFIG_DIR/global.conf"
 require_file "$CONFIG_DIR/dns.conf"
@@ -81,5 +209,6 @@ require_file "$CONFIG_DIR/routing.conf"
 sync_selected_row "configs" "global" "global" "$CONFIG_DIR/global.conf"
 sync_selected_row "dns" "dns" "dns" "$CONFIG_DIR/dns.conf"
 sync_selected_row "routings" "routing" "routing" "$CONFIG_DIR/routing.conf"
+sync_groups "$CONFIG_DIR/groups.txt"
 
 echo "daed config sync complete"

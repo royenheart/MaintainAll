@@ -139,11 +139,63 @@ python3 scripts/restore_config.py
 docker restart daed
 ```
 
+### 出站分组（自动种子）
+
+`docker compose up` 时，`daed-config-sync` 会：
+
+1. 同步 `global.conf` / `dns.conf` / `routing.conf` 进 `wing.db`
+2. 按 `config/groups.txt` **创建/更新空 Group**（不挂节点）
+
+你只需在 Web UI → Groups 里把 sticky 组换成目标节点（或保留默认克隆的 proxy 成员）。路由已绑定好，不必再手建组名。
+
+首次种子时若 sticky 组为空，会从 `proxy` **挑 1 个节点**塞进去（`fixed` 策略只允许单节点）。之后在面板改组成员不会被同步脚本覆盖。
+
+| Group | 策略 | 典型用途 |
+|---|---|---|
+| `proxy` | `min_moving_avg` | 默认负载均衡出口 |
+| `openai` | `fixed(0)` | ChatGPT / OpenAI API（地区锁） |
+| `anthropic` | `fixed(0)` | Claude / Anthropic |
+| `gemini` | `fixed(0)` | Google Gemini / AI Studio |
+| `github` | `min_moving_avg` | GitHub / Copilot / ghproxy（稳定出口） |
+| `streaming` | `min_moving_avg` | Netflix / Disney+ / Spotify |
+| `telegram` | `min_moving_avg` | Telegram |
+| `discord` | `fixed(0)` | Discord |
+
+手工补种（不重建 sync 镜像时）：
+
+```bash
+python3 scripts/seed_groups.py
+docker restart daed
+```
+
+编辑 `config/groups.txt` 可增删组；改完后 `docker compose up -d --build daed-config-sync` 或跑 `seed_groups.py`，再重启 daed。
+
 ### 重置 Web UI 密码
 
 ```bash
 python3 scripts/reset_password.py <新密码>
 ```
+
+### 节点健康 + 出口测速
+
+```bash
+# 健康（GraphQL 列节点 + docker logs ALIVE）+ 经 gost 测 Cloudflare / GitHub
+python3 scripts/bench_nodes.py
+
+# 仅健康 / 仅吞吐
+python3 scripts/bench_nodes.py --health-only
+python3 scripts/bench_nodes.py --throughput-only
+
+# 账号可用环境变量，避免交互输入
+DAED_USER=admin DAED_PASS='***' python3 scripts/bench_nodes.py
+```
+
+默认经 `http://127.0.0.1:20171`（gost）拉：
+
+- Cloudflare：`speed.cloudflare.com` 1MiB
+- GitHub：`raw.githubusercontent.com/github/gitignore/.../Python.gitignore`
+
+不修改分组策略，测的是当前选中 dialer。
 
 ---
 
@@ -169,9 +221,13 @@ python3 scripts/reset_password.py <新密码>
 - 中国大陆 IP/域名 → 直连
 - 广告域名 → 屏蔽
 - Apple/阿里/微软/Steam 中国 → 直连
-- OpenAI/GitHub/Docker/Google → 代理
+- OpenAI / Anthropic / Gemini → 对应 sticky group
+- GitHub / 流媒体 / Telegram / Discord → 对应 sticky group
+- Docker / Google 等 → `proxy`（负载均衡）
 - QUIC (UDP 443) → 屏蔽（降低 CPU 负载）
-- 默认 → 代理
+- 默认 → `proxy`
+
+> `fixed` 组只能有 **1 个节点**。种子脚本会自动塞一个默认节点；请在面板换成你要固定的出口。
 
 ---
 
@@ -179,13 +235,14 @@ python3 scripts/reset_password.py <新密码>
 
 ```
 deploy/daed/
-├── docker-compose.yml              # daed Docker 容器
+├── docker-compose.yml              # daed Docker 容器（先跑 config-sync）
 ├── README.md                       # 本文档
 ├── .gitignore
 ├── config/
 │   ├── global.conf                 # 全局配置
 │   ├── dns.conf                    # DNS 配置
-│   ├── routing.conf                # 路由规则
+│   ├── routing.conf                # 路由规则（含 sticky outbound）
+│   ├── groups.txt                  # 出站分组种子（compose 自动同步）
 │   ├── subscriptions.txt.example   # 订阅信息模板
 │   ├── subscriptions.txt           # 订阅信息（用户自填，不入版本库）
 │   └── wing.db                     # 运行时数据库
@@ -196,5 +253,8 @@ deploy/daed/
     ├── setup.py                     # 引导式一键部署脚本
     ├── export_config.py            # 配置导出
     ├── restore_config.py           # 配置恢复
-    └── reset_password.py           # 密码重置
+    ├── reset_password.py           # 密码重置
+    ├── seed_groups.py              # 手工补种出站分组
+    ├── bench_nodes.py              # 节点健康 + 出口测速
+    └── daed-config-sync/           # compose 启动前同步 conf + groups
 ```
