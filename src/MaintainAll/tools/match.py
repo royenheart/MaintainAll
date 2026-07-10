@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import re
 import shlex
+from pathlib import Path
 from typing import TYPE_CHECKING
 
 if TYPE_CHECKING:
@@ -32,7 +33,7 @@ class CommandGate:
                 matched = allowed
                 break
 
-        if first in _SHELLS and matched is None:
+        if Path(first).name.lower() in _SHELLS and matched is None:
             return None
         return matched
 

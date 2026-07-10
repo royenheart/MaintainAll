@@ -44,3 +44,14 @@ def test_report_section_case_sensitive():
     )
     assert not ok
     assert "summary" in msg.lower() or "Summary" in msg
+
+
+def test_report_section_rejects_mid_line_heading():
+    ok, msg = evaluate_expect(
+        Expect(type="report_section", name="Summary"),
+        stdout="",
+        report_text="Notes: ## Summary is not a heading",
+        repo_root=Path("."),
+    )
+    assert not ok
+    assert "Summary" in msg

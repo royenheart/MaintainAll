@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import re
 from pathlib import Path
 
 from MaintainAll.missions.models import Expect
@@ -22,7 +23,8 @@ def evaluate_expect(
         if not expect.name:
             return False, "report_section requires name"
         heading = f"## {expect.name}"
-        if heading not in report_text:
+        pattern = rf"^##\s+{re.escape(expect.name)}\b"
+        if not re.search(pattern, report_text, re.MULTILINE):
             return False, f"report missing section: {heading!r}"
         return True, ""
 
