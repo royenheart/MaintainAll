@@ -20,6 +20,7 @@ dependencies = [
   "platformdirs>=4.0",
   "PyYAML>=6.0",
   "croniter>=2.0",
+  "tomli-w>=1.0",
 ]
 
 [project.optional-dependencies]

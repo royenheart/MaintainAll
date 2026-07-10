@@ -2,7 +2,7 @@ from pathlib import Path
 from unittest.mock import patch
 import tomllib
 
-from MaintainAll.config import Settings, save_non_secrets, set_secret, get_secret, migrate_legacy_json
+from MaintainAll.config import Settings, load_settings, save_non_secrets, set_secret, get_secret, migrate_legacy_json
 
 
 def test_default_model_is_v4_flash(tmp_path, monkeypatch):
@@ -18,6 +18,23 @@ def test_save_non_secrets_roundtrip(tmp_path, monkeypatch):
     data = tomllib.loads(path.read_text())
     assert data["model"] == "deepseek-v4-pro"
     assert "api_key" not in data
+
+
+def test_save_non_secrets_escapes_quotes(tmp_path, monkeypatch):
+    monkeypatch.setenv("MAINTAINALL_CONFIG_DIR", str(tmp_path))
+    s = Settings(model='deepseek-"pro"', repo_path='/path/with"quote')
+    path = save_non_secrets(s, config_dir=tmp_path)
+    data = tomllib.loads(path.read_text())
+    assert data["model"] == 'deepseek-"pro"'
+    assert data["repo_path"] == '/path/with"quote'
+
+
+def test_load_settings_env_overrides_file(tmp_path, monkeypatch):
+    monkeypatch.setenv("MAINTAINALL_CONFIG_DIR", str(tmp_path))
+    save_non_secrets(Settings(model="deepseek-v4-flash"), config_dir=tmp_path)
+    monkeypatch.setenv("MAINTAINALL_MODEL", "deepseek-v4-pro")
+    s = load_settings(config_dir_path=tmp_path)
+    assert s.model == "deepseek-v4-pro"
 
 
 def test_secret_via_keyring_mock(tmp_path, monkeypatch):

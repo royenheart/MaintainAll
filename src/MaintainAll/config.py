@@ -6,6 +6,7 @@ from pathlib import Path
 from typing import Literal
 
 import keyring
+import tomli_w
 from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
@@ -55,6 +56,32 @@ def keyring_available() -> bool:
         return False
 
 
+def _env_var_for_field(*parts: str) -> str:
+    return "MAINTAINALL_" + "__".join(p.upper() for p in parts)
+
+
+def _field_overridden_by_env(*parts: str) -> bool:
+    return _env_var_for_field(*parts) in os.environ
+
+
+def _merge_file_settings(settings: Settings, file_data: dict) -> Settings:
+    updates: dict = {}
+    for key, value in file_data.items():
+        if key == "smtp" and isinstance(value, dict):
+            smtp_updates: dict = {}
+            for sub_key, sub_value in value.items():
+                field_name = "from_addr" if sub_key == "from" else sub_key
+                if not _field_overridden_by_env("smtp", field_name):
+                    smtp_updates[sub_key] = sub_value
+            if smtp_updates:
+                updates["smtp"] = settings.smtp.model_copy(update=smtp_updates)
+        elif not _field_overridden_by_env(key):
+            updates[key] = value
+    if updates:
+        return settings.model_copy(update=updates)
+    return settings
+
+
 def set_secret(name: str, value: str, *, config_dir_path: Path | None = None) -> None:
     try:
         keyring.set_password(KEYRING_SERVICE, name, value)
@@ -70,7 +97,7 @@ def set_secret(name: str, value: str, *, config_dir_path: Path | None = None) ->
 
         data = tomllib.loads(path.read_text())
     data[name] = value
-    path.write_text("".join(f'{k} = "{v}"\n' for k, v in data.items()))
+    path.write_text(tomli_w.dumps(data))
     path.chmod(0o600)
 
 
@@ -95,12 +122,11 @@ def get_secret(name: str, *, config_dir_path: Path | None = None) -> str | None:
 def load_settings(*, config_dir_path: Path | None = None) -> Settings:
     cfg = config_dir_path or config_dir()
     toml_path = cfg / "config.toml"
-    kwargs: dict = {}
+    s = Settings()
     if toml_path.exists():
         import tomllib
 
-        kwargs.update(tomllib.loads(toml_path.read_text()))
-    s = Settings(**kwargs)
+        s = _merge_file_settings(s, tomllib.loads(toml_path.read_text()))
     ak = get_secret("api_key", config_dir_path=cfg)
     if ak:
         s.api_key = SecretStr(ak)
@@ -116,23 +142,15 @@ def save_non_secrets(settings: Settings, *, config_dir: Path | None = None) -> P
     cfg = config_dir if config_dir is not None else default_config_dir()
     cfg.mkdir(parents=True, exist_ok=True)
     path = cfg / "config.toml"
-    smtp = settings.smtp.model_dump(by_alias=True)
-    lines = [
-        f'model = "{settings.model}"',
-        f'api_base = "{settings.api_base}"',
-        f'repo_path = "{settings.repo_path}"',
-        f'agent_mode = "{settings.agent_mode}"',
-        f"rag_top_k = {settings.rag_top_k}",
-        "",
-        "[smtp]",
-        f'host = "{smtp.get("host", "")}"',
-        f"port = {smtp.get('port', 587)}",
-        f'user = "{smtp.get("user", "")}"',
-        f'from = "{smtp.get("from", "")}"',
-        "to = [" + ", ".join(f'"{t}"' for t in smtp.get("to", [])) + "]",
-        "",
-    ]
-    path.write_text("\n".join(lines))
+    data = {
+        "model": settings.model,
+        "api_base": settings.api_base,
+        "repo_path": settings.repo_path,
+        "agent_mode": settings.agent_mode,
+        "rag_top_k": settings.rag_top_k,
+        "smtp": settings.smtp.model_dump(by_alias=True),
+    }
+    path.write_text(tomli_w.dumps(data))
     return path
 
 
