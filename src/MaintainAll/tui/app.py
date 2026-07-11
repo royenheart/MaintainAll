@@ -38,7 +38,13 @@ from MaintainAll.paths import config_dir, missions_dir, prompt_history_path, ski
 from MaintainAll.skills import load_skills
 from MaintainAll.skills.models import SkillMeta
 from MaintainAll.tui.cancel import SessionCancelArm
-from MaintainAll.tui.modals import DetailModal, ReviewModal, SettingsModal, SolidifyModal
+from MaintainAll.tui.modals import (
+    DetailModal,
+    LinkOfferModal,
+    ReviewModal,
+    SettingsModal,
+    SolidifyModal,
+)
 from MaintainAll.tui.panes import (
     ChatInput,
     ChatStream,
@@ -151,7 +157,7 @@ class MaintainAllApp(App[None]):
     .modal-actions Button {
         margin: 0 1;
     }
-    ReviewModal, DetailModal, SolidifyModal, SettingsModal {
+    ReviewModal, DetailModal, SolidifyModal, SettingsModal, LinkOfferModal {
         align: center middle;
     }
     #review-modal, #detail-modal {
@@ -199,6 +205,40 @@ class MaintainAllApp(App[None]):
     }
     #settings-modal Input, #settings-modal Select {
         margin-bottom: 1;
+    }
+    #smtp-setup-hint {
+        color: $text-muted;
+        margin-bottom: 1;
+        height: auto;
+        width: 100%;
+        max-height: 8;
+    }
+    #smtp-setup-links {
+        height: auto;
+        width: 100%;
+        margin-bottom: 1;
+    }
+    #smtp-setup-links Button {
+        width: auto;
+        min-width: 16;
+        margin-right: 1;
+    }
+    #link-offer-modal {
+        width: 80%;
+        max-width: 100;
+        height: auto;
+        max-height: 40;
+    }
+    #link-offer-modal #link-offer-target {
+        width: 100%;
+        margin-bottom: 1;
+    }
+    #link-offer-note {
+        color: $text-muted;
+        margin-bottom: 1;
+        height: auto;
+        max-height: 16;
+        width: 100%;
     }
     """
 
@@ -259,11 +299,15 @@ class MaintainAllApp(App[None]):
         )
 
     def _bind_prompt_history(self) -> None:
-        path = prompt_history_path(self._repo())
+        path = prompt_history_path(self._repo(), data_dir=self.settings.data_dir)
         entries = load_prompt_history(path, max_size=100)
 
         def on_push(text: str) -> None:
-            append_prompt_history(prompt_history_path(self._repo()), text, max_size=100)
+            append_prompt_history(
+                prompt_history_path(self._repo(), data_dir=self.settings.data_dir),
+                text,
+                max_size=100,
+            )
 
         try:
             chat = self.query_one("#chat-input", ChatInput)
@@ -399,6 +443,8 @@ class MaintainAllApp(App[None]):
             return
         api_key = getattr(result, "_pending_api_key", "") or ""
         smtp_password = getattr(result, "_pending_smtp_password", "") or ""
+        smtp_refresh = getattr(result, "_pending_smtp_refresh_token", "") or ""
+        smtp_client_secret = getattr(result, "_pending_smtp_client_secret", "") or ""
         # Strip pending attrs before save
         clean = result.model_copy()
         save_non_secrets(clean)
@@ -406,6 +452,10 @@ class MaintainAllApp(App[None]):
             set_secret("api_key", api_key.strip())
         if smtp_password:
             set_secret("smtp_password", smtp_password)
+        if smtp_refresh:
+            set_secret("smtp_refresh_token", smtp_refresh)
+        if smtp_client_secret:
+            set_secret("smtp_client_secret", smtp_client_secret)
         self.settings = load_settings()
         self.memory.mode = self.settings.agent_mode
         self._reload_catalog()
@@ -687,6 +737,10 @@ class MaintainAllApp(App[None]):
                 stream.write("[bold]── Report ──[/]")
                 stream.write(body, markup=False)
                 stream.write("[bold]── End report ──[/]")
+        # Re-surface notify after the report dump (easy to miss mid-stream).
+        for ev in result.get("event_log") or []:
+            if isinstance(ev, dict) and ev.get("type") == "notify":
+                stream.append_event(ev)
         if result.get("reject_reason"):
             stream.write(f"[red]Rejected:[/] {result['reject_reason']}")
         if result.get("log_path"):

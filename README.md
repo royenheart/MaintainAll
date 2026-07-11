@@ -43,7 +43,7 @@ python maintain.py          # 或 maintainall
 
 可选：安装 user systemd unit 后启用定时 daemon（见 `deploy/systemd/` 与 `AGENTS.md`）。
 
-配置与密钥：非密钥在 `~/.config/maintainall/config.toml`，API Key / SMTP 密码进 OS keyring（详见 `AGENTS.md`）。
+配置与密钥：非密钥在 `~/.config/maintainall/config.toml`，API Key / SMTP 密码与 OAuth refresh token 进 OS keyring（详见 `AGENTS.md`）。Gmail/Outlook 通知走官方 API OAuth；Custom 走传统 SMTP。
 
 ---
 

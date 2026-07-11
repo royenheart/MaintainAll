@@ -74,12 +74,14 @@ def build_graph(
     *,
     assess_fn: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
     max_iters: int = 10,
+    settings: Settings | None = None,
 ):
     nodes = make_nodes(
         llm=llm,
         event_callback=event_callback,
         assess_fn=assess_fn,
         max_iters=max_iters,
+        settings=settings,
     )
     graph = StateGraph(AgentState)
     graph.add_node("assess", nodes["assess"])
@@ -150,6 +152,7 @@ def _initial_state(
         "mode": resolved_mode,  # type: ignore[typeddict-item]
         "skip_review": skip_review,
         "repo_path": settings.repo_path,
+        "data_dir": settings.data_dir,
         "report_language": settings.report_language or "zh-CN",
         "messages": list(memory.messages) if memory else [],
         "observations": [],
@@ -247,7 +250,7 @@ def run_session(
     feasible: bool | None = None,
     cancel_event: threading.Event | None = None,
 ) -> AgentState:
-    session_log = SessionLog(Path(settings.repo_path))
+    session_log = SessionLog(Path(settings.repo_path), data_dir=settings.data_dir)
     session_log.write({"type": "user_input", "text": user_input})
 
     def chained_event_callback(event: dict[str, Any]) -> None:
@@ -255,7 +258,12 @@ def run_session(
         if event_callback is not None:
             event_callback(event)
 
-    app = build_graph(llm=llm, event_callback=chained_event_callback, assess_fn=assess_fn)
+    app = build_graph(
+        llm=llm,
+        event_callback=chained_event_callback,
+        assess_fn=assess_fn,
+        settings=settings,
+    )
     state: dict[str, Any] = dict(
         _initial_state(
             user_input,
@@ -340,7 +348,12 @@ def run_mission(
     llm: Any = None,
     assess_fn: Callable[[dict[str, Any]], dict[str, Any]] | None = None,
 ) -> AgentState:
-    app = build_graph(llm=llm, event_callback=event_callback, assess_fn=assess_fn)
+    app = build_graph(
+        llm=llm,
+        event_callback=event_callback,
+        assess_fn=assess_fn,
+        settings=settings,
+    )
     draft = mission_to_dict(mission)
     state = _initial_state(
         user_input=f"run mission {mission.id}",

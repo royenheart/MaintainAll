@@ -1347,7 +1347,7 @@ def validate_node(
         )
         if needs_report_file:
             mission_id = str(draft.get("id") or "unknown")
-            write_report(mission_id, report_draft, reports_dir(repo_root))
+            write_report(mission_id, report_draft, reports_dir(repo_root, data_dir=state.get("data_dir")))
 
     if mission is None:
         errors.append("HARD: missing mission_draft")
@@ -1517,18 +1517,22 @@ def finalize_node(
     state: dict[str, Any],
     *,
     event_callback: EventCallback | None = None,
+    settings: Any | None = None,
 ) -> dict[str, Any]:
+    from MaintainAll.notify.mail import maybe_notify_mission
     from MaintainAll.notify.report import format_mission_report
 
     events = list(state.get("event_log") or [])
     repo = Path(state.get("repo_path") or ".")
+    data_dir = state.get("data_dir")
     draft = state.get("mission_draft") or {}
     mission_id = str(draft.get("id") or "unknown")
     ts = datetime.now().strftime("%Y%m%d-%H%M%S")
-    out_dir = reports_dir(repo)
+    out_dir = reports_dir(repo, data_dir=data_dir)
     out_dir.mkdir(parents=True, exist_ok=True)
+    body = format_mission_report(state)
     path = out_dir / f"{mission_id}-{ts}.md"
-    path.write_text(format_mission_report(state), encoding="utf-8")
+    path.write_text(body, encoding="utf-8")
 
     interrupt = None
     worth_saving = bool(
@@ -1546,10 +1550,73 @@ def finalize_node(
         event_callback,
         {"type": "finalize", "report_path": str(path)},
     )
+
+    mail_notified = bool(state.get("mail_notified"))
+    # At most one email per session (avoids flood if finalize is reached oddly).
+    # Settings come from make_nodes closure — LangGraph strips unknown state keys
+    # (e.g. `_settings`), and load_settings() here would send real mail under pytest.
+    if not mail_notified:
+        try:
+            if settings is None:
+                events = _append_event(
+                    events,
+                    event_callback,
+                    {
+                        "type": "notify",
+                        "channel": "skipped",
+                        "ok": True,
+                        "error": "no session settings (notify disabled)",
+                    },
+                )
+            else:
+                channel = maybe_notify_mission(
+                    draft=draft if isinstance(draft, dict) else {},
+                    validation_ok=state.get("validation_ok"),
+                    body=body,
+                    settings=settings,
+                )
+                mail_notified = True
+                if channel and channel != "none":
+                    events = _append_event(
+                        events,
+                        event_callback,
+                        {"type": "notify", "channel": channel, "ok": True},
+                    )
+                elif channel == "none":
+                    events = _append_event(
+                        events,
+                        event_callback,
+                        {
+                            "type": "notify",
+                            "channel": "none",
+                            "ok": False,
+                            "error": "mail not configured (no API/SMTP/local)",
+                        },
+                    )
+                elif channel is None:
+                    events = _append_event(
+                        events,
+                        event_callback,
+                        {
+                            "type": "notify",
+                            "channel": "skipped",
+                            "ok": True,
+                            "error": "notify flags off or disabled in this environment",
+                        },
+                    )
+        except Exception as exc:
+            mail_notified = True
+            events = _append_event(
+                events,
+                event_callback,
+                {"type": "notify", "ok": False, "error": str(exc)},
+            )
+
     return {
         "report_path": str(path),
         "interrupt": interrupt,
         "event_log": events,
+        "mail_notified": mail_notified,
     }
 
 
@@ -1572,6 +1639,7 @@ def make_nodes(
     event_callback: EventCallback | None = None,
     assess_fn: AssessFn | None = None,
     max_iters: int = 10,
+    settings: Any | None = None,
 ) -> dict[str, Callable[[dict[str, Any]], dict[str, Any]]]:
     return {
         "assess": lambda state: assess_node(
@@ -1588,6 +1656,8 @@ def make_nodes(
         "revise_mission": lambda state: revise_mission_node(
             state, llm=llm, event_callback=event_callback
         ),
-        "finalize": lambda state: finalize_node(state, event_callback=event_callback),
+        "finalize": lambda state: finalize_node(
+            state, event_callback=event_callback, settings=settings
+        ),
         "reject": lambda state: reject_node(state, event_callback=event_callback),
     }

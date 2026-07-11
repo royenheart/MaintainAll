@@ -22,14 +22,21 @@ class SessionLog:
     stays proportional to LLM calls rather than tokens.
     """
 
-    def __init__(self, repo: Path, session_id: str | None = None) -> None:
+    def __init__(
+        self,
+        repo: Path,
+        session_id: str | None = None,
+        *,
+        data_dir: str | Path | None = None,
+    ) -> None:
         self._repo = Path(repo)
+        self._data_dir = data_dir
         if session_id is None:
             ts = datetime.now(timezone.utc).strftime("%Y%m%d-%H%M%S")
             short = secrets.token_hex(3)
             session_id = f"session-{ts}-{short}"
         self._session_id = session_id
-        self._path = logs_dir(self._repo) / f"{session_id}.jsonl"
+        self._path = logs_dir(self._repo, data_dir=self._data_dir) / f"{session_id}.jsonl"
         self._path.parent.mkdir(parents=True, exist_ok=True)
         # think_id -> {"phase": ..., "reasoning": [str], "content": [str]}
         self._stream_bufs: dict[str, dict[str, Any]] = {}

@@ -79,3 +79,51 @@ def test_send_notification_redacts_api_key_in_body():
         msg = smtp.send_message.call_args[0][0]
         assert "sk-leak" not in msg.get_content()
         assert "***" in msg.get_content()
+
+
+
+def test_mail_notify_blocked_under_pytest():
+    from MaintainAll.notify.mail import mail_notify_allowed, maybe_notify_mission
+
+    assert mail_notify_allowed() is False
+    settings = Settings(
+        smtp=SmtpSettings(provider="custom", host="smtp.example.com", to=["a@b.com"])
+    )
+    assert (
+        maybe_notify_mission(
+            draft={"id": "m1", "notify": {"on_complete": True, "on_failure": True}},
+            validation_ok=True,
+            body="ok",
+            settings=settings,
+        )
+        is None
+    )
+
+
+def test_maybe_notify_mission_respects_flags(monkeypatch):
+    from MaintainAll.notify.mail import maybe_notify_mission
+
+    monkeypatch.setattr("MaintainAll.notify.mail.mail_notify_allowed", lambda: True)
+    settings = Settings(
+        smtp=SmtpSettings(provider="custom", host="smtp.example.com", to=["a@b.com"])
+    )
+    with patch("MaintainAll.notify.mail.send_notification", return_value="smtp") as send:
+        assert (
+            maybe_notify_mission(
+                draft={"id": "m1", "notify": {"on_complete": True, "on_failure": False}},
+                validation_ok=True,
+                body="ok",
+                settings=settings,
+            )
+            == "smtp"
+        )
+        send.assert_called_once()
+        assert (
+            maybe_notify_mission(
+                draft={"id": "m1", "notify": {"on_complete": False, "on_failure": True}},
+                validation_ok=True,
+                body="ok",
+                settings=settings,
+            )
+            is None
+        )

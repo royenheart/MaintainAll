@@ -334,6 +334,17 @@ class ChatStream(VerticalScroll):
                 self.write(f"[bold orange1]revise[/]: {action}")
         elif etype == "finalize":
             self.write(f"[bold green]finalize[/]: {event.get('report_path', '')}")
+        elif etype == "notify":
+            ok = event.get("ok", True)
+            ch = event.get("channel", "?")
+            err = event.get("error")
+            if ok and ch not in (None, "none", "skipped"):
+                self.write(f"[bold green]notify[/]: sent via {ch}")
+            elif ch == "skipped" or ch in (None, ""):
+                detail = f" — {err}" if err else ""
+                self.write(f"[yellow]notify[/]: skipped{detail}")
+            else:
+                self.write(f"[bold red]notify[/]: {err or ch}")
         elif etype == "reject":
             self.write(f"[bold red]reject[/]: {event.get('reason', '')}")
         elif etype == "session_cancelled":

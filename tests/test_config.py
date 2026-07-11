@@ -37,6 +37,30 @@ def test_load_settings_env_overrides_file(tmp_path, monkeypatch):
     assert s.model == "deepseek-v4-pro"
 
 
+def test_smtp_from_alias_roundtrip(tmp_path, monkeypatch):
+    """TOML key `from` must load into SmtpSettings.from_addr (model_copy needs field name)."""
+    monkeypatch.setenv("MAINTAINALL_CONFIG_DIR", str(tmp_path))
+    from MaintainAll.config import SmtpSettings
+
+    s = Settings(
+        smtp=SmtpSettings(
+            provider="gmail",
+            auth="oauth",
+            user="me@gmail.com",
+            from_addr="me@gmail.com",
+            to=["ops@example.com"],
+            client_id="cid",
+        )
+    )
+    save_non_secrets(s, config_dir=tmp_path)
+    raw = tomllib.loads((tmp_path / "config.toml").read_text())
+    assert raw["smtp"]["from"] == "me@gmail.com"
+    loaded = load_settings(config_dir_path=tmp_path)
+    assert loaded.smtp.from_addr == "me@gmail.com"
+    assert loaded.smtp.user == "me@gmail.com"
+    assert loaded.smtp.to == ["ops@example.com"]
+
+
 def test_secret_via_keyring_mock(tmp_path, monkeypatch):
     store = {}
     monkeypatch.setenv("MAINTAINALL_CONFIG_DIR", str(tmp_path))

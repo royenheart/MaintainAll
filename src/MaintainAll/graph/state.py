@@ -25,4 +25,6 @@ class AgentState(TypedDict, total=False):
     interrupt: str | None
     cancelled: bool
     repo_path: str
+    data_dir: str
+    mail_notified: bool
     event_log: list[dict[str, Any]]

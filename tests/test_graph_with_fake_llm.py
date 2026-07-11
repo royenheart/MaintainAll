@@ -203,6 +203,71 @@ def test_run_session_preserves_solidify_interrupt(tmp_path: Path):
     assert memory.mission.id == "fake-ok"
 
 
+
+def test_finalize_uses_injected_settings_not_state(tmp_path: Path):
+    """LangGraph drops unknown keys; settings must come from make_nodes closure."""
+    from MaintainAll.graph.nodes import finalize_node
+
+    events: list[dict] = []
+    settings = Settings(repo_path=str(tmp_path), data_dir=str(tmp_path / "data"))
+    out = finalize_node(
+        {
+            "user_input": "run",
+            "mode": "mission",
+            "skip_review": True,
+            "repo_path": str(tmp_path),
+            "data_dir": str(tmp_path / "data"),
+            "mission_draft": {
+                **BOARD_MISSION,
+                "notify": {"on_complete": True, "on_failure": True},
+            },
+            "validation_ok": True,
+            "observations": ["ok"],
+            "report_draft": "",
+            "event_log": [],
+            # Intentionally present but must be ignored if closure is preferred —
+            # finalize only uses the injected settings kwarg.
+        },
+        event_callback=events.append,
+        settings=settings,
+    )
+    notify = [e for e in events if e.get("type") == "notify"]
+    assert notify, events
+    assert notify[0].get("error") != "no session settings (notify disabled)"
+    # Under pytest, mail_notify_allowed() is False → skipped for env reason.
+    assert notify[0].get("channel") == "skipped"
+    assert "environment" in str(notify[0].get("error") or "")
+    assert out.get("mail_notified") is True
+
+
+def test_build_graph_finalize_keeps_settings(tmp_path: Path):
+    events: list[dict] = []
+    settings = Settings(repo_path=str(tmp_path), data_dir=str(tmp_path / "data"))
+
+    # Exercise make_nodes path used by build_graph
+    from MaintainAll.graph.nodes import make_nodes
+
+    nodes = make_nodes(event_callback=events.append, settings=settings)
+    out = nodes["finalize"](
+        {
+            "user_input": "x",
+            "mode": "mission",
+            "skip_review": True,
+            "repo_path": str(tmp_path),
+            "data_dir": str(tmp_path / "data"),
+            "mission_draft": {
+                **BOARD_MISSION,
+                "notify": {"on_complete": True, "on_failure": True},
+            },
+            "validation_ok": True,
+            "event_log": [],
+        }
+    )
+    notify = [e for e in (out.get("event_log") or []) if e.get("type") == "notify"]
+    assert notify
+    assert notify[0].get("error") != "no session settings (notify disabled)"
+
+
 def test_finalize_skips_solidify_for_mission_mode(tmp_path: Path):
     from MaintainAll.graph.nodes import finalize_node
 

@@ -78,13 +78,24 @@ def test_detail_and_review_share_mission_board_with_script_collapsible():
     assert "compose_mission_board" in inspect.getsource(ReviewModal.compose)
 
 
-def test_imports():
-    assert MaintainAllApp is not None
-    assert RunStatePane is not None
-    assert DetailModal is not None
-    assert ReviewModal is not None
-    assert SettingsModal is not None
-    assert SolidifyModal is not None
+def test_settings_secret_mask_and_report_language_options():
+    from pydantic import SecretStr
+
+    from MaintainAll.config import Settings
+    from MaintainAll.tui.modals import SettingsModal
+
+    empty = SettingsModal(Settings())
+    assert empty._secret_field_value(None) == ""
+    assert empty._pending_secret("") == ""
+    assert empty._pending_secret("***") == ""
+    assert empty._pending_secret("sk-new") == "sk-new"
+
+    filled = SettingsModal(Settings(api_key=SecretStr("sk-secret")))
+    assert filled._secret_field_value(filled.settings.api_key) == "***"
+
+    langs = {value for _label, value in SettingsModal.REPORT_LANGUAGE_OPTIONS}
+    assert "zh-CN" in langs and "en" in langs
+    assert filled._report_language_value() == "zh-CN"
 
 
 def test_session_llm_from_settings_none_without_key():

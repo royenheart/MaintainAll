@@ -10,18 +10,28 @@ import tomli_w
 from pydantic import BaseModel, Field, SecretStr
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
-from MaintainAll.paths import config_dir, default_repo_path
+from MaintainAll.paths import config_dir, default_data_dir, default_repo_path
 
 KEYRING_SERVICE = "maintainall"
 AgentMode = Literal["readonly", "restricted", "unlimited"]
 
 
+SmtpProvider = Literal["gmail", "outlook", "custom"]
+SmtpAuth = Literal["password", "oauth"]
+SmtpSecurity = Literal["starttls", "ssl"]
+
+
 class SmtpSettings(BaseModel):
+    provider: SmtpProvider = "custom"
+    auth: SmtpAuth = "password"
     host: str = ""
     port: int = 587
+    security: SmtpSecurity = "starttls"
     user: str = ""
     from_addr: str = Field(default="", alias="from")
     to: list[str] = Field(default_factory=list)
+    client_id: str = ""
+    tenant_id: str = "common"
 
     model_config = {"populate_by_name": True}
 
@@ -36,13 +46,16 @@ class Settings(BaseSettings):
     api_base: str = "https://api.deepseek.com"
     model: str = "deepseek-v4-flash"
     repo_path: str = str(default_repo_path())
+    data_dir: str = str(default_data_dir())
     agent_mode: AgentMode = "readonly"
     report_language: str = "zh-CN"
     rag_top_k: int = 5
     smtp: SmtpSettings = Field(default_factory=SmtpSettings)
-    # loaded separately from keyring / env DEEPSEEK_API_KEY
+    # loaded separately from keyring / env
     api_key: SecretStr | None = None
     smtp_password: SecretStr | None = None
+    smtp_refresh_token: SecretStr | None = None
+    smtp_client_secret: SecretStr | None = None
 
 
 def _secrets_fallback_path(cfg: Path | None = None) -> Path:
@@ -71,9 +84,17 @@ def _merge_file_settings(settings: Settings, file_data: dict) -> Settings:
         if key == "smtp" and isinstance(value, dict):
             smtp_updates: dict = {}
             for sub_key, sub_value in value.items():
+                # model_copy(update=...) uses field names, not aliases — "from" is ignored.
                 field_name = "from_addr" if sub_key == "from" else sub_key
+                if field_name not in SmtpSettings.model_fields and sub_key not in {
+                    "from",
+                    "password",
+                }:
+                    continue
+                if field_name == "password":
+                    continue  # secrets loaded separately
                 if not _field_overridden_by_env("smtp", field_name):
-                    smtp_updates[sub_key] = sub_value
+                    smtp_updates[field_name] = sub_value
             if smtp_updates:
                 updates["smtp"] = settings.smtp.model_copy(update=smtp_updates)
         elif not _field_overridden_by_env(key):
@@ -109,7 +130,12 @@ def get_secret(name: str, *, config_dir_path: Path | None = None) -> str | None:
             return v
     except Exception:
         pass
-    env_map = {"api_key": "DEEPSEEK_API_KEY", "smtp_password": "MAINTAINALL_SMTP_PASSWORD"}
+    env_map = {
+        "api_key": "DEEPSEEK_API_KEY",
+        "smtp_password": "MAINTAINALL_SMTP_PASSWORD",
+        "smtp_refresh_token": "MAINTAINALL_SMTP_REFRESH_TOKEN",
+        "smtp_client_secret": "MAINTAINALL_SMTP_CLIENT_SECRET",
+    }
     if name in env_map and os.environ.get(env_map[name]):
         return os.environ[env_map[name]]
     path = _secrets_fallback_path(config_dir_path or config_dir())
@@ -134,6 +160,12 @@ def load_settings(*, config_dir_path: Path | None = None) -> Settings:
     sp = get_secret("smtp_password", config_dir_path=cfg)
     if sp:
         s.smtp_password = SecretStr(sp)
+    rt = get_secret("smtp_refresh_token", config_dir_path=cfg)
+    if rt:
+        s.smtp_refresh_token = SecretStr(rt)
+    cs = get_secret("smtp_client_secret", config_dir_path=cfg)
+    if cs:
+        s.smtp_client_secret = SecretStr(cs)
     return s
 
 
@@ -147,6 +179,7 @@ def save_non_secrets(settings: Settings, *, config_dir: Path | None = None) -> P
         "model": settings.model,
         "api_base": settings.api_base,
         "repo_path": settings.repo_path,
+        "data_dir": settings.data_dir,
         "agent_mode": settings.agent_mode,
         "report_language": settings.report_language,
         "rag_top_k": settings.rag_top_k,

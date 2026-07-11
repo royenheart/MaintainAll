@@ -14,7 +14,6 @@ from MaintainAll.cron.schedule import next_run
 from MaintainAll.graph.workflow import run_mission
 from MaintainAll.missions.loader import load_missions
 from MaintainAll.missions.models import Mission
-from MaintainAll.notify.mail import send_notification
 from MaintainAll.notify.report import format_mission_report, write_report
 from MaintainAll.paths import agents_dir, missions_dir, reports_dir
 
@@ -22,7 +21,7 @@ SCAN_INTERVAL_SECONDS = 30
 STATE_FILENAME = ".daemon_state.json"
 
 
-def locks_dir(repo: Path) -> Path:
+def locks_dir(repo: Path, *, data_dir: str | Path | None = None) -> Path:
     return agents_dir(repo) / ".locks"
 
 
@@ -119,14 +118,22 @@ def format_report_body(mission: Mission, result: dict[str, Any]) -> str:
 def _maybe_notify(
     mission: Mission, body: str, result: dict[str, Any], settings: Settings
 ) -> None:
-    ok = bool(result.get("validation_ok"))
-    if ok and not mission.notify.on_complete:
+    from MaintainAll.notify.mail import mail_notify_allowed, maybe_notify_mission
+
+    if not mail_notify_allowed():
         return
-    if not ok and not mission.notify.on_failure:
-        return
-    status = "OK" if ok else "FAILED"
-    subject = f"MaintainAll mission {mission.id}: {status}"
-    send_notification(subject, body, settings)
+    maybe_notify_mission(
+        draft={
+            "id": mission.id,
+            "notify": {
+                "on_complete": mission.notify.on_complete,
+                "on_failure": mission.notify.on_failure,
+            },
+        },
+        validation_ok=result.get("validation_ok"),
+        body=body,
+        settings=settings,
+    )
 
 
 def scan_once(settings: Settings) -> None:
@@ -158,7 +165,7 @@ def scan_once(settings: Settings) -> None:
                 mission, settings=settings, skip_review=True, llm=llm
             )
             body = format_report_body(mission, result)
-            write_report(mission.id, body, reports_dir(repo))
+            write_report(mission.id, body, reports_dir(repo, data_dir=settings.data_dir))
             _maybe_notify(mission, body, result, settings)
             state[mission.id] = now.isoformat()
             save_daemon_state(repo, state)
