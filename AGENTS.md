@@ -7,8 +7,8 @@
 - AI 模式 TUI（Layout C）：对话 / 思考流 + 右侧 Missions/Skills + 运行态任务板
 - Skills：`.agents/skills/<name>/SKILL.md`
 - Missions：`.agents/missions/<id>/MISSION.yaml`（可选 cron `schedule`）
-- 报告：`.agents/reports/`（gitignored）
-- Daemon：按固化 mission 的 cron 触发 `run_mission()`
+- 运行时产物：`<workspace>/.maintainall/{reports,logs,history}/`（不纳入版本控制）
+- Daemon：按固化 mission 的 cron 触发 `run_mission()`；使用 mission 的 workspace `repo_path`，产物写入该工作区的 `.maintainall/`
 
 > **历史说明：** 旧版五 Tab TUI（浏览 / 对话 / 命令参考 / 模板填充 / 脚本工具）及 `PLUGIN_META` 插件面板已移除。Environment Modules 等能力改为 skill + mission + CLI（见 `scripts/modulefiles/manage_modules.py`）。
 
@@ -33,7 +33,11 @@
 User / Cron
     → assess → build_board → review → react_loop → validate → finalize
                                               ↑___________| (mismatch / rebuild)
+                                              validate may revise mission once → rebuild board
 ```
+
+- **assess** 会带上当前 `mode`，由模型判断「在该模式下能否真正完成用户目标」；不可行则直接 reject，不进入 board / ReAct。
+- **finalize** 后：交互会话只要有可保存的 mission draft，即可弹出固化（不要求 `validation_ok`）；也可稍后输入 `/solidify`。
 
 包布局：
 
@@ -50,8 +54,11 @@ MaintainAll/
 │   └── daemon/service.py
 └── .agents/
     ├── skills/                        # 版本库跟踪
-    ├── missions/                      # 版本库跟踪
-    └── reports/                       # gitignored
+    └── missions/                      # 版本库跟踪
+└── .maintainall/                      # 不纳入版本控制（按 workspace）
+    ├── reports/
+    ├── logs/
+    └── history/
 ```
 
 ---
@@ -61,7 +68,14 @@ MaintainAll/
 - **中央：** 思考 / 助手流 + 底部输入
 - **右侧（空闲）：** Missions 列表 → Skills 列表；点击打开详情浮层（Esc 关闭）
 - **右侧（运行中）：** mission 描述、`allowed_commands` 执行计数、任务板状态（pending/running/done/failed）
-- **模式：** `Shift+Tab` 循环 `readonly` → `restricted` → `unlimited`（仅交互、未绑定 mission）
+- **模式：** `Shift+Tab` 循环（仅交互、未绑定 mission）：
+
+| 模式 | Review | 命令执行 |
+|---|---|---|
+| **`readonly`**（默认） | 需要人工确认 | **禁止** `subprocess`（dry-run 记录跳过） |
+| **`restricted`** | 需要人工确认 | 仅 `allowed_commands` 白名单（`re.fullmatch` 整行） |
+| **`unlimited`** | 自动通过 | 任意非空命令（无白名单） |
+
 - **Mission / cron 模式：** 仅允许该 mission 的 `allowed_commands` / 固化脚本；daemon 跳过交互 review
 
 ---
@@ -105,6 +119,7 @@ YAML frontmatter：`name`、`description`。正文建议含 Context / Instructio
 - `api_base`: `https://api.deepseek.com`
 - `model`: `deepseek-v4-flash`（可改为 `deepseek-v4-pro`）
 - `agent_mode`: `readonly`
+- `report_language`: `zh-CN`（约束 assess 的 `reason`、OBSERVE / 报告正文；不影响 RUN 命令与协议关键字）
 
 首次运行若存在旧版 `~/.maintainall.json`，会迁移到 TOML + keyring。TUI 设置（F1）可改 model / api_base / SMTP / 默认模式；密钥字段掩码显示。
 
@@ -137,7 +152,7 @@ python scripts/modulefiles/manage_modules.py delete cuda 12.2
 
 1. Daemon 加载带非空 `schedule` 的固化 mission；触发时 `run_mission()`（mission 权限、跳过 review）。
 2. 每 mission 一把锁，避免重叠执行。
-3. 完成后始终写 `.agents/reports/<mission-id>-<timestamp>.md`。
+3. 完成后始终写该 mission workspace（`repo_path`）下的 `.maintainall/reports/<mission-id>-<timestamp>.md`。
 4. 若配置了 SMTP → 发信；否则尝试本地 `sendmail`/`mail`；都失败则保留报告并打警告日志。
 
 ---
@@ -147,6 +162,10 @@ python scripts/modulefiles/manage_modules.py delete cuda 12.2
 | 快捷键 | 功能 |
 |---|---|
 | `Shift+Tab` | 循环 agent 模式（交互 unbound） |
+| `↑` / `↓`（光标在输入开头） | 切换历史输入（按仓库 `.maintainall/history/prompt.jsonl` 落盘） |
+| `Tab` | `/run`：在输入框上方弹出候选（↑↓ 选择，Enter/Tab 确认，Esc 关闭）；其它：接受补全预览 |
+| `/run <mission-id\|name>` | 运行已固化 mission（支持前缀；Tab 打开候选框） |
+| `/solidify` | 将当前 memory 中的 mission 固化到 `.agents/missions/` |
 | `F1` | 设置 |
 | `Escape` | 关闭浮层 / 取消 |
 | `Ctrl+Q` | 退出 |

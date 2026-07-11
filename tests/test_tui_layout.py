@@ -22,6 +22,62 @@ async def test_app_composes_without_run():
         assert pilot.app.query_one("#idle-sidebar", IdleSidebar)
 
 
+def test_detail_and_review_share_mission_board_with_script_collapsible():
+    from MaintainAll.graph.nodes import mission_to_dict
+    from MaintainAll.missions.models import (
+        AllowedCommand,
+        Expect,
+        Mission,
+        NotifyConfig,
+        TaskNode,
+    )
+    from MaintainAll.tui.modals import DetailModal, ReviewModal, compose_mission_board
+    from textual.app import App, ComposeResult
+    from textual.widgets import Collapsible, Static
+
+    mission = Mission(
+        id="demo-detail",
+        name="Demo Detail",
+        description="show tasks",
+        skills=[],
+        schedule=None,
+        notify=NotifyConfig(),
+        allowed_commands=[AllowedCommand(pattern=r"^echo hello$")],
+        tasks=[
+            TaskNode(
+                id="t1",
+                name="First",
+                needs=[],
+                instruction="do it",
+                expect=Expect(type="report_section", name="summary"),
+                script="echo hello",
+            )
+        ],
+    )
+    draft = mission_to_dict(mission, include_status=False)
+
+    class _Probe(App):
+        def compose(self) -> ComposeResult:
+            yield from compose_mission_board(draft)
+
+        def on_mount(self) -> None:
+            assert len(self.query(Collapsible)) >= 1
+            code = self.query_one(".script-code", Static)
+            assert "echo hello" in code._content  # type: ignore[attr-defined]
+            texts = [str(s._content) for s in self.query(Static)]  # type: ignore[attr-defined]
+            assert any("Tasks:" in t for t in texts)
+            assert any("[t1] First" in t for t in texts)
+            self.exit()
+
+    _Probe().run()
+
+    # Both modals call the same compose_mission_board helper.
+    import inspect
+
+    assert "compose_mission_board" in inspect.getsource(DetailModal._compose_body)
+    assert "compose_mission_board" in inspect.getsource(ReviewModal.compose)
+
+
 def test_imports():
     assert MaintainAllApp is not None
     assert RunStatePane is not None

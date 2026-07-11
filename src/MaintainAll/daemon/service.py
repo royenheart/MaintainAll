@@ -15,7 +15,7 @@ from MaintainAll.graph.workflow import run_mission
 from MaintainAll.missions.loader import load_missions
 from MaintainAll.missions.models import Mission
 from MaintainAll.notify.mail import send_notification
-from MaintainAll.notify.report import write_report
+from MaintainAll.notify.report import format_mission_report, write_report
 from MaintainAll.paths import agents_dir, missions_dir, reports_dir
 
 SCAN_INTERVAL_SECONDS = 30
@@ -102,32 +102,18 @@ class MissionLock:
 
 
 def format_report_body(mission: Mission, result: dict[str, Any]) -> str:
-    observations = result.get("observations") or []
-    report_draft = (result.get("report_draft") or "").strip()
-    obs_lines = [f"- {obs}" for obs in observations] or ["- (none)"]
-    lines = [
-        f"# Mission Report: {mission.id}",
-        "",
-        f"- name: {mission.name}",
-        f"- schedule: {mission.schedule or '(none)'}",
-        f"- validation_ok: {result.get('validation_ok')}",
-        "",
-    ]
-    if report_draft:
-        lines.extend([report_draft, ""])
-    lines.extend(
-        [
-            "## Observations",
-            "",
-            *obs_lines,
-            "",
-        ]
-    )
-    if result.get("validation_errors"):
-        lines.extend(["## Validation Errors", ""])
-        lines.extend(f"- {err}" for err in result["validation_errors"])
-        lines.append("")
-    return "\n".join(lines)
+    state = dict(result)
+    if "mission_draft" not in state:
+        state["mission_draft"] = {
+            "id": mission.id,
+            "name": mission.name,
+            "description": mission.description,
+            "allowed_commands": [
+                {"pattern": c.pattern, "cwd": c.cwd} for c in mission.allowed_commands
+            ],
+            "tasks": [],
+        }
+    return format_mission_report(state)
 
 
 def _maybe_notify(

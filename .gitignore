@@ -230,6 +230,9 @@ start-codex.sh
 temp.worktrees/
 
 .agents/reports/
+.agents/logs/
+.agents/history/
+.maintainall/
 .superpowers/
 .venv/
 .worktrees/

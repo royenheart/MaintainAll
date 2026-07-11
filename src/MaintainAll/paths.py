@@ -13,7 +13,21 @@ def default_repo_path() -> Path:
 
 
 def agents_dir(repo: Path | None = None) -> Path:
+    """Versioned agent assets (skills / missions) under the workspace."""
     return (repo or default_repo_path()) / ".agents"
+
+
+def workspace_data_dir(repo: Path | None = None) -> Path:
+    """Runtime data root for the workspace (not version-controlled).
+
+    Layout::
+
+        <workspace>/.maintainall/
+          reports/
+          logs/
+          history/
+    """
+    return (repo or default_repo_path()) / ".maintainall"
 
 
 def skills_dir(repo: Path | None = None) -> Path:
@@ -25,7 +39,19 @@ def missions_dir(repo: Path | None = None) -> Path:
 
 
 def reports_dir(repo: Path | None = None) -> Path:
-    return agents_dir(repo) / "reports"
+    return workspace_data_dir(repo) / "reports"
+
+
+def logs_dir(repo: Path | None = None) -> Path:
+    return workspace_data_dir(repo) / "logs"
+
+
+def history_dir(repo: Path | None = None) -> Path:
+    return workspace_data_dir(repo) / "history"
+
+
+def prompt_history_path(repo: Path | None = None) -> Path:
+    return history_dir(repo) / "prompt.jsonl"
 
 
 def config_dir() -> Path:

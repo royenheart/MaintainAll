@@ -2,6 +2,7 @@ from MaintainAll.graph.workflow import (
     route_after_assess,
     route_after_react,
     route_after_review,
+    route_after_revise,
     route_after_validate,
 )
 
@@ -75,4 +76,26 @@ def test_route_after_validate_exhausted_retries():
             {"type": "validate", "ok": False},
         ],
     }
+    assert route_after_validate(state) == "revise_mission"
+
+
+def test_route_after_validate_revise_exhausted():
+    state = {
+        "validation_ok": False,
+        "validation_errors": ["t1: missing"],
+        "event_log": [
+            {"type": "validate", "ok": False},
+            {"type": "validate", "ok": False},
+            {"type": "revise_mission", "action": "finalize"},
+        ],
+    }
     assert route_after_validate(state) == "finalize"
+
+
+def test_route_after_revise_rebuild():
+    assert route_after_revise({"rebuild_board": True}) == "build_board"
+
+
+def test_route_after_revise_finalize():
+    assert route_after_revise({"rebuild_board": False}) == "finalize"
+    assert route_after_revise({}) == "finalize"

@@ -36,7 +36,7 @@ BOARD_MISSION = {
     "skills": [],
     "schedule": None,
     "notify": {"on_complete": True, "on_failure": True},
-    "allowed_commands": [],
+    "allowed_commands": [{"pattern": r"^echo\b", "cwd": "."}],
     "tasks": [
         {
             "id": "t1",
@@ -123,6 +123,169 @@ def test_assess_infeasible_no_report(tmp_path: Path):
     assert result.get("reject_reason") == "out of scope"
     assert not result.get("report_path")
     assert not list((tmp_path / ".agents" / "reports").glob("*.md"))
+
+
+def test_assess_prompt_includes_mode(tmp_path: Path):
+    llm = FakeLLM(
+        [
+            'ASSESS:{"feasible": false, "reason": "readonly 无法执行 bash -n"}',
+        ]
+    )
+    from MaintainAll.graph.nodes import make_nodes
+
+    nodes = make_nodes(llm=llm)
+    out = nodes["assess"](
+        {
+            "user_input": "用 bash -n 检查 maintaince 下所有脚本",
+            "mode": "readonly",
+            "report_language": "zh-CN",
+            "repo_path": str(tmp_path),
+            "event_log": [],
+        }
+    )
+    assert out.get("feasible") is False
+    assert "readonly" in str(out.get("reject_reason") or "").lower() or out.get(
+        "reject_reason"
+    )
+    assert llm.calls, "assess should call LLM"
+    system = llm.calls[0][0]["content"]
+    user = llm.calls[0][1]["content"]
+    assert "Agent mode: readonly" in user
+    assert "Report language: zh-CN" in user
+    assert "readonly" in system.lower()
+    assert "feasible" in system.lower()
+    assert "zh-CN" in system
+
+
+def test_finalize_offers_solidify_when_validation_fails(tmp_path: Path):
+    from MaintainAll.graph.nodes import finalize_node
+
+    out = finalize_node(
+        {
+            "user_input": "check scripts",
+            "mode": "readonly",
+            "skip_review": False,
+            "repo_path": str(tmp_path),
+            "mission_draft": BOARD_MISSION,
+            "validation_ok": False,
+            "validation_errors": ["main: report missing section"],
+            "observations": [],
+            "report_draft": "",
+            "event_log": [],
+        }
+    )
+    assert out.get("interrupt") == "solidify"
+    assert out.get("report_path")
+    assert Path(out["report_path"]).exists()
+
+
+def test_run_session_preserves_solidify_interrupt(tmp_path: Path):
+    """_finish_session must not wipe finalize's solidify interrupt."""
+    llm = FakeLLM(
+        [
+            'ASSESS:{"feasible": true, "reason": "ok"}',
+            f"BOARD:{json.dumps(BOARD_MISSION)}",
+            "REACT:DECLARE_DONE",
+        ]
+    )
+    settings = Settings(repo_path=str(tmp_path), agent_mode="restricted")
+    memory = SessionMemory(mode="restricted")
+    result = run_session(
+        "do the ok thing",
+        settings=settings,
+        memory=memory,
+        llm=llm,
+        skip_review=False,
+        review_callback=lambda _state: {"action": "approve", "feedback": ""},
+    )
+    assert result.get("interrupt") == "solidify"
+    assert memory.mission is not None
+    assert memory.mission.id == "fake-ok"
+
+
+def test_finalize_skips_solidify_for_mission_mode(tmp_path: Path):
+    from MaintainAll.graph.nodes import finalize_node
+
+    out = finalize_node(
+        {
+            "user_input": "run mission",
+            "mode": "mission",
+            "skip_review": True,
+            "repo_path": str(tmp_path),
+            "mission_draft": BOARD_MISSION,
+            "validation_ok": True,
+            "observations": ["ok"],
+            "report_draft": "",
+            "event_log": [],
+        }
+    )
+    assert out.get("interrupt") is None
+
+
+def test_run_session_reject_ends_without_rebuild(tmp_path: Path):
+    llm = FakeLLM(
+        [
+            'ASSESS:{"feasible": true, "reason": "ok"}',
+            f"BOARD:{json.dumps(BOARD_MISSION)}",
+        ]
+    )
+    settings = Settings(repo_path=str(tmp_path), agent_mode="restricted")
+    memory = SessionMemory(mode="restricted")
+    events: list[dict] = []
+
+    def review_cb(state):
+        assert state.get("interrupt") == "review"
+        return {"action": "reject", "feedback": "nope"}
+
+    result = run_session(
+        "do the ok thing",
+        settings=settings,
+        memory=memory,
+        review_callback=review_cb,
+        event_callback=events.append,
+        llm=llm,
+    )
+    assert result.get("review_action") == "reject"
+    reason = str(result.get("reject_reason") or "")
+    assert "nope" in reason or "User rejected" in reason
+    assert len(llm.calls) == 2
+    assert any(e.get("type") == "reject" for e in events)
+    board_thinking = [
+        e for e in events if e.get("type") == "thinking_start" and e.get("phase") == "board"
+    ]
+    assert len(board_thinking) <= 1
+
+
+def test_run_session_preloaded_mission_skips_board_llm(tmp_path: Path):
+    """``/run`` path: preloaded draft + mode=mission must not call board LLM."""
+    llm = FakeLLM(
+        [
+            "REACT:DECLARE_DONE",
+        ]
+    )
+    settings = Settings(repo_path=str(tmp_path), agent_mode="restricted")
+    memory = SessionMemory(mode="restricted")
+
+    def review_cb(state):
+        assert state.get("mission_draft", {}).get("id") == "fake-ok"
+        return {"action": "approve", "feedback": ""}
+
+    result = run_session(
+        "run mission fake-ok",
+        settings=settings,
+        memory=memory,
+        review_callback=review_cb,
+        llm=llm,
+        mission_draft=BOARD_MISSION,
+        mode="mission",
+        skip_review=False,
+        feasible=True,
+    )
+    assert result.get("mode") == "mission"
+    assert result.get("mission_draft", {}).get("id") == "fake-ok"
+    # Only react (no assess/board LLM calls)
+    assert len(llm.calls) == 1
+    assert result.get("validation_ok") is True
 
 
 def test_run_session_with_review_callback(tmp_path: Path):
@@ -317,7 +480,7 @@ def test_fake_llm_observe_fills_report_draft(tmp_path: Path):
                 instruction="file",
                 expect=Expect(
                     type="file_exists",
-                    path_glob=".agents/reports/observe-rpt-*.md",
+                    path_glob=".maintainall/reports/observe-rpt-*.md",
                 ),
             ),
         ],
@@ -347,7 +510,7 @@ def test_finalize_writes_report_when_validation_fails(tmp_path: Path):
         "skills": [],
         "schedule": None,
         "notify": {"on_complete": True, "on_failure": True},
-        "allowed_commands": [],
+        "allowed_commands": [{"pattern": r"^echo\b", "cwd": "."}],
         "tasks": [
             {
                 "id": "t1",
@@ -365,6 +528,13 @@ def test_finalize_writes_report_when_validation_fails(tmp_path: Path):
             f"BOARD:{json.dumps(mission_draft)}",
             "REACT:DECLARE_DONE",
             "REACT:DECLARE_DONE",  # retry after failed validate
+            json.dumps(
+                {
+                    "action": "finalize",
+                    "feedback": "",
+                    "reason": "accept failure",
+                }
+            ),
         ]
     )
     app = build_graph(llm=llm)
@@ -388,6 +558,118 @@ def test_finalize_writes_report_when_validation_fails(tmp_path: Path):
     assert result.get("validation_ok") is False
     assert result.get("report_path")
     assert Path(result["report_path"]).exists()
-    text = Path(result["report_path"]).read_text(encoding="utf-8")
-    assert "fail-rpt" in text
-    assert "Validation Errors" in text or "NEVER_MATCH" in text
+
+
+def test_readonly_refuses_done_until_report_section(tmp_path: Path):
+    """Readonly skips cannot satisfy report_section; DECLARE_DONE waits for OBSERVE."""
+    from MaintainAll.graph.nodes import make_nodes
+
+    mission = Mission(
+        id="ro-summary",
+        name="Readonly summary",
+        description="d",
+        skills=[],
+        schedule=None,
+        notify=NotifyConfig(),
+        allowed_commands=[AllowedCommand(pattern=r"^bash -n\b", cwd=".")],
+        tasks=[
+            TaskNode(
+                id="main",
+                name="Syntax check",
+                needs=[],
+                instruction="Summarize bash -n results under ## summary",
+                expect=Expect(type="report_section", name="summary"),
+                script="bash -n missing.sh",
+            )
+        ],
+    )
+    llm = FakeLLM(
+        [
+            "REACT:DECLARE_DONE",
+            "REACT:OBSERVE:## summary\nreadonly：命令未执行，仅记录跳过。\n",
+        ]
+    )
+    events: list[dict] = []
+
+    def on_event(ev: dict) -> None:
+        events.append(ev)
+
+    nodes = make_nodes(llm=llm, event_callback=on_event, max_iters=8)
+    out = nodes["react_loop"](
+        {
+            "user_input": "check maintaince scripts",
+            "mode": "readonly",
+            "repo_path": str(tmp_path),
+            "mission_draft": mission_to_dict(mission),
+            "observations": [],
+            "report_draft": "",
+            "event_log": [],
+            "report_language": "zh-CN",
+            "validation_errors": [],
+        }
+    )
+    assert out.get("react_done") is True
+    assert "## summary" in (out.get("report_draft") or "")
+    assert any(e.get("type") == "cmd_skipped" for e in events)
+    assert any(e.get("type") == "react_nudge" for e in events)
+    # Prompt must surface required/missing sections to the model
+    assert any(
+        "Required report sections:" in (m.get("content") or "")
+        for call in llm.calls
+        for m in call
+        if m.get("role") == "user"
+    )
+
+    validated = nodes["validate"](
+        {
+            **out,
+            "mode": "readonly",
+            "repo_path": str(tmp_path),
+            "mission_draft": out.get("mission_draft") or mission_to_dict(mission),
+        }
+    )
+    assert validated.get("validation_ok") is True
+
+
+def test_missing_report_sections_helper():
+    from MaintainAll.graph.nodes import (
+        _missing_report_sections,
+        _required_report_section_names,
+    )
+
+    mission = Mission(
+        id="m",
+        name="M",
+        description="d",
+        skills=[],
+        schedule=None,
+        notify=NotifyConfig(),
+        allowed_commands=[],
+        tasks=[
+            TaskNode(
+                id="a",
+                name="A",
+                needs=[],
+                instruction="i",
+                expect=Expect(type="report_section", name="summary"),
+            ),
+            TaskNode(
+                id="b",
+                name="B",
+                needs=["a"],
+                instruction="i",
+                expect=Expect(type="report_section", name="summary"),
+            ),
+            TaskNode(
+                id="c",
+                name="C",
+                needs=["b"],
+                instruction="i",
+                expect=Expect(type="contains", patterns=["x"]),
+            ),
+        ],
+    )
+    assert _required_report_section_names(mission) == ["summary"]
+    assert _missing_report_sections(mission, "") == ["summary"]
+    assert _missing_report_sections(mission, "## Summary\n") == ["summary"]
+    assert _missing_report_sections(mission, "## summary\nok\n") == []

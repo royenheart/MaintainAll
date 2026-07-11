@@ -174,3 +174,34 @@ def test_solidify_roundtrip_preserves_commands_and_task_ids(tmp_path):
         return ids
 
     assert collect_ids(loaded.tasks) == ["root", "nested-1"]
+
+
+def test_shipped_missions_use_structured_expects():
+    from pathlib import Path
+
+    from MaintainAll.graph.nodes import _draft_is_weak, mission_to_dict
+    from MaintainAll.missions.loader import load_missions
+
+    root = Path(".agents/missions")
+    missions = load_missions(root)
+    assert {m.id for m in missions} >= {
+        "daed-connectivity-check",
+        "modulefiles-list",
+        "modulefiles-scan-generate",
+    }
+    allowed = {"contains", "report_section", "file_exists"}
+    for m in missions:
+        draft = mission_to_dict(m, include_status=False)
+        assert not _draft_is_weak(draft, require_leaf_scripts=True), m.id
+        for t in m.tasks:
+            assert t.script and t.script.strip(), f"{m.id}/{t.id} missing script"
+            assert "\n" not in t.script.strip(), f"{m.id}/{t.id} multi-line script"
+            assert t.expect.type in allowed, f"{m.id}/{t.id}: {t.expect.type}"
+            if t.expect.type == "contains":
+                assert t.expect.patterns, f"{m.id}/{t.id} empty patterns"
+                assert not set(t.expect.patterns) <= {"module", "scan", "ok"}
+            if t.expect.type == "report_section":
+                assert t.expect.name
+            if t.expect.type == "file_exists":
+                assert t.expect.path_glob
+

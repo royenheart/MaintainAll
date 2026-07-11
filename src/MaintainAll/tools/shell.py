@@ -22,7 +22,21 @@ def run_allowed(
     *,
     gate: Gate,
     repo_root: Path,
+    dry_run: bool = False,
 ) -> RunResult:
+    """Run ``cmd`` if the gate allows it.
+
+    When ``dry_run`` is True (readonly agent mode), never call ``subprocess`` —
+    return a failed result with a clear marker so validate does not pretend success.
+    """
+    if dry_run:
+        return RunResult(
+            ok=False,
+            stdout="",
+            stderr=f"[readonly] execution disabled: {cmd}",
+            returncode=126,
+        )
+
     if not gate.check(cmd):
         raise PermissionError(f"command not allowed: {cmd}")
 

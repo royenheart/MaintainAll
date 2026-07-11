@@ -15,15 +15,19 @@ tasks:
     name: 列出 modulefiles
     needs: []
     instruction: |
-      运行 `python scripts/modulefiles/manage_modules.py list`，汇总名称与版本到报告。
+      运行 list；CLI 成功输出通常含 `modulefile`。
+      用 OBSERVE 把名称/版本汇总写入 ## modules。
+    script: python scripts/modulefiles/manage_modules.py list
     expect:
       type: contains
-      patterns: ['module']
+      patterns: ['modulefile']
   - id: write-report
     name: 写入报告
     needs: [list-modules]
     instruction: |
-      将列表结果写入标准报告（含 ## modules 小节）。
+      确认报告含 ## modules，并落盘到
+      .maintainall/reports/modulefiles-list-*.md。
+    script: python scripts/modulefiles/manage_modules.py list
     expect:
-      type: file_exists
-      path_glob: '.agents/reports/modulefiles-list-*.md'
+      type: report_section
+      name: modules

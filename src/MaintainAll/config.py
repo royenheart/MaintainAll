@@ -37,6 +37,7 @@ class Settings(BaseSettings):
     model: str = "deepseek-v4-flash"
     repo_path: str = str(default_repo_path())
     agent_mode: AgentMode = "readonly"
+    report_language: str = "zh-CN"
     rag_top_k: int = 5
     smtp: SmtpSettings = Field(default_factory=SmtpSettings)
     # loaded separately from keyring / env DEEPSEEK_API_KEY
@@ -147,6 +148,7 @@ def save_non_secrets(settings: Settings, *, config_dir: Path | None = None) -> P
         "api_base": settings.api_base,
         "repo_path": settings.repo_path,
         "agent_mode": settings.agent_mode,
+        "report_language": settings.report_language,
         "rag_top_k": settings.rag_top_k,
         "smtp": settings.smtp.model_dump(by_alias=True),
     }

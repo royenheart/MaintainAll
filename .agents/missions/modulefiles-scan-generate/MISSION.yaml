@@ -1,7 +1,8 @@
 id: modulefiles-scan-generate
 name: 扫描并生成 modulefiles
 description: |
-  扫描指定软件安装目录，用 manage_modules.py scan 批量解析并生成 Environment Modules 配置。
+  扫描指定软件安装目录（默认 /opt/software），用 manage_modules.py scan
+  批量解析并生成 Environment Modules 配置。
 skills: [modulefile-manager]
 schedule: null
 notify:
@@ -21,25 +22,29 @@ tasks:
     name: 扫描安装目录
     needs: []
     instruction: |
-      对用户或任务指定的安装根目录运行
-      `python scripts/modulefiles/manage_modules.py scan <dir>`，
-      记录生成/跳过的软件包。
+      扫描 /opt/software（若用户指定其他根目录，用 ReAct RUN 覆盖）。
+      成功时 stdout 通常含「已生成」与「modulefile」。
+      用 OBSERVE 写入 ## scan。
+    script: python scripts/modulefiles/manage_modules.py scan /opt/software
     expect:
       type: contains
-      patterns: ['scan', 'module']
+      patterns: ['已生成', 'modulefile']
   - id: verify-list
     name: 核对列表
     needs: [scan-install-tree]
     instruction: |
-      运行 `python scripts/modulefiles/manage_modules.py list`，确认新 modulefile 已出现。
+      列出已管理 modulefile，确认扫描结果已出现；用 OBSERVE 写入 ## modules。
+    script: python scripts/modulefiles/manage_modules.py list
     expect:
       type: contains
-      patterns: ['module']
+      patterns: ['modulefile']
   - id: write-report
     name: 写入报告
     needs: [verify-list]
     instruction: |
-      汇总扫描与列表结果，写入标准报告（含 ## scan 与 ## modules）。
+      确认报告含 ## scan 与 ## modules，并落盘到
+      .maintainall/reports/modulefiles-scan-generate-*.md。
+    script: python scripts/modulefiles/manage_modules.py list
     expect:
       type: file_exists
-      path_glob: '.agents/reports/modulefiles-scan-generate-*.md'
+      path_glob: '.maintainall/reports/modulefiles-scan-generate-*.md'

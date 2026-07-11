@@ -1,7 +1,6 @@
 from __future__ import annotations
 
-import operator
-from typing import Annotated, Any, Literal, TypedDict
+from typing import Any, Literal, TypedDict
 
 
 class AgentState(TypedDict, total=False):
@@ -17,10 +16,13 @@ class AgentState(TypedDict, total=False):
     react_done: bool
     validation_ok: bool | None
     validation_errors: list[str]
-    observations: Annotated[list[str], operator.add]
+    observations: list[str]
     report_draft: str
     report_path: str
+    report_language: str
+    log_path: str
     messages: list[dict[str, str]]
     interrupt: str | None
+    cancelled: bool
     repo_path: str
     event_log: list[dict[str, Any]]
