@@ -1,4 +1,4 @@
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 from pathlib import Path
 
 import pytest
@@ -25,6 +25,21 @@ def test_is_mission_not_due_before_interval():
     now = datetime(2026, 7, 10, 9, 45, tzinfo=timezone.utc)
     last_run = datetime(2026, 7, 10, 9, 30, tzinfo=timezone.utc)
     assert is_mission_due("0 * * * *", now, last_run) is False
+
+
+def test_is_mission_not_due_until_armed():
+    """Fresh schedule must not catch up from epoch (e.g. weekly → fire immediately)."""
+    now = datetime(2026, 7, 12, 0, 10, tzinfo=timezone.utc)
+    assert is_mission_due("30 9 * * 1", now, None) is False
+
+
+def test_weekly_due_only_after_armed_tick():
+    # Armed Sunday night; Monday 09:30 schedule becomes due Monday morning.
+    last_run = datetime(2026, 7, 12, 0, 10, tzinfo=timezone(timedelta(hours=8)))
+    before = datetime(2026, 7, 13, 9, 0, tzinfo=timezone(timedelta(hours=8)))
+    after = datetime(2026, 7, 13, 9, 30, tzinfo=timezone(timedelta(hours=8)))
+    assert is_mission_due("30 9 * * 1", before, last_run) is False
+    assert is_mission_due("30 9 * * 1", after, last_run) is True
 
 
 def test_mission_lock_acquire_release(tmp_path: Path):

@@ -19,6 +19,7 @@ from MaintainAll.daemon.service import (
     load_daemon_state,
     migrate_legacy_daemon_state,
     mission_runtime_key,
+    save_daemon_state,
     scan_once,
 )
 from MaintainAll.paths import agents_dir, daemon_state_path, missions_dir
@@ -137,6 +138,15 @@ def test_scan_once_two_repos_same_mission_id(tmp_path: Path):
     _write_scheduled_mission(repo_a, "shared-check")
     _write_scheduled_mission(repo_b, "shared-check")
 
+    # Pre-arm so scan executes (unarmed schedules only arm, never catch up).
+    save_daemon_state(
+        {
+            mission_runtime_key(repo_a, "shared-check"): "2026-01-01T00:00:00+00:00",
+            mission_runtime_key(repo_b, "shared-check"): "2026-01-01T00:00:00+00:00",
+        },
+        data_dir=data,
+    )
+
     settings = Settings(
         repo_path=str(repo_a),
         data_dir=str(data),
@@ -167,6 +177,24 @@ def test_scan_once_two_repos_same_mission_id(tmp_path: Path):
     assert mission_runtime_key(repo_a, "shared-check") in state
     assert mission_runtime_key(repo_b, "shared-check") in state
     assert daemon_state_path(data_dir=data).exists()
+
+
+def test_scan_once_arms_unseen_schedule_without_running(tmp_path: Path):
+    data = tmp_path / "data"
+    data.mkdir()
+    repo = tmp_path / "repo"
+    repo.mkdir()
+    _write_scheduled_mission(repo, "weekly")
+    settings = Settings(
+        repo_path=str(repo),
+        data_dir=str(data),
+        trusted_dirs=[str(repo)],
+    )
+    with patch("MaintainAll.daemon.service.run_mission") as run_m:
+        scan_once(settings)
+        run_m.assert_not_called()
+    state = load_daemon_state(data_dir=data)
+    assert mission_runtime_key(repo, "weekly") in state
 
 
 def test_trust_dir_modal_exists():

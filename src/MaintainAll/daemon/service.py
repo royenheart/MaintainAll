@@ -116,11 +116,27 @@ def _parse_last_run(value: str | None) -> datetime | None:
 def is_mission_due(
     schedule: str, now: datetime, last_run: datetime | None
 ) -> bool:
+    """Return True when the next cron tick after *last_run* is at or before *now*.
+
+    If the mission has never been armed (``last_run is None``), it is **not** due.
+    The daemon must first record ``last_run = now`` without executing — otherwise a
+    fresh weekly/monthly schedule would catch up from the epoch and fire immediately.
+    """
+    if last_run is None:
+        return False
     when = to_local(now)
-    base = to_local(last_run) if last_run is not None else datetime(
-        1970, 1, 1, tzinfo=when.tzinfo
-    )
+    base = to_local(last_run)
     return next_run(schedule, base) <= when
+
+
+def schedule_base_time(
+    now: datetime, last_run: datetime | None
+) -> datetime:
+    """Anchor for ``next_run`` / UI preview: last run if armed, else *now*."""
+    when = to_local(now)
+    if last_run is None:
+        return when
+    return to_local(last_run)
 
 
 @dataclass
@@ -181,9 +197,7 @@ def list_trusted_missions(
             due = False
             if schedule:
                 try:
-                    base = to_local(last) if last is not None else datetime(
-                        1970, 1, 1, tzinfo=when.tzinfo
-                    )
+                    base = schedule_base_time(when, last)
                     nxt = to_local(next_run(schedule, base))
                     due = is_mission_due(schedule, when, last)
                 except Exception:
@@ -353,6 +367,11 @@ def scan_once(settings: Settings) -> None:
         for mission in scheduled:
             key = mission_runtime_key(repo, mission.id)
             last_run = _parse_last_run(state.get(key))
+            if last_run is None:
+                # Arm cursor at first sight — do not catch up missed historical ticks.
+                state[key] = now.isoformat()
+                dirty = True
+                continue
             if not is_mission_due(mission.schedule, now, last_run):
                 continue
 
