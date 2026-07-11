@@ -92,6 +92,16 @@ def prompt_history_path(
     return history_dir(repo, data_dir=data_dir) / "prompt.jsonl"
 
 
+def daemon_state_path(*, data_dir: str | Path | None = None) -> Path:
+    """Global daemon last-run map (composite keys), under the runtime data dir."""
+    return workspace_data_dir(data_dir=data_dir) / "daemon_state.json"
+
+
+def daemon_locks_dir(*, data_dir: str | Path | None = None) -> Path:
+    """Global daemon flock directory under the runtime data dir."""
+    return workspace_data_dir(data_dir=data_dir) / "locks"
+
+
 def config_dir() -> Path:
     override = os.environ.get("MAINTAINALL_CONFIG_DIR")
     if override:

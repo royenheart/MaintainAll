@@ -1,68 +1,86 @@
 id: daed-connectivity-check
 name: Daed 连通性与路由检查
-description: |
-  检查各 proxy 经当前 gost 代理的连通性，并核对 telegram CIDR/域名是否与官方一致。
-skills: [daed-connectivity]
-schedule: null
+description: '检查各 proxy 经当前 gost 代理的连通性，并核对 telegram CIDR/域名是否与官方一致。
+
+  '
+skills:
+- daed-connectivity
+schedule: 30 9 * * 1
 notify:
   on_complete: true
   on_failure: true
 allowed_commands:
-  - pattern: '^curl -sS( -m \d+)? https://core\.telegram\.org/resources/cidr\.txt$'
-    cwd: '.'
-  - pattern: '^curl -x socks5://127\.0\.0\.1:20170 -I -m \d+ https://.+$'
-    cwd: '.'
-  - pattern: '^curl -x http://127\.0\.0\.1:20171 -I -m \d+ https://.+$'
-    cwd: '.'
-  - pattern: '^cat deploy/daed/config/(routing\.conf|groups\.txt)$'
-    cwd: '.'
+- pattern: ^curl -sS( -m \d+)? https://core\.telegram\.org/resources/cidr\.txt$
+  cwd: .
+- pattern: ^curl -x socks5://127\.0\.0\.1:20170 -I -m \d+ https://.+$
+  cwd: .
+- pattern: ^curl -x http://127\.0\.0\.1:20171 -I -m \d+ https://.+$
+  cwd: .
+- pattern: ^cat deploy/daed/config/(routing\.conf|groups\.txt)$
+  cwd: .
 tasks:
-  - id: load-groups
-    name: 读取 sticky groups
-    needs: []
-    instruction: |
-      读取 deploy/daed/config/groups.txt，列出 sticky outbound groups。
-    script: cat deploy/daed/config/groups.txt
-    expect:
-      type: contains
-      patterns: ['telegram', 'proxy']
-  - id: load-routing
-    name: 读取 routing 规则
-    needs: []
-    instruction: |
-      读取 deploy/daed/config/routing.conf；用 OBSERVE 写入 ## config
-      （合并 groups 与关键 routing 摘要）。
-    script: cat deploy/daed/config/routing.conf
-    expect:
-      type: report_section
-      name: config
-  - id: probe-proxies
-    name: 经当前代理测连通
-    needs: [load-groups, load-routing]
-    instruction: |
-      经 gost SOCKS5 探测 Telegram API；不通则记录错误与建议。
-      用 OBSERVE 写入 ## connectivity。
-    script: curl -x socks5://127.0.0.1:20170 -I -m 10 https://api.telegram.org
-    expect:
-      type: report_section
-      name: connectivity
-  - id: check-telegram-cidr
-    name: 核对 Telegram CIDR
-    needs: [load-routing]
-    instruction: |
-      拉取官方 cidr.txt，与 routing.conf 中 dip(...) 比对；
-      用 OBSERVE 写入 ## cidr-diff（增删建议）。
-    script: curl -sS -m 30 https://core.telegram.org/resources/cidr.txt
-    expect:
-      type: report_section
-      name: cidr-diff
-  - id: write-report
-    name: 汇总报告
-    needs: [probe-proxies, check-telegram-cidr]
-    instruction: |
-      确认报告已含 ## config、## connectivity、## cidr-diff，并落盘到
-      .maintainall/reports/daed-connectivity-check-*.md。
-    script: cat deploy/daed/config/groups.txt
-    expect:
-      type: file_exists
-      path_glob: '.maintainall/reports/daed-connectivity-check-*.md'
+- id: load-groups
+  name: 读取 sticky groups
+  needs: []
+  instruction: '读取 deploy/daed/config/groups.txt，列出 sticky outbound groups。
+
+    '
+  script: cat deploy/daed/config/groups.txt
+  expect:
+    type: contains
+    patterns:
+    - telegram
+    - proxy
+- id: load-routing
+  name: 读取 routing 规则
+  needs: []
+  instruction: '读取 deploy/daed/config/routing.conf；用 OBSERVE 写入 ## config
+
+    （合并 groups 与关键 routing 摘要）。
+
+    '
+  script: cat deploy/daed/config/routing.conf
+  expect:
+    type: report_section
+    name: config
+- id: probe-proxies
+  name: 经当前代理测连通
+  needs:
+  - load-groups
+  - load-routing
+  instruction: '经 gost SOCKS5 探测 Telegram API；不通则记录错误与建议。
+
+    用 OBSERVE 写入 ## connectivity。
+
+    '
+  script: curl -x socks5://127.0.0.1:20170 -I -m 10 https://api.telegram.org
+  expect:
+    type: report_section
+    name: connectivity
+- id: check-telegram-cidr
+  name: 核对 Telegram CIDR
+  needs:
+  - load-routing
+  instruction: '拉取官方 cidr.txt，与 routing.conf 中 dip(...) 比对；
+
+    用 OBSERVE 写入 ## cidr-diff（增删建议）。
+
+    '
+  script: curl -sS -m 30 https://core.telegram.org/resources/cidr.txt
+  expect:
+    type: report_section
+    name: cidr-diff
+- id: write-report
+  name: 汇总报告
+  needs:
+  - probe-proxies
+  - check-telegram-cidr
+  instruction: '确认报告已含 ## config、## connectivity、## cidr-diff，并落盘到
+
+    .maintainall/reports/daed-connectivity-check-*.md。
+
+    '
+  script: cat deploy/daed/config/groups.txt
+  expect:
+    type: file_exists
+    path_glob: .maintainall/reports/daed-connectivity-check-*.md

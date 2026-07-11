@@ -584,7 +584,11 @@ class ChatSlashSuggester(Suggester):
 
 def slash_completion_options(missions: list[Mission]) -> list[str]:
     """Ordered completion strings for non-popup slash suggestions."""
-    return ["/run ", "/solidify"]
+    from MaintainAll.tui.slash import completion_strings
+
+    # missions unused — kept for call-site compatibility; /run popup uses get_missions.
+    _ = missions
+    return completion_strings()
 
 
 class ChatInput(Input):

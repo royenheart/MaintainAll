@@ -12,7 +12,7 @@ def _read_events(path: Path) -> list[dict]:
 
 
 def test_session_log_coalesces_thinking_deltas(tmp_path: Path):
-    log = SessionLog(tmp_path, session_id="test-coalesce")
+    log = SessionLog(tmp_path, session_id="test-coalesce", data_dir=tmp_path)
     log.write({"type": "thinking_start", "phase": "assess", "id": "t1"})
     for ch in ("你", "好", "世界"):
         log.write(
@@ -49,7 +49,7 @@ def test_session_log_coalesces_thinking_deltas(tmp_path: Path):
 
 
 def test_session_log_flush_on_non_stream_event(tmp_path: Path):
-    log = SessionLog(tmp_path, session_id="test-flush")
+    log = SessionLog(tmp_path, session_id="test-flush", data_dir=tmp_path)
     log.write({"type": "thinking_start", "phase": "board", "id": "t2"})
     log.write(
         {

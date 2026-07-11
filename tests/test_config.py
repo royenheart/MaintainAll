@@ -22,11 +22,24 @@ def test_save_non_secrets_roundtrip(tmp_path, monkeypatch):
 
 def test_save_non_secrets_escapes_quotes(tmp_path, monkeypatch):
     monkeypatch.setenv("MAINTAINALL_CONFIG_DIR", str(tmp_path))
-    s = Settings(model='deepseek-"pro"', repo_path='/path/with"quote')
+    s = Settings(model='deepseek-"pro"', data_dir='/path/with"quote')
     path = save_non_secrets(s, config_dir=tmp_path)
     data = tomllib.loads(path.read_text())
     assert data["model"] == 'deepseek-"pro"'
-    assert data["repo_path"] == '/path/with"quote'
+    assert data["data_dir"] == '/path/with"quote'
+    assert "repo_path" not in data
+
+
+def test_save_omits_repo_path(tmp_path, monkeypatch):
+    monkeypatch.setenv("MAINTAINALL_CONFIG_DIR", str(tmp_path))
+    s = Settings(repo_path="/tmp/should-not-persist", trusted_dirs=["/tmp/ws"])
+    # trusted path must exist for normalize — use tmp_path
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    s = Settings(repo_path="/tmp/should-not-persist", trusted_dirs=[str(ws)])
+    data = tomllib.loads(save_non_secrets(s, config_dir=tmp_path).read_text())
+    assert "repo_path" not in data
+    assert str(ws.resolve()) in data["trusted_dirs"]
 
 
 def test_load_settings_env_overrides_file(tmp_path, monkeypatch):

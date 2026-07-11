@@ -80,11 +80,20 @@ def test_run_completion_items():
 
 
 def test_slash_completion_options_no_mission_ids():
+    from MaintainAll.tui.app import MaintainAllApp  # noqa: F401 — register cmds
+
     opts = slash_completion_options([_mission("alpha")])
-    assert opts == ["/run ", "/solidify"]
+    assert "/run " in opts
+    assert "/solidify" in opts
+    assert "/help" in opts
+    assert "/cron" in opts
+    # Must not embed concrete mission ids in the grey-suggestion list.
+    assert not any("alpha" in o for o in opts)
 
 
 def test_chat_slash_suggester_does_not_pick_first_mission():
+    from MaintainAll.tui.app import MaintainAllApp  # noqa: F401
+
     missions = [_mission("modulefiles-list", name="List modules")]
     options = slash_completion_options(missions)
     suggester = ChatSlashSuggester(lambda: options, get_missions=lambda: missions)

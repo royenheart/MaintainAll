@@ -18,7 +18,7 @@ Agent 以本仓库为工作区，把运维先验（Skills）和可重复流程�
 |---|---|---|
 | **Skills** | `.agents/skills/` | 领域先验（何时用、怎么做、约束与示例） |
 | **Missions** | `.agents/missions/` | 可固化的任务 DAG + `allowed_commands` 白名单（可带 cron） |
-| **Reports / Logs / History** | `<workspace>/.maintainall/{reports,logs,history}/` | 运行报告、会话日志与输入历史（不纳入版本控制；daemon 写入 mission 的 `repo_path` 工作区） |
+| **Reports / Logs / History** | `~/.maintainall/{reports,logs,history}/`（或 Settings 的 `data_dir`） | 运行报告、会话日志、输入历史与 daemon 状态（不纳入版本控制） |
 
 报告正文语言由设置项 `report_language` 控制（默认 `zh-CN`，F1 可改），只约束 OBSERVE / 报告内容，不影响思考链等其它输出。会话结束时 TUI 会打印报告全文。
 
@@ -41,9 +41,34 @@ pip install -e ".[dev]"
 python maintain.py          # 或 maintainall
 ```
 
-可选：安装 user systemd unit 后启用定时 daemon（见 `deploy/systemd/` 与 `AGENTS.md`）。
-
 配置与密钥：非密钥在 `~/.config/maintainall/config.toml`，API Key / SMTP 密码与 OAuth refresh token 进 OS keyring（详见 `AGENTS.md`）。Gmail/Outlook 通知走官方 API OAuth；Custom 走传统 SMTP。
+
+运行时数据默认写在 `~/.maintainall/`（可用 Settings / `data_dir` / `MAINTAINALL_DATA_DIR` 覆盖）。各工作区只存放版本化的 `.agents/{missions,skills}`；daemon 会扫描配置里的 **trusted_dirs**（TUI 首次进入某目录时可确认加入）。
+
+### 部署 user systemd daemon
+
+使用安装脚本，从**当前**环境解析绝对路径并写入 user unit：
+
+```bash
+pip install -e .
+chmod +x deploy/systemd/install-user-daemon.sh
+./deploy/systemd/install-user-daemon.sh
+# 预览将要写入的 unit：
+# ./deploy/systemd/install-user-daemon.sh --dry-run
+# 或显式指定解释器：
+# ./deploy/systemd/install-user-daemon.sh --python "$CONDA_PREFIX/bin/python"
+```
+
+如果更换了 conda/venv 环境，在新环境里再跑一遍安装脚本即可覆盖 `ExecStart`。
+
+```bash
+systemctl --user status maintainall-agent
+journalctl --user -u maintainall-agent -f
+# 可选：无图形登录会话时也保持运行
+# loginctl enable-linger "$USER"
+```
+
+daemon 每轮重新 `load_settings()`，因此改 `trusted_dirs` 或 mission 的 `schedule` 后一般无需重启 unit。更多说明见 `AGENTS.md`。
 
 ---
 
@@ -64,7 +89,7 @@ python maintain.py          # 或 maintainall
 
 | 目录 | 用途 |
 |---|---|
-| **`.agents/`** | Agent 运行时资产：`skills/`、`missions/`（入库）；`reports/`、`logs/`（运行产物，默认忽略）。 |
+| **`.agents/`** | Agent 版本化资产：`skills/`、`missions/`（入库）。运行产物在 `data_dir`（默认 `~/.maintainall`）。 |
 | **`src/MaintainAll/`** | Agent 与 TUI 的 Python 包实现。 |
 | **`docs/`** | 补充文档（若存在）。 |
 

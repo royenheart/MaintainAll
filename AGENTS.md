@@ -7,8 +7,8 @@
 - AI 模式 TUI（Layout C）：对话 / 思考流 + 右侧 Missions/Skills + 运行态任务板
 - Skills：`.agents/skills/<name>/SKILL.md`
 - Missions：`.agents/missions/<id>/MISSION.yaml`（可选 cron `schedule`）
-- 运行时产物：`<workspace>/.maintainall/{reports,logs,history}/`（不纳入版本控制）
-- Daemon：按固化 mission 的 cron 触发 `run_mission()`；使用 mission 的 workspace `repo_path`，产物写入该工作区的 `.maintainall/`
+- 运行时产物：`~/.maintainall/{reports,logs,history}/`（或 `data_dir`；不纳入版本控制）
+- Daemon：按 **trusted_dirs** 下固化 mission 的 cron 触发 `run_mission()`；调度键为 `{abs_repo}::{mission.id}`；产物写入全局 `data_dir`
 
 > **历史说明：** 旧版五 Tab TUI（浏览 / 对话 / 命令参考 / 模板填充 / 脚本工具）及 `PLUGIN_META` 插件面板已移除。Environment Modules 等能力改为 skill + mission + CLI（见 `scripts/modulefiles/manage_modules.py`）。
 
@@ -53,12 +53,10 @@ MaintainAll/
 │   ├── tui/                           # AI mode only
 │   └── daemon/service.py
 └── .agents/
-    ├── skills/                        # 版本库跟踪
+    ├── skills/                        # 版本库跟踪（每个可信工作区一份）
     └── missions/                      # 版本库跟踪
-└── .maintainall/                      # 不纳入版本控制（按 workspace）
-    ├── reports/
-    ├── logs/
-    └── history/
+# 运行时数据默认在 ~/.maintainall/（Settings data_dir）
+#   reports/  logs/  history/  daemon_state.json  locks/
 ```
 
 ---
@@ -110,6 +108,8 @@ YAML frontmatter：`name`、`description`。正文建议含 Context / Instructio
 | 类型 | 位置 |
 |---|---|
 | 非密钥 | `~/.config/maintainall/config.toml`（platformdirs） |
+| 可信工作区 | `trusted_dirs`（绝对路径列表）；TUI 当前工作区取启动时的 `cwd`（不写入配置） |
+| 运行时数据 | `data_dir`（默认 `~/.maintainall`；可用 `MAINTAINALL_DATA_DIR`） |
 | 密钥（`api_key`、SMTP 密码） | OS keyring，service `maintainall`；内存中为 `SecretStr` |
 | 环境覆盖 | `MAINTAINALL_*`、`DEEPSEEK_API_KEY` |
 | keyring 不可用 | `~/.config/maintainall/secrets.toml`（mode `0600`）+ TUI 警告 |
@@ -120,8 +120,10 @@ YAML frontmatter：`name`、`description`。正文建议含 Context / Instructio
 - `model`: `deepseek-v4-flash`（可改为 `deepseek-v4-pro`）
 - `agent_mode`: `readonly`
 - `report_language`: `zh-CN`（约束 assess 的 `reason`、OBSERVE / 报告正文；不影响 RUN 命令与协议关键字）
+- `data_dir`: `~/.maintainall`
+- `trusted_dirs`: 旧配置若只有 `repo_path`、无此字段，加载时迁入 `trusted_dirs` 后不再持久化 `repo_path`
 
-首次运行若存在旧版 `~/.maintainall.json`，会迁移到 TOML + keyring。TUI 设置（F1）可改 model / api_base / SMTP / 默认模式；密钥字段掩码显示。
+首次运行若存在旧版 `~/.maintainall.json`，会迁移到 TOML + keyring。TUI 设置（F1）可改 model / api_base / SMTP / 默认模式 / trusted dirs；密钥字段掩码显示。在未信任的目录启动 TUI 时会询问是否加入 `trusted_dirs`。
 
 ---
 
@@ -130,12 +132,12 @@ YAML frontmatter：`name`、`description`。正文建议含 Context / Instructio
 ```bash
 pip install -e ".[dev]"
 python maintain.py
-# daemon
-cp deploy/systemd/maintainall-agent.service ~/.config/systemd/user/
-systemctl --user daemon-reload && systemctl --user enable --now maintainall-agent
+# user systemd daemon — run from the same conda/venv used for pip install:
+./deploy/systemd/install-user-daemon.sh
+# 可选：loginctl enable-linger "$USER"
 ```
 
-也可使用入口脚本：`maintainall` / `maintainall-daemon`（需保证 `~/.local/bin` 在 PATH，或按 unit 中的 `ExecStart` 调整）。
+也可使用入口脚本：`maintainall` / `maintainall-daemon`。不要依赖 systemd 继承登录 shell 的 conda PATH；安装脚本会把当前环境的绝对路径写进 unit。
 
 独立 CLI（modulefiles，非 TUI 插件）：
 
@@ -150,10 +152,11 @@ python scripts/modulefiles/manage_modules.py delete cuda 12.2
 
 ## Daemon、报告与通知
 
-1. Daemon 加载带非空 `schedule` 的固化 mission；触发时 `run_mission()`（mission 权限、跳过 review）。
-2. 每 mission 一把锁，避免重叠执行。
-3. 完成后始终写该 mission workspace（`repo_path`）下的 `.maintainall/reports/<mission-id>-<timestamp>.md`。
-4. 若配置了 SMTP → 发信；否则尝试本地 `sendmail`/`mail`；都失败则保留报告并打警告日志。
+1. Daemon 迭代 `trusted_dirs`，加载各目录下带非空 `schedule` 的固化 mission；触发时 `chdir` 到该工作区并 `run_mission()`（跳过 review）。
+2. 调度身份为 `{abs_repo}::{mission.id}`；全局锁与 last_run 写在 `data_dir/locks/`、`data_dir/daemon_state.json`（可从旧 `.agents/.daemon_state.json` 迁移）。
+3. 完成后写 `data_dir/reports/<mission-id>@<repo-name>-<timestamp>.md`。
+4. 若配置了邮件 → 发信；否则尝试本地 `sendmail`/`mail`；都失败则保留报告。
+5. 每轮 scan 重新 `load_settings()`，改可信目录或 YAML 里的 `schedule` 一般无需重启 daemon。
 
 ---
 

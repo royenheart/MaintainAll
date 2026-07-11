@@ -69,3 +69,26 @@ def solidify_mission(mission: Mission, *, missions_root: Path) -> Path:
         encoding="utf-8",
     )
     return path
+
+
+def update_mission_schedule(
+    repo: Path,
+    mission_id: str,
+    schedule: str | None,
+) -> Path:
+    """Update ``schedule`` in ``.agents/missions/<id>/MISSION.yaml`` under *repo*."""
+    from MaintainAll.paths import missions_dir
+
+    path = missions_dir(Path(repo)) / mission_id / "MISSION.yaml"
+    if not path.exists():
+        raise FileNotFoundError(f"Mission YAML not found: {path}")
+    data = yaml.safe_load(path.read_text(encoding="utf-8")) or {}
+    if not isinstance(data, dict):
+        raise ValueError(f"Invalid mission YAML: {path}")
+    text = (schedule or "").strip()
+    data["schedule"] = text if text else None
+    path.write_text(
+        yaml.safe_dump(data, sort_keys=False, allow_unicode=True),
+        encoding="utf-8",
+    )
+    return path

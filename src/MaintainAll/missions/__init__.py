@@ -18,7 +18,7 @@ from MaintainAll.missions.resolve import (
     parse_run_command,
     resolve_mission,
 )
-from MaintainAll.missions.store import solidify_mission
+from MaintainAll.missions.store import solidify_mission, update_mission_schedule
 
 __all__ = [
     "AllowedCommand",
@@ -36,4 +36,5 @@ __all__ = [
     "resolve_mission",
     "runnable_tasks",
     "solidify_mission",
+    "update_mission_schedule",
 ]

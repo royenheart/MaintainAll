@@ -8,11 +8,30 @@ from textual.app import ComposeResult
 from textual.binding import Binding
 from textual.containers import Horizontal, Vertical, VerticalScroll
 from textual.screen import ModalScreen
-from textual.widgets import Button, Collapsible, Input, Label, Select, Static, TextArea
+from textual.widgets import Button, Collapsible, Input, Label, ListItem, ListView, Markdown, Select, Static, TextArea
 
 from MaintainAll.config import Settings
+from MaintainAll.cron.describe import (
+    CRON_FIELD_NAMES,
+    CRON_PRESETS,
+    cron_field_index,
+    describe_cron,
+    format_cron_part_help,
+    format_cron_parts_bar,
+    is_valid_cron,
+    preview_next_runs,
+)
+from MaintainAll.cron.schedule import format_local_stamp
+from MaintainAll.daemon.service import (
+    ScheduledMissionView,
+    daemon_status,
+    format_mission_schedule_line,
+    list_trusted_missions,
+)
 from MaintainAll.graph.nodes import mission_to_dict
 from MaintainAll.missions.models import Mission
+from MaintainAll.missions.store import update_mission_schedule
+from MaintainAll.skills.loader import load_skill_body
 from MaintainAll.skills.models import SkillMeta
 from MaintainAll.tui.links import try_open_url
 
@@ -215,11 +234,16 @@ class DetailModal(ModalScreen[None]):
             yield from compose_mission_board(_mission_draft_from_obj(obj))
             return
         if self.kind == "skill" and isinstance(obj, SkillMeta):
-            yield Static(
-                f"Name: {obj.name}\n\n"
-                f"Description:\n{obj.description}\n\n"
-                f"Path: {obj.path}\n"
-            )
+            yield Static(f"[bold]{obj.name}[/]\nPath: {obj.path}\n", markup=True)
+            try:
+                body = load_skill_body(obj.path)
+            except OSError as exc:
+                yield Static(f"[red]Could not read SKILL.md:[/] {exc}", markup=True)
+                return
+            if not (body or "").strip():
+                yield Static("(empty skill body)")
+                return
+            yield Markdown(body)
             return
         if isinstance(obj, dict):
             if "tasks" in obj:
@@ -305,6 +329,333 @@ class SolidifyModal(ModalScreen[bool]):
             self.dismiss(True)
         elif event.button.id == "solidify-no":
             self.dismiss(False)
+
+
+class TrustDirModal(ModalScreen[bool]):
+    """Ask whether to add the current workspace to trusted_dirs for the daemon."""
+
+    BINDINGS = [Binding("escape", "no", "No", show=True)]
+
+    def __init__(self, path: str, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.path = path
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="trust-dir-modal", classes="modal-box"):
+            yield Label("Trust this workspace?", classes="modal-title")
+            yield Static(
+                "Add this directory to MaintainAll trusted dirs?\n\n"
+                f"{self.path}\n\n"
+                "If trusted, the user systemd daemon will scan "
+                ".agents/missions and .agents/skills here for scheduled runs.\n"
+                "You can change the list later in Settings (F1)."
+            )
+            with Horizontal(classes="modal-actions"):
+                yield Button("Trust", id="trust-yes", variant="success")
+                yield Button("Not now", id="trust-no", variant="default")
+
+    def action_no(self) -> None:
+        self.dismiss(False)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "trust-yes":
+            self.dismiss(True)
+        elif event.button.id == "trust-no":
+            self.dismiss(False)
+
+
+class CronEditResult:
+    def __init__(self, schedule: str | None, saved: bool) -> None:
+        self.schedule = schedule
+        self.saved = saved
+
+
+class CronEditModal(ModalScreen[CronEditResult | None]):
+    """Edit mission schedule with crontab.guru-style describe + field hints."""
+
+    BINDINGS = [Binding("escape", "cancel", "Cancel", show=True)]
+
+    def __init__(self, view: ScheduledMissionView, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.view = view
+        self._active_field = 0
+
+    def compose(self) -> ComposeResult:
+        mid = self.view.mission.id
+        repo = str(self.view.repo)
+        current = self.view.schedule or ""
+        with Vertical(id="cron-edit-modal", classes="modal-box"):
+            with VerticalScroll(id="cron-edit-body"):
+                yield Label(f"Schedule: {mid}", classes="modal-title")
+                yield Static(f"Workspace: {repo}", id="cron-edit-repo")
+                with Horizontal(id="cron-edit-top"):
+                    with Vertical(id="cron-edit-left"):
+                        yield Label("Cron expression (5 fields)")
+                        yield Input(value=current, id="cron-expr", placeholder="0 * * * *")
+                        yield Static(format_cron_parts_bar(0), id="cron-parts-bar", markup=True)
+                        with Horizontal(id="cron-field-buttons"):
+                            for idx, name in enumerate(CRON_FIELD_NAMES):
+                                yield Button(
+                                    name, id=f"cron-field-{idx}", classes="cron-field-btn"
+                                )
+                        yield Static(
+                            format_cron_part_help(0), id="cron-part-help", markup=False
+                        )
+                    with Vertical(id="cron-edit-right"):
+                        yield Label("Parsed (local crontab)", classes="cron-right-heading")
+                        yield Static(
+                            describe_cron(current) if current else "(no schedule)",
+                            id="cron-desc",
+                        )
+                        yield Label("Next runs (local time)", classes="cron-right-heading")
+                        yield Static("(enter a valid expression)", id="cron-preview")
+                yield Label("Presets")
+                with Horizontal(id="cron-presets"):
+                    for idx, (_expr, label) in enumerate(CRON_PRESETS):
+                        yield Button(label, id=f"cron-preset-{idx}", classes="cron-preset")
+            with Horizontal(id="cron-edit-actions", classes="modal-actions"):
+                yield Button("Reset", id="cron-reset", variant="warning")
+                yield Button("Save", id="cron-save", variant="success")
+                yield Button("Cancel", id="cron-cancel")
+
+    def on_mount(self) -> None:
+        self._refresh_all()
+        try:
+            self.query_one("#cron-expr", Input).focus()
+        except Exception:
+            pass
+
+    def _expr_raw(self) -> str:
+        return self.query_one("#cron-expr", Input).value
+
+    def _expr(self) -> str:
+        return self._expr_raw().strip()
+
+    def _cursor(self) -> int:
+        inp = self.query_one("#cron-expr", Input)
+        return int(getattr(inp, "cursor_position", len(inp.value)) or 0)
+
+    def _set_active_field(self, index: int) -> None:
+        self._active_field = index
+        bar = self.query_one("#cron-parts-bar", Static)
+        if index < 0:
+            bar.update("[bold cyan]@alias[/]  [dim]minute hour day month weekday[/]")
+        else:
+            bar.update(format_cron_parts_bar(index))
+        self.query_one("#cron-part-help", Static).update(format_cron_part_help(index))
+
+    def _refresh_field_from_cursor(self) -> None:
+        idx = cron_field_index(self._expr_raw(), self._cursor())
+        if idx != self._active_field:
+            self._set_active_field(idx)
+        else:
+            # Still refresh help text if same index (e.g. after clear)
+            self._set_active_field(idx)
+
+    def _refresh_preview(self) -> None:
+        expr = self._expr()
+        desc = self.query_one("#cron-desc", Static)
+        preview = self.query_one("#cron-preview", Static)
+        if not expr:
+            desc.update("(no schedule)")
+            preview.update("(enter a valid expression)")
+            return
+        desc.update(describe_cron(expr))
+        if not is_valid_cron(expr):
+            preview.update("Invalid — fix before Save")
+            return
+        runs = preview_next_runs(expr, count=5)
+        lines = [f"· {format_local_stamp(dt)}" for dt in runs]
+        preview.update("\n".join(lines) if lines else "(none)")
+
+    def _refresh_all(self) -> None:
+        self._refresh_field_from_cursor()
+        self._refresh_preview()
+
+    def _jump_to_field(self, field: int) -> None:
+        """Place cursor at the start of *field* (0–4), padding with ``*`` if needed."""
+        inp = self.query_one("#cron-expr", Input)
+        raw = inp.value
+        if raw.strip().startswith("@"):
+            # Switch from alias to a five-field template focused on *field*
+            parts = ["*"] * 5
+            inp.value = " ".join(parts)
+            raw = inp.value
+        parts = raw.split()
+        while len(parts) < 5:
+            parts.append("*")
+        parts = parts[:5]
+        inp.value = " ".join(parts)
+        # Cursor at start of target token
+        prefix = " ".join(parts[:field])
+        pos = len(prefix) + (1 if field > 0 else 0)
+        try:
+            inp.cursor_position = pos
+        except Exception:
+            pass
+        self._set_active_field(field)
+        self._refresh_preview()
+        inp.focus()
+
+    def on_input_changed(self, event: Input.Changed) -> None:
+        if event.input.id == "cron-expr":
+            self._refresh_all()
+
+    def on_key(self, event: Any) -> None:
+        # Keep field highlight in sync while moving the caret.
+        try:
+            focused = self.screen.focused
+        except Exception:
+            focused = None
+        if focused is not None and getattr(focused, "id", None) == "cron-expr":
+            self.call_after_refresh(self._refresh_field_from_cursor)
+
+    def action_cancel(self) -> None:
+        self.dismiss(None)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        bid = event.button.id or ""
+        if bid == "cron-cancel":
+            self.dismiss(None)
+            return
+        if bid == "cron-reset":
+            try:
+                update_mission_schedule(
+                    self.view.repo,
+                    self.view.mission.id,
+                    None,
+                )
+            except Exception as exc:
+                self.notify(f"Reset failed: {exc}", severity="error")
+                return
+            self.dismiss(CronEditResult(None, saved=True))
+            return
+        if bid.startswith("cron-field-"):
+            try:
+                idx = int(bid.rsplit("-", 1)[-1])
+            except ValueError:
+                return
+            self._jump_to_field(idx)
+            return
+        if bid.startswith("cron-preset-"):
+            try:
+                idx = int(bid.split("-")[-1])
+                expr = CRON_PRESETS[idx][0]
+            except (ValueError, IndexError):
+                return
+            inp = self.query_one("#cron-expr", Input)
+            inp.value = expr
+            try:
+                inp.cursor_position = 0
+            except Exception:
+                pass
+            self._refresh_all()
+            return
+        if bid == "cron-save":
+            expr = self._expr()
+            if expr and not is_valid_cron(expr):
+                self.notify("Invalid cron expression", severity="error")
+                return
+            try:
+                update_mission_schedule(
+                    self.view.repo,
+                    self.view.mission.id,
+                    expr or None,
+                )
+            except Exception as exc:
+                self.notify(f"Save failed: {exc}", severity="error")
+                return
+            self.dismiss(CronEditResult(expr or None, saved=True))
+
+
+class CronPanelModal(ModalScreen[None]):
+    """Daemon status + missions under trusted_dirs; open CronEditModal on select."""
+
+    BINDINGS = [Binding("escape", "close", "Close", show=True)]
+
+    def __init__(self, settings: Settings, **kwargs: Any) -> None:
+        super().__init__(**kwargs)
+        self.settings = settings
+        self._views: list[ScheduledMissionView] = []
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="cron-panel-modal", classes="modal-box"):
+            yield Label("Cron / daemon", classes="modal-title")
+            yield Static("", id="cron-daemon-status")
+            yield Label("Missions in trusted dirs (click to edit schedule)")
+            yield ListView(id="cron-mission-list")
+            with Horizontal(classes="modal-actions"):
+                yield Button("Refresh", id="cron-refresh")
+                yield Button("Close", id="cron-close", variant="primary")
+
+    def on_mount(self) -> None:
+        self._reload()
+
+    def _status_text(self) -> str:
+        st = daemon_status(self.settings)
+        dirs = st.get("trusted_dirs") or []
+        dir_preview = ", ".join(dirs[:3])
+        if len(dirs) > 3:
+            dir_preview += f", … (+{len(dirs) - 3})"
+        return (
+            f"unit: {st.get('unit')} → {st.get('active')}\n"
+            f"trusted_dirs ({st.get('trusted_count')}): {dir_preview or '(none)'}\n"
+            f"data_dir: {st.get('data_dir')}\n"
+            f"state: {'yes' if st.get('state_exists') else 'no'} ({st.get('state_path')})"
+        )
+
+    def _reload(self) -> None:
+        self.settings = self.settings  # caller may refresh externally
+        self.query_one("#cron-daemon-status", Static).update(self._status_text())
+        self._views = list_trusted_missions(self.settings)
+        lv = self.query_one("#cron-mission-list", ListView)
+        lv.clear()
+        if not self._views:
+            item = ListItem(Label("(no missions in trusted dirs)"))
+            item.data = None  # type: ignore[attr-defined]
+            lv.append(item)
+            return
+        for view in self._views:
+            item = ListItem(Label(format_mission_schedule_line(view)))
+            item.data = view  # type: ignore[attr-defined]
+            lv.append(item)
+
+    def action_close(self) -> None:
+        self.dismiss(None)
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "cron-close":
+            self.dismiss(None)
+        elif event.button.id == "cron-refresh":
+            from MaintainAll.config import load_settings
+
+            # Keep secrets/settings fresh without losing caller's object identity needs
+            fresh = load_settings()
+            self.settings = self.settings.model_copy(
+                update={
+                    "trusted_dirs": fresh.trusted_dirs,
+                    "data_dir": fresh.data_dir,
+                }
+            )
+            self._reload()
+
+    def on_list_view_selected(self, event: ListView.Selected) -> None:
+        event.stop()
+        view = getattr(event.item, "data", None)
+        if not isinstance(view, ScheduledMissionView):
+            return
+
+        def after_edit(result: CronEditResult | None) -> None:
+            if result and result.saved:
+                msg = (
+                    "Schedule cleared"
+                    if result.schedule is None
+                    else "Schedule saved"
+                )
+                self.notify(msg, timeout=2)
+                self._reload()
+
+        self.app.push_screen(CronEditModal(view), after_edit)
 
 
 class LinkOfferModal(ModalScreen[None]):
@@ -466,7 +817,12 @@ class SettingsModal(ModalScreen[Settings | None]):
                 id="set-report-language",
                 allow_blank=False,
             )
-            yield Label("Data dir (reports / logs / history)")
+            yield Label("Trusted dirs (one absolute path per line; daemon scans these)")
+            yield TextArea(
+                "\n".join(s.trusted_dirs or []),
+                id="set-trusted-dirs",
+            )
+            yield Label("Data dir (reports / logs / history / daemon state)")
             yield Input(value=s.data_dir, id="set-data-dir")
 
             yield Label("Mail provider")
@@ -769,6 +1125,12 @@ class SettingsModal(ModalScreen[Settings | None]):
             lang_val if lang_val in known_langs else self.settings.report_language
         )
         data_dir = self.query_one("#set-data-dir", Input).value.strip() or self.settings.data_dir
+        trusted_raw = self.query_one("#set-trusted-dirs", TextArea).text
+        from MaintainAll.config import normalize_trusted_dirs
+
+        trusted_dirs = normalize_trusted_dirs(
+            [line.strip() for line in trusted_raw.splitlines() if line.strip()]
+        )
         provider = (
             provider_val if provider_val in ("gmail", "outlook", "custom") else "custom"
         )
@@ -806,6 +1168,7 @@ class SettingsModal(ModalScreen[Settings | None]):
                 "agent_mode": agent_mode,
                 "report_language": report_language or self.settings.report_language,
                 "data_dir": data_dir,
+                "trusted_dirs": trusted_dirs,
                 "smtp": SmtpSettings(
                     provider=smtp_data["provider"],
                     auth=smtp_data["auth"],

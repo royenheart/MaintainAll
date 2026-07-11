@@ -16,8 +16,11 @@ from textual.widgets import Footer, Header, Input, ListView, Static
 
 from MaintainAll.config import (
     Settings,
+    add_trusted_dir,
+    is_trusted_dir,
     load_settings,
     migrate_legacy_json,
+    normalize_dir,
     save_non_secrets,
     set_secret,
 )
@@ -29,7 +32,6 @@ from MaintainAll.memory.session import SessionMemory
 from MaintainAll.missions import (
     format_mission_candidates,
     load_missions,
-    parse_run_command,
     resolve_mission,
     solidify_mission,
 )
@@ -37,13 +39,15 @@ from MaintainAll.missions.models import Mission
 from MaintainAll.paths import config_dir, missions_dir, prompt_history_path, skills_dir
 from MaintainAll.skills import load_skills
 from MaintainAll.skills.models import SkillMeta
-from MaintainAll.tui.cancel import SessionCancelArm
 from MaintainAll.tui.modals import (
+    CronEditModal,
+    CronPanelModal,
     DetailModal,
     LinkOfferModal,
     ReviewModal,
     SettingsModal,
     SolidifyModal,
+    TrustDirModal,
 )
 from MaintainAll.tui.panes import (
     ChatInput,
@@ -53,6 +57,8 @@ from MaintainAll.tui.panes import (
     RunStatePane,
     slash_completion_options,
 )
+from MaintainAll.tui.slash import format_help_lines, get_command, slash_command
+from MaintainAll.tui.cancel import SessionCancelArm
 
 MODES = ("readonly", "restricted", "unlimited")
 
@@ -157,7 +163,7 @@ class MaintainAllApp(App[None]):
     .modal-actions Button {
         margin: 0 1;
     }
-    ReviewModal, DetailModal, SolidifyModal, SettingsModal, LinkOfferModal {
+    ReviewModal, DetailModal, SolidifyModal, SettingsModal, LinkOfferModal, TrustDirModal, CronPanelModal, CronEditModal {
         align: center middle;
     }
     #review-modal, #detail-modal {
@@ -206,6 +212,104 @@ class MaintainAllApp(App[None]):
     #settings-modal Input, #settings-modal Select {
         margin-bottom: 1;
     }
+    #set-trusted-dirs {
+        height: 6;
+        min-height: 4;
+        max-height: 12;
+        margin-bottom: 1;
+    }
+    #cron-panel-modal, #cron-edit-modal {
+        width: 90%;
+        max-width: 120;
+        height: auto;
+        max-height: 92%;
+    }
+    #cron-edit-modal {
+        height: 36;
+        min-height: 24;
+    }
+    #cron-edit-body {
+        height: 1fr;
+        padding-bottom: 1;
+    }
+    #cron-edit-actions {
+        height: auto;
+        dock: bottom;
+        width: 100%;
+    }
+    #cron-edit-top {
+        height: auto;
+        max-height: 28;
+        margin-bottom: 1;
+    }
+    #cron-edit-left {
+        width: 1fr;
+        height: auto;
+        padding-right: 1;
+    }
+    #cron-edit-right {
+        width: 1fr;
+        height: auto;
+        min-width: 28;
+        border-left: solid $primary;
+        padding-left: 1;
+    }
+    .cron-right-heading {
+        text-style: bold;
+        margin-top: 0;
+        color: $accent;
+    }
+    #cron-mission-list {
+        height: 16;
+        min-height: 8;
+        max-height: 24;
+        margin-bottom: 1;
+    }
+    #cron-presets {
+        height: auto;
+        margin-bottom: 1;
+    }
+    #cron-presets Button {
+        margin-right: 1;
+        min-width: 10;
+    }
+    #cron-desc {
+        height: auto;
+        min-height: 2;
+        margin-bottom: 1;
+        color: $text;
+        text-style: bold;
+    }
+    #cron-preview {
+        height: auto;
+        min-height: 6;
+        color: $text-muted;
+    }
+    #cron-daemon-status {
+        height: auto;
+        margin-bottom: 1;
+        color: $text-muted;
+    }
+    #cron-parts-bar {
+        height: auto;
+        margin: 0 0 1 0;
+    }
+    #cron-field-buttons {
+        height: auto;
+        margin-bottom: 1;
+    }
+    #cron-field-buttons Button {
+        min-width: 8;
+        margin-right: 1;
+    }
+    #cron-part-help {
+        height: auto;
+        max-height: 16;
+        margin-bottom: 0;
+        color: $text-muted;
+        background: $boost;
+        padding: 0 1;
+    }
     #smtp-setup-hint {
         color: $text-muted;
         margin-bottom: 1;
@@ -252,6 +356,7 @@ class MaintainAllApp(App[None]):
     def __init__(self, **kwargs: Any) -> None:
         super().__init__(**kwargs)
         self.settings: Settings = Settings()
+        self.workspace: Path = Path.cwd()
         self.memory = SessionMemory()
         self.missions: list[Mission] = []
         self.skills: list[SkillMeta] = []
@@ -286,7 +391,33 @@ class MaintainAllApp(App[None]):
     def on_mount(self) -> None:
         self._bootstrap_config()
         self.settings = load_settings()
+        try:
+            self.workspace = Path(normalize_dir(Path.cwd()))
+        except OSError:
+            self.workspace = Path.cwd()
+        # Keep Settings.repo_path in sync for session/graph callers.
+        self.settings = self.settings.model_copy(
+            update={"repo_path": str(self.workspace)}
+        )
         self.memory.mode = self.settings.agent_mode
+        if is_trusted_dir(self.settings, self.workspace):
+            self._finish_workspace_mount()
+        else:
+            self.push_screen(
+                TrustDirModal(str(self.workspace)), self._on_trust_dir_result
+            )
+
+    def _on_trust_dir_result(self, trusted: bool | None) -> None:
+        if trusted:
+            self.settings = add_trusted_dir(self.settings, self.workspace)
+            try:
+                save_non_secrets(self.settings)
+                self.notify("Workspace added to trusted dirs", timeout=3)
+            except Exception as exc:
+                self.notify(f"Could not save trusted dirs: {exc}", severity="error")
+        self._finish_workspace_mount()
+
+    def _finish_workspace_mount(self) -> None:
         self._reload_catalog()
         self._bind_prompt_history()
         self._show_idle_sidebar()
@@ -295,8 +426,9 @@ class MaintainAllApp(App[None]):
         stream.write("[dim]MaintainAll AI mode ready. Type a request and press Enter.[/]")
         stream.write(
             f"[dim]Loaded {len(self.missions)} missions, {len(self.skills)} skills. "
-            f"Mode: {self.memory.mode}[/]"
+            f"Mode: {self.memory.mode} · workspace: {self.workspace}[/]"
         )
+        stream.write("[dim]Type /help for slash commands.[/]")
 
     def _bind_prompt_history(self) -> None:
         path = prompt_history_path(self._repo(), data_dir=self.settings.data_dir)
@@ -343,7 +475,13 @@ class MaintainAllApp(App[None]):
         self.sub_title = f"AI · {self.memory.mode}"
 
     def _repo(self) -> Path:
-        return Path(self.settings.repo_path)
+        return Path(self.workspace)
+
+    def _sync_settings_repo_path(self) -> None:
+        """Mirror workspace into settings for graph/session without persisting it."""
+        self.settings = self.settings.model_copy(
+            update={"repo_path": str(self.workspace)}
+        )
 
     def _reload_catalog(self) -> None:
         repo = self._repo()
@@ -457,10 +595,13 @@ class MaintainAllApp(App[None]):
         if smtp_client_secret:
             set_secret("smtp_client_secret", smtp_client_secret)
         self.settings = load_settings()
+        self._sync_settings_repo_path()
         self.memory.mode = self.settings.agent_mode
         self._reload_catalog()
         self._bind_prompt_history()
         self._refresh_banner()
+        if not self._session_active:
+            self._show_idle_sidebar()
         self.notify("Settings saved", timeout=3)
 
     # ── sidebar selection ─────────────────────────────────────
@@ -469,10 +610,14 @@ class MaintainAllApp(App[None]):
     def on_list_selected(self, event: ListView.Selected) -> None:
         if self._session_active:
             return
+        # Only idle-sidebar missions/skills use ("mission"|"skill", obj).
+        # CronPanelModal (and others) attach different payloads — ignore those.
         data = getattr(event.item, "data", None)
-        if not data:
+        if not (isinstance(data, tuple) and len(data) == 2):
             return
         kind, obj = data
+        if kind not in ("mission", "skill"):
+            return
         self.push_screen(DetailModal(kind, obj))
 
     # ── chat submit ───────────────────────────────────────────
@@ -491,14 +636,48 @@ class MaintainAllApp(App[None]):
         event.input.value = ""
         stream = self.query_one("#chat-stream", ChatStream)
         stream.write(f"\n[bold]you>[/] {text}")
-        if text.lower() in {"/solidify", "solidify"}:
-            self._offer_solidify_now()
+
+        # Bare "solidify" alias (no slash)
+        if text.lower() == "solidify":
+            self._slash_solidify("")
             return
-        run_query = parse_run_command(text)
-        if run_query is not None:
-            self._run_catalog_mission(run_query)
+
+        if text.startswith("/"):
+            parts = text.split(None, 1)
+            name = parts[0][1:].lower()
+            args = parts[1] if len(parts) > 1 else ""
+            meta = get_command(name)
+            if meta is None:
+                stream.write(
+                    f"[yellow]Unknown command[/] /{name}. Type [bold]/help[/] for the list."
+                )
+                return
+            getattr(self, meta.method)(args)
             return
+
         self._start_session(text)
+
+    @slash_command("help", "List available slash commands", "/help")
+    def _slash_help(self, args: str) -> None:
+        stream = self.query_one("#chat-stream", ChatStream)
+        for line in format_help_lines():
+            stream.write(line, markup=False)
+
+    @slash_command("run", "Run a solidified mission from the current workspace", "/run <id|name>")
+    def _slash_run(self, args: str) -> None:
+        self._run_catalog_mission(args.strip())
+
+    @slash_command("solidify", "Save the last mission draft under .agents/missions/", "/solidify")
+    def _slash_solidify(self, args: str) -> None:
+        self._offer_solidify_now()
+
+    @slash_command(
+        "cron",
+        "Daemon status and edit mission schedules under trusted dirs",
+        "/cron",
+    )
+    def _slash_cron(self, args: str) -> None:
+        self.push_screen(CronPanelModal(self.settings))
 
     def _offer_solidify_now(self) -> None:
         stream = self.query_one("#chat-stream", ChatStream)
@@ -540,6 +719,7 @@ class MaintainAllApp(App[None]):
         *,
         mission: Mission | None = None,
     ) -> None:
+        self._sync_settings_repo_path()
         self._session_active = True
         self._cancel_event = threading.Event()
         self._cancel_arm.clear()
