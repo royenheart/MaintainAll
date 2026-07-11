@@ -5,9 +5,9 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from rife_amd.runtime.backends.base import BackendConfig
-from rife_amd.runtime.backends.registry import create_backend
-from rife_amd.runtime.paths import default_onnx_paths
+from video4x.runtime.backends.base import BackendConfig
+from video4x.runtime.backends.registry import create_backend
+from video4x.runtime.paths import default_onnx_paths
 
 
 @pytest.fixture

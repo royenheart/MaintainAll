@@ -1,10 +1,16 @@
 models/RIFEv4.26_0921.zip
 models/RIFEv4.26_0921
 models/onnx
+models/realesrgan/*.pth
 vitisai_cache/
 .venv/
 .omo
 .codegraph
+.superpowers/
+
+# Runtime fingerprints dropped in CWD by NPU/ORT tooling (not used by video4x)
+original-info-signature.txt
+original-model-signature.txt
 
 # Local / scratch design notes (not versioned)
 docs/local/

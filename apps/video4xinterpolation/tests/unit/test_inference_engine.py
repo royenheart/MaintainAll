@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import pytest
 
-from rife_amd.inference import (
+from video4x.inference import (
     InferenceComparator,
     InferenceConfig,
     InferenceMode,

@@ -7,7 +7,7 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from rife_amd.runtime.video_io import frame_to_hwc_u8, write_video
+from video4x.runtime.video_io import frame_to_hwc_u8, write_video
 
 av = pytest.importorskip("av")
 

@@ -1,1 +1,3 @@
-from rife_amd.onnx_export import main
+from video4x.cli.export import main
+
+__all__ = ["main"]

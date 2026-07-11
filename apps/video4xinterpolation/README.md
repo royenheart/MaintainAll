@@ -1,103 +1,259 @@
-# RIFE AMD NPU+GPU 视频插帧
+# Video4x — 统一超分 + 插帧
 
-在 AMD Ryzen 8845H 上用 **ONNX Runtime** 做可插拔 RIFE v4.26 插帧。
+在 AMD Ryzen AI（RDNA iGPU + XDNA NPU）上用 **ONNX Runtime** 做视频增强：
 
-推理与安装解耦：同一套 `split-pipeline`（Stage A=GPU，Stage B=NPU），按平台选 EP。
+| 算子 | 模型 | GPU+NPU（`split-pipeline`） |
+|------|------|------------------------------|
+| **插帧** | RIFE v4.26 | Stage A = DirectML，Stage B = VitisAI |
+| **超分** | Real-ESRGAN `x2plus` / `x4plus` / `x4plus_anime` | Body = **必须** VitisAI，Upsample = DirectML |
 
-| 平台 | Stage A (GPU) | Stage B (NPU) |
-|------|---------------|---------------|
-| **Windows 原生** | DirectML | VitisAI（Ryzen AI / WinML） |
-| **WSL / Linux** | ROCm | VitisAI（WSL 上常不可用 → CPU） |
+包名：`video4x`（旧名 `rife-amd` / `rife_amd` 仍作兼容入口）。
 
-CLI：`--platform auto|windows|wsl|linux`，可选 `--ep-preference dml,vitisai,cpu`
+插帧输出帧率 = **片源 FPS × 2**（自动探测，例如 24→48、30→60）。
 
 ---
 
-## 路径 A：Windows 原生（推荐打通 NPU+GPU）
+## 安装（Windows / Ryzen AI）
 
-管理员 PowerShell：
+**推荐运行时：conda `ryzen-ai-1.7.1`**（自带 VitisAI + DirectML）。
 
 ```powershell
 cd D:\Gits\MaintainAll\apps\video4xinterpolation
-powershell -ExecutionPolicy Bypass -File setup\windows\install.ps1 -CheckOnly   # 只检查
-powershell -ExecutionPolicy Bypass -File setup\windows\install.ps1              # 检查+按需安装
-# 可选：-NpuZip C:\Downloads\RAI_*.zip  -RyzenAiInstaller C:\Downloads\ryzen-ai-*.exe
-```
-
-已满足版本的驱动 / Ryzen AI / `.venv` 会**跳过**。脚本会打印文档步骤。
-
-Ryzen AI 安装包需从 [AMD 文档](https://ryzenai.docs.amd.com/en/latest/inst.html) 手动下载（普通 AMD 账号 + EULA；非合作伙伴限定）。该软件受美国出口管制 (EAR)：下载/账号校验请使用美国政府允许的地址与合规网络出口 IP；脚本不会代下。详见脚本内「Ryzen AI Software 下载提示」。
-
-**重要（VitisAI）**：Ryzen AI 1.7.1 的 `onnxruntime_vitisai` / `voe` wheel 是 **Python 3.12** 的，装在 conda 环境 `ryzen-ai-1.7.1` 里。若项目 `.venv` 是 3.14 + `onnxruntime-directml`，会报 `VitisAIExecutionProvider missing`。请：
-
-```powershell
-powershell -ExecutionPolicy Bypass -File setup\windows\install.ps1 -ForceVenv
-# 或直接用 conda：
+powershell -ExecutionPolicy Bypass -File setup\windows\install.ps1   # 装进 conda，不建 .venv
 conda activate ryzen-ai-1.7.1
-$env:RYZEN_AI_INSTALLATION_PATH='C:\Program Files\RyzenAI\1.7.1'
-pip install -e ".[export,dev]"
-powershell -ExecutionPolicy Bypass -File setup\windows\probe_ep.ps1
+$env:RYZEN_AI_INSTALLATION_PATH = 'C:\Program Files\RyzenAI\1.7.1'
+$env:PYTHONUNBUFFERED = '1'
 ```
 
-**固定分辨率两档（NPU 推荐）**：VitisAI 不要用动态 H/W。默认档：
-
-| 片源 | pad 后固定 shape | 目录 |
-|------|------------------|------|
-| 720×1280 | 736×1280 | `models/onnx/fixed/736x1280/` |
-| 1080×1920 | 1088×1920 | `models/onnx/fixed/1088x1920/` |
-
-```powershell
-.\.venv\Scripts\Activate.ps1
-$env:RYZEN_AI_INSTALLATION_PATH='C:\Program Files\RyzenAI\1.7.1'
-python scripts\export_onnx.py --fixed-tiers
-python scripts\quantize_rife.py
-python scripts\interpolate.py in.mp4 out.mp4 --platform windows --backend split-pipeline --memory auto
-```
-
-推理按 pad 后尺寸自动选档。Stage B 会子进程探测 VitisAI：量化图失败时自动改用 FP32 瘦图（ConstantOfShape）。`--memory auto|host|pinned|shared` 控制主机缓冲（APU 大共享池时 `auto`→页锁定 shared）。
+可选项目 venv：`.\setup\windows\install.ps1 -UseVenv`（通常没有 VitisAI，无法跑 NPU）。
 
 ---
 
-## 路径 B：WSL（GPU 为主；NPU 多为 TODO）
-
-1. **Windows 主机**（为 WSL 透传 `/dev/dxg`，不是原生推理）：
+## 模型准备
 
 ```powershell
-powershell -ExecutionPolicy Bypass -File setup\wsl\windows-host.ps1
-# 驱动过旧时：
-powershell -ExecutionPolicy Bypass -File setup\wsl\windows-host.ps1 -InstallGpu
+# 下载权重（默认：rife + x2plus/x4plus/x4plus_anime）
+video4x download
+# 或只下某类
+video4x download --models rife
+video4x download --models x2plus
+
+# 导出 ONNX（推理用）
+video4x export rife -- --fixed-tiers
+python scripts\quantize_rife.py          # Stage B 量化（NPU）
+video4x export realesrgan --models x2plus,x4plus,x4plus_anime
+# Real-ESRGAN 会额外导出 fixed/256x256、fixed/512x512 供 VitisAI
 ```
 
-2. **WSL 内**：
+### 目录约定
 
-```bash
-cd setup/wsl
-sudo ./install.sh
-source ../../.venv/bin/activate
-source rocm-wsl.env
+```
+models/
+  RIFEv4.26_0921/          # 下载的 RIFE 权重（gitignore）
+  realesrgan/
+    .gitkeep               # 占位：让空目录可被 git 跟踪
+    RealESRGAN_*.pth       # 权重（gitignore：*.pth）
+  onnx/                    # 导出的 ONNX（gitignore）
+    rife_*.onnx
+    realesrgan/<model>/
+      realesrgan_full.onnx
+      realesrgan_body.onnx
+      realesrgan_upsample.onnx
+      fixed/256x256/...
+      fixed/512x512/...
+vitisai_cache/             # NPU 编译缓存（gitignore）
 ```
 
-自检：`bash setup/wsl/verify.sh`
+| 文件 / 目录 | 作用 | 是否入库 |
+|-------------|------|----------|
+| `models/realesrgan/.gitkeep` | 常规占位文件：git 不跟踪空目录，用它保留 `realesrgan/` 路径说明 | 可入库 |
+| `models/realesrgan/*.pth` | PyTorch 权重 | 否 |
+| `models/onnx/` | 导出的推理图 | 否 |
+| `vitisai_cache/` | VitisAI 首次编译产物 | 否 |
+| `original-*-signature.txt` | 运行时落在 CWD 的指纹文件（见下） | 否 |
 
-```bash
-python scripts/export_onnx.py --full
-python scripts/interpolate.py in.mp4 out.mp4 --platform wsl --backend split-pipeline
-```
+### `original-info-signature.txt` / `original-model-signature.txt`
 
-仅 CPU：`sudo ./install.sh --cpu-only`
+这两个文件是 **NPU / ORT 相关工具在进程当前工作目录写出的指纹**（各一行 32 位 hex），**不是** `video4x` 源码的一部分，代码也不读取它们。常见于 VitisAI 编译 / 探测期间。已加入 `.gitignore`，可直接删除，不影响推理。
 
 ---
 
-## 使用
+## 实现方式
 
-| Backend | 说明 |
-|---------|------|
-| `split-pipeline` | Stage A GPU + Stage B NPU/CPU |
-| `cpu-baseline` | 全 CPU |
-| `single-ep` | 单 session，按 `ep_preference` |
+### 总览：EnhanceJob 流水线
+
+```mermaid
+flowchart LR
+  IN[输入视频] --> P[EnhancePipeline]
+  P -->|step 1| OP1[算子 A]
+  OP1 -->|临时 mp4| OP2[算子 B]
+  OP2 --> OUT[输出视频]
+```
+
+- `--ops` / `--order` 决定算子集合与顺序（`interpolate` / `superresolve`）。
+- 多步时中间结果写系统临时 mp4，最后一步写 `-o`。
+- 帧率：从片源探测；插帧后工作 FPS = 源 × 2。
+
+### 插帧（RIFE）`split-pipeline`
+
+```mermaid
+flowchart TB
+  subgraph decode [解码]
+    D[读帧 → NCHW float]
+  end
+  subgraph stages [每对相邻帧]
+    A["Stage A ONNX<br/>DirectML GPU"]
+    B["Stage B ONNX<br/>VitisAI NPU"]
+    A -->|中间特征| B
+    B --> M[中间帧]
+  end
+  decode --> stages --> E[编码 @ src_fps×2]
+```
+
+- Stage A / B 为切分后的固定分辨率 ONNX；Stage B 优先量化图。
+- 启动时对 Stage B 做 **子进程 VitisAI probe**；失败则该 stage 回退（插帧允许），进度里可见 `gpu_hits` / `npu_hits`。
+
+### 超分（Real-ESRGAN）`split-pipeline`
+
+```mermaid
+flowchart TB
+  F[一帧 LR] --> T{按 tile 切块}
+  T --> PAD["core = fixed_tile - 2×tile_pad<br/>再 pad 到固定 HxW"]
+  PAD --> BODY["body.onnx → feat<br/>VitisAI 必须成功"]
+  BODY --> UP["upsample.onnx → HR<br/>DirectML GPU"]
+  UP --> MERGE[拼回整帧]
+  MERGE --> OUT2[写出]
+```
+
+要点：
+
+1. **固定 tile**：优先 `fixed/256x256`（也可用 512）。动态尺寸 NPU 易失败。
+2. **`tile_pad`**：有固定 tile 时，核心块大小 = `fixed_tile - 2*pad`，避免 pad 后超过固定输入。
+3. **禁止 body 静默回退 DML**：probe / session 不是 VitisAI 时直接 `RuntimeError`（保证 GPU+NPU 协同，而不是“看起来像 split、实际全在 GPU”）。
+4. **仅缺 body/upsample 文件时** 才回退整图 `full` + single-ep。
+5. **`cache_key`**：由 ONNX 路径派生（如 `x2plus_fixed_256x256_realesrgan_body`），避免多个同名 `realesrgan_body.onnx` 污染 `vitisai_cache/`。
+
+### Backend 对照
+
+| Backend | 插帧 | 超分 |
+|---------|------|------|
+| `split-pipeline` | A=GPU + B=NPU | body=**NPU 必选** + upsample=GPU |
+| `single-ep` | 单 session | 整图 `realesrgan_full.onnx` |
+| `cpu-baseline` | CPU | 用 single-ep + CPU EP |
+
+进度行示例：`ep=[body=VitisAI,upsample=Dml]`、`gpu_hits=… npu_hits=…`、`res=[CPU=…%,GPU=…%,RSS=…MB]`。
+
+---
+
+## 案例命令
+
+环境变量（每次新开终端建议设置）：
+
+```powershell
+conda activate ryzen-ai-1.7.1
+$env:RYZEN_AI_INSTALLATION_PATH = 'C:\Program Files\RyzenAI\1.7.1'
+cd D:\Gits\MaintainAll\apps\video4xinterpolation
+```
+
+### 仅插帧（GPU+NPU）
+
+```powershell
+video4x run -i in.mp4 -o in_rife48.mp4 `
+  --ops interpolate --platform windows `
+  --fi-backend split-pipeline
+```
+
+### 仅超分（GPU+NPU，x2 → 约 4K@1080p 源）
+
+```powershell
+video4x run -i in_rife48.mp4 -o in_rife48_4k.mp4 `
+  --ops superresolve --platform windows `
+  --sr-model x2plus --sr-backend split-pipeline --tile 256
+```
+
+确认日志中有：`ep=[body=VitisAI,upsample=Dml]`，且 `npu_hits` 随帧增加。若 body 上不了 NPU，进程会报错退出（不会静默改用 DML）。
+
+### 串联：先插帧再超分
+
+```powershell
+video4x run -i in.mp4 -o out_rife48_4k.mp4 `
+  --ops interpolate,superresolve `
+  --order interpolate,superresolve `
+  --platform windows `
+  --sr-model x2plus `
+  --fi-backend split-pipeline --sr-backend split-pipeline `
+  --tile 256
+```
+
+### 先超分再插帧
+
+```powershell
+video4x run -i in.mp4 -o out.mp4 `
+  --ops superresolve,interpolate `
+  --order superresolve,interpolate `
+  --sr-model x4plus `
+  --fi-backend split-pipeline --sr-backend split-pipeline
+```
+
+### 白海类短片（已验证路径）
+
+```powershell
+$dir = "C:\Users\Royen\OneDrive\创作\歌曲短片\白海\成果"
+
+# 白海2：已有插帧结果时只跑超分
+video4x run `
+  -i (Join-Path $dir "白海2_rife48.mp4") `
+  -o (Join-Path $dir "白海2_rife48_4k.mp4") `
+  --ops superresolve --platform windows `
+  --sr-model x2plus --sr-backend split-pipeline --tile 256
+
+# 白海3：插帧 + 超分一条龙
+video4x run `
+  -i (Join-Path $dir "白海3.mp4") `
+  -o (Join-Path $dir "白海3_rife48_4k.mp4") `
+  --ops interpolate,superresolve --order interpolate,superresolve `
+  --platform windows --sr-model x2plus `
+  --fi-backend split-pipeline --sr-backend split-pipeline --tile 256
+```
+
+说明：1080p + tile 256 时，超分 body 在 NPU 上较慢（约数十秒/帧量级，视 tile 数而定）；首次该 `cache_key` 编译可能额外很久。
+
+### TUI
+
+```powershell
+video4x tui
+# 或
+python scripts\tui.py
+```
+
+---
+
+## Python API
 
 ```python
-from rife_amd import RifeInferenceEngine, InferenceConfig
+from video4x import EnhanceJob, EnhanceJobConfig, OpSpec
+from pathlib import Path
+
+cfg = EnhanceJobConfig(
+    input_path=Path("in.mp4"),
+    output_path=Path("out.mp4"),
+    order=["interpolate", "superresolve"],
+    interpolate=OpSpec(op="interpolate", backend="split-pipeline", platform="windows"),
+    superresolve=OpSpec(
+        op="superresolve",
+        model="x2plus",
+        backend="split-pipeline",
+        platform="windows",
+        tile=256,
+    ),
+)
+EnhanceJob(cfg).run()
+```
+
+插帧引擎仍可用：
+
+```python
+from video4x import RifeInferenceEngine, InferenceConfig
 
 with RifeInferenceEngine(InferenceConfig(mode="split-pipeline", platform="auto")) as engine:
     engine.interpolate_video("in.mp4", "out.mp4")
@@ -105,15 +261,17 @@ with RifeInferenceEngine(InferenceConfig(mode="split-pipeline", platform="auto")
 
 ---
 
-## Setup 布局
+## 源码结构
 
 ```
-setup/
-  windows/install.ps1       # Windows 原生：DML + VitisAI / Ryzen AI
-  wsl/windows-host.ps1      # Windows 主机：为 WSL ROCDXG 检查/装 Adrenalin
-  wsl/install.sh            # WSL：ROCm/ROCDXG + venv
-  wsl/rocm-install.sh
-  wsl/verify.sh
+src/video4x/
+  runtime/          # EP 探测、OrtSession、memory、resources、video_io
+    backends/       # split_pipeline / single_ep / vitisai_probe / cache_key
+  ops/interpolate/  # RIFE
+  ops/superresolve/ # Real-ESRGAN（engine / tile / backends / export）
+  job/              # EnhanceJob + 可排序 Pipeline
+  cli/main.py       # video4x 子命令
+  tui/app.py        # Textual 薄壳
 ```
 
-已知卡点：[docs/known_blockers.md](docs/known_blockers.md)
+兼容旧命令：`rife-interpolate`、`scripts\interpolate.py` 等仍可用。

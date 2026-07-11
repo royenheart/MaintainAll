@@ -6,14 +6,14 @@ import io
 
 import numpy as np
 
-from rife_amd.inference import (
+from video4x.inference import (
     InferenceConfig,
     InferenceMode,
     ProgressEvent,
     RifeInferenceEngine,
     format_progress_line,
 )
-from rife_amd.inference.progress import StdoutProgressReporter
+from video4x.inference.progress import StdoutProgressReporter
 
 
 def test_format_progress_line_includes_resources() -> None:

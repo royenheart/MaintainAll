@@ -6,9 +6,9 @@ import numpy as np
 import onnx
 from onnx import TensorProto, helper, numpy_helper
 
-from rife_amd.onnx_rewrite import rewrite_spatial_constants_to_ops, summarize_large_constants
-from rife_amd.runtime.memory import create_memory_planner, parse_memory_mode
-from rife_amd.runtime.memory.types import MemoryMode
+from video4x.onnx_rewrite import rewrite_spatial_constants_to_ops, summarize_large_constants
+from video4x.runtime.memory import create_memory_planner, parse_memory_mode
+from video4x.runtime.memory.types import MemoryMode
 
 
 def test_parse_memory_mode() -> None:

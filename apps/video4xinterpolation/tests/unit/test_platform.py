@@ -2,8 +2,8 @@
 
 from __future__ import annotations
 
-from rife_amd.inference.config import InferenceConfig
-from rife_amd.runtime.platform import (
+from video4x.inference.config import InferenceConfig
+from video4x.runtime.platform import (
     HostPlatform,
     default_ep_preference,
     default_stage_ep_preferences,
@@ -20,7 +20,7 @@ def test_windows_defaults():
     assert default_ep_preference(HostPlatform.WINDOWS) == ["dml", "vitisai", "cpu"]
     a, b = default_stage_ep_preferences(HostPlatform.WINDOWS)
     assert a == ["dml", "cpu"]
-    assert b == ["dml", "cpu"]
+    assert b == ["vitisai", "dml", "cpu"]
 
 
 def test_wsl_defaults():

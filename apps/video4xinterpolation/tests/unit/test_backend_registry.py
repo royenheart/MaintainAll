@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import pytest
 
-from rife_amd.runtime.backends.registry import create_backend, get_backend, list_backends
+from video4x.runtime.backends.registry import create_backend, get_backend, list_backends
 
 
 def test_list_backends() -> None:

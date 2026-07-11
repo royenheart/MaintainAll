@@ -15,11 +15,12 @@
 param(
     [switch] $CheckOnly,
     [switch] $ForceGpuInstall,
-    [switch] $ForceVenv,   # 强制重建 .venv（基解释器搬家/卸载后用）
+    [switch] $ForceVenv,   # 仅在 -UseVenv 时：强制重建 .venv
+    [switch] $UseVenv,     # 可选：创建项目 .venv（默认改用 Ryzen AI conda）
     [string] $NpuZip,
     [string] $RyzenAiInstaller,
     [string] $AdrenalinSetupPath,
-    [string] $PythonExe = ""   # 空 = 自动探测（py -3 / python）
+    [string] $PythonExe = ""   # 空 = 自动探测（优先 ryzen-ai conda）
 )
 
 Set-StrictMode -Version Latest
@@ -333,68 +334,99 @@ function Install-RyzenAiOrtWheels {
 }
 
 function Install-PythonEnv {
-    $py = Resolve-BasePython
-    Write-Host "[OK]   Base Python: $py (version $(Get-PythonVersionTag $py))"
+    # Default: install into Ryzen AI conda (has VitisAI+DML). Optional -UseVenv for project .venv.
+    $condaPy = Get-RyzenAiCondaPython
+    $targetPy = $null
+    $targetLabel = ""
 
-    $venvDir = Join-Path $ProjectRoot '.venv'
-    $needCreate = $ForceVenv -or -not (Test-VenvHealthy)
-    if ($needCreate) {
-        if (Test-Path $venvDir) {
-            Write-Host "Removing broken/stale .venv (base python moved, wrong version, or -ForceVenv)..."
-            Remove-Item -LiteralPath $venvDir -Recurse -Force
+    if ($UseVenv) {
+        $py = Resolve-BasePython
+        Write-Host "[OK]   Base Python for venv: $py (version $(Get-PythonVersionTag $py))"
+        $venvDir = Join-Path $ProjectRoot '.venv'
+        $needCreate = $ForceVenv -or -not (Test-VenvHealthy)
+        if ($needCreate) {
+            if (Test-Path $venvDir) {
+                Write-Host "Removing broken/stale .venv..."
+                Remove-Item -LiteralPath $venvDir -Recurse -Force
+            }
+            Write-Host "Creating venv at $venvDir"
+            & $py -m venv $venvDir
+            if (-not (Test-Path $VenvPython)) {
+                throw "venv created but python missing at $VenvPython"
+            }
+        } else {
+            Write-Host "[OK]   .venv healthy. Skip create."
         }
-        Write-Host "Creating venv at $venvDir"
-        & $py -m venv $venvDir
-        if (-not (Test-Path $VenvPython)) {
-            throw "venv created but python missing at $VenvPython"
-        }
+        $targetPy = $VenvPython
+        $targetLabel = ".venv"
+    } elseif ($condaPy) {
+        $targetPy = $condaPy
+        $targetLabel = "conda ryzen-ai ($(Get-PythonVersionTag $condaPy))"
+        Write-Host "[OK]   Using Ryzen AI conda (recommended): $condaPy"
+        Write-Host "       Tip: conda activate ryzen-ai-1.7.1"
     } else {
-        Write-Host "[OK]   .venv healthy. Skip create."
+        Write-Host "[WARN] Ryzen AI conda env not found; creating project .venv as fallback" -ForegroundColor Yellow
+        Show-RyzenAiDownloadHint
+        $py = Resolve-BasePython
+        Write-Host "[OK]   Base Python for venv: $py (version $(Get-PythonVersionTag $py))"
+        $venvDir = Join-Path $ProjectRoot '.venv'
+        if ($ForceVenv -or -not (Test-VenvHealthy)) {
+            if (Test-Path $venvDir) { Remove-Item -LiteralPath $venvDir -Recurse -Force }
+            & $py -m venv $venvDir
+        }
+        $targetPy = $VenvPython
+        $targetLabel = ".venv (fallback)"
+        $UseVenv = $true
     }
 
-    & $VenvPython -m pip install --upgrade pip wheel -q
-    & $VenvPython -m pip install -e "$ProjectRoot[export,dev]" -q
+    Write-Host "Installing video4x into $targetLabel ..."
+    & $targetPy -m pip install --upgrade pip wheel -q
+    # Do NOT pull stock onnxruntime over onnxruntime_vitisai
+    $prevEap = $ErrorActionPreference
+    $ErrorActionPreference = 'Continue'
+    & $targetPy -m pip install -e "$ProjectRoot[export,dev,tui]" --no-deps -q 2>$null
+    & $targetPy -m pip install "numpy>=1.24,<2" "av>=12.0" "psutil>=5.9" "pytest>=8.0" "textual>=0.47" -q
+    # export extras if missing
+    & $targetPy -m pip install "torch>=2.1" "onnx>=1.16" "onnxscript>=0.1" -q 2>$null
+    $ErrorActionPreference = $prevEap
 
-    $prov = Get-OrtProviders $VenvPython
+    $prov = Get-OrtProviders $targetPy
     $raiRoot = Get-RyzenAiRoot
 
-    if ($raiRoot -and ($prov -notmatch 'VitisAI')) {
-        if (Install-RyzenAiOrtWheels -Py $VenvPython) {
-            $prov = Get-OrtProviders $VenvPython
+    if ($UseVenv -and $raiRoot -and ($prov -notmatch 'VitisAI')) {
+        if (Install-RyzenAiOrtWheels -Py $targetPy) {
+            $prov = Get-OrtProviders $targetPy
         }
-    }
-
-    if (-not $prov) {
-        Write-Host "Installing onnxruntime (CPU baseline)..."
-        & $VenvPython -m pip install "onnxruntime>=1.17" -q
-        $prov = Get-OrtProviders $VenvPython
-    }
-
-    if ($prov -notmatch 'Dml' -and $prov -notmatch 'VitisAI') {
-        Write-Host "DmlExecutionProvider missing — installing onnxruntime-directml for Stage A (GPU)..."
-        & $VenvPython -m pip uninstall -y onnxruntime 2>$null
-        & $VenvPython -m pip install "onnxruntime-directml>=1.17" -q
-        $prov = Get-OrtProviders $VenvPython
     }
 
     if ($prov) {
-        Write-Host "[OK]   onnxruntime providers: $prov"
+        Write-Host "[OK]   onnxruntime providers ($targetLabel): $prov"
     } else {
-        Write-Host "[WARN] onnxruntime still not importable" -ForegroundColor Yellow
+        Write-Host "[WARN] onnxruntime not importable in $targetLabel" -ForegroundColor Yellow
     }
 
     if ($prov -notmatch 'VitisAI') {
-        Write-Host "[WARN] VitisAI EP still missing — Stage B stays CPU." -ForegroundColor Yellow
-        Write-Host "       Ryzen AI puts EP in conda env ryzen-ai-1.7.1 (Python 3.12), not a 3.14 .venv."
-        Write-Host "       Fix: .\install.ps1 -ForceVenv"
-        Write-Host "       Or:  conda activate ryzen-ai-1.7.1 ; pip install -e .[export,dev]"
+        Write-Host "[WARN] VitisAI EP missing — NPU Stage B unavailable." -ForegroundColor Yellow
+        Write-Host "       Install/activate conda env ryzen-ai-1.7.1, then re-run this script (default path)."
         Show-RyzenAiDownloadHint
     } else {
-        Write-Host "[OK]   VitisAI EP present — Stage B can use NPU (quant model + xclbin)."
+        Write-Host "[OK]   VitisAI EP present — NPU ready."
     }
     if ($prov -match 'Dml') {
-        Write-Host "[OK]   DirectML present — Stage A can use GPU."
+        Write-Host "[OK]   DirectML present — GPU ready."
     }
+
+    # Persist helper for shells
+    $helper = Join-Path $ProjectRoot 'setup\windows\env.ps1'
+    $raiPath = if ($raiRoot) { $raiRoot } else { 'C:\Program Files\RyzenAI\1.7.1' }
+    @"
+# Auto-generated by install.ps1 — prefer Ryzen AI conda for video4x
+`$env:RYZEN_AI_INSTALLATION_PATH = '$raiPath'
+`$Video4xPython = '$targetPy'
+Write-Host "video4x python: `$Video4xPython"
+Write-Host "RYZEN_AI_INSTALLATION_PATH=`$env:RYZEN_AI_INSTALLATION_PATH"
+"@ | Set-Content -Path $helper -Encoding UTF8
+    Write-Host "[OK]   Wrote $helper"
 }
 
 function Invoke-Check {
@@ -434,26 +466,24 @@ function Invoke-Check {
     }
 
     if (Test-Path $VenvPython) {
-        Write-Host "[INFO] .venv Python $(Get-PythonVersionTag $VenvPython)"
+        Write-Host "[INFO] .venv exists (optional; prefer conda). Python $(Get-PythonVersionTag $VenvPython)"
         $prov = Get-OrtProviders $VenvPython
         if ($prov) {
-            Write-Host "[OK]   .venv ORT providers: $prov"
-            if ($prov -notmatch 'Dml') { Write-Host "[WARN] DmlExecutionProvider missing — Stage A may be CPU" -ForegroundColor Yellow }
+            Write-Host "[INFO] .venv ORT providers: $prov"
             if ($prov -notmatch 'VitisAI') {
-                Write-Host "[WARN] VitisAIExecutionProvider missing — Stage B may be CPU" -ForegroundColor Yellow
-                Write-Host "       Cause: .venv is not the Ryzen AI Python 3.12 ORT. Run: .\install.ps1 -ForceVenv" -ForegroundColor Yellow
+                Write-Host "       .venv usually lacks VitisAI — use: conda activate ryzen-ai-1.7.1" -ForegroundColor Yellow
             }
-        } else {
-            Write-Host "[WARN] Cannot import onnxruntime in .venv" -ForegroundColor Yellow
         }
     } else {
-        Write-Host "[INFO] .venv not created yet"
+        Write-Host "[INFO] No project .venv (OK — default runtime is Ryzen AI conda)"
     }
 
     Show-Docs
-    Write-Host "Next: .\install.ps1   (or -CheckOnly). Then:"
-    Write-Host "  .\.venv\Scripts\Activate.ps1"
-    Write-Host "  python scripts\interpolate.py in.mp4 out.mp4 --platform windows --backend split-pipeline"
+    Write-Host "Next:"
+    Write-Host "  conda activate ryzen-ai-1.7.1"
+    Write-Host "  `$env:RYZEN_AI_INSTALLATION_PATH='C:\Program Files\RyzenAI\1.7.1'"
+    Write-Host "  # or:  . .\setup\windows\env.ps1"
+    Write-Host "  video4x run -i in.mp4 -o out.mp4 --ops interpolate --platform windows"
 }
 
 # --- main ---

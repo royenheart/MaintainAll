@@ -5,7 +5,7 @@ from __future__ import annotations
 import numpy as np
 import torch
 
-from rife_amd.model.rife_hd_v4 import (
+from video4x.model.rife_hd_v4 import (
     IFNet,
     RIFEStageBlock234,
     RIFEStageEncodeBlock01,

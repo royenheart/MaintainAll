@@ -6,7 +6,7 @@ from pathlib import Path
 
 import pytest
 
-from rife_amd.runtime.resolutions import (
+from video4x.runtime.resolutions import (
     DEFAULT_FIXED_SIZES,
     fixed_onnx_paths,
     match_fixed_size,

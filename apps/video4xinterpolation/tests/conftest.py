@@ -23,7 +23,7 @@ def onnx_dir(pkl_path: Path) -> Path:
     ONNX_DIR.mkdir(parents=True, exist_ok=True)
     stage_a = ONNX_DIR / "rife_stage_encode_block01.onnx"
     if not stage_a.exists():
-        from rife_amd.onnx_export import export_full, export_stages
+        from video4x.onnx_export import export_full, export_stages
 
         export_stages(pkl_path, ONNX_DIR, height=64, width=64)
         export_full(pkl_path, ONNX_DIR, height=64, width=64)

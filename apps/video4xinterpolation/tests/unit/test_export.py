@@ -7,7 +7,7 @@ from pathlib import Path
 import onnx
 import pytest
 
-from rife_amd.onnx_export import export_stages
+from video4x.onnx_export import export_stages
 
 
 def test_onnx_checker(onnx_dir: Path) -> None:

@@ -2,9 +2,9 @@
 
 from __future__ import annotations
 
-from rife_amd.inference.progress import ProgressEvent, ProgressTracker, format_progress_line
-from rife_amd.runtime.resources import NullResourceSampler, create_resource_sampler
-from rife_amd.runtime.resources.base import ResourceSample
+from video4x.inference.progress import ProgressEvent, ProgressTracker, format_progress_line
+from video4x.runtime.resources import NullResourceSampler, create_resource_sampler
+from video4x.runtime.resources.base import ResourceSample
 
 
 def test_create_resource_sampler_returns_protocol() -> None:

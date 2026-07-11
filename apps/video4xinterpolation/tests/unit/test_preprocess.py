@@ -4,7 +4,7 @@ from __future__ import annotations
 
 import numpy as np
 
-from rife_amd.runtime.preprocess import crop_hw, pack_frame_batch, pad_to_multiple
+from video4x.runtime.preprocess import crop_hw, pack_frame_batch, pad_to_multiple
 
 
 def test_pad_to_multiple_1080() -> None:

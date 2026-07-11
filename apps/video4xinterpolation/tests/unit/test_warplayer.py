@@ -11,7 +11,7 @@ import onnxruntime as ort
 import torch
 import torch.nn as nn
 
-from rife_amd.model.warplayer import warp
+from video4x.model.warplayer import warp
 
 
 def test_warp_identity_flow() -> None:

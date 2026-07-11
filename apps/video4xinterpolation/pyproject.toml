@@ -3,16 +3,14 @@ requires = ["setuptools>=68", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "rife-amd"
-version = "0.1.0"
-description = "RIFE v4.26 video interpolation on AMD RDNA GPU + XDNA NPU via ONNX Runtime"
+name = "video4x"
+version = "0.2.0"
+description = "Video4x — RIFE interpolate + Real-ESRGAN super-resolve on AMD GPU+NPU (ONNX Runtime)"
 readme = "README.md"
 requires-python = ">=3.10"
 license = { text = "MIT" }
 authors = [{ name = "MaintainAll" }]
-# 推理最小集：不含 torch / 量化 / 开发工具
 dependencies = [
-    # Ryzen AI onnxruntime_vitisai is built against NumPy 1.x
     "numpy>=1.24,<2",
     "onnxruntime>=1.17",
     "av>=12.0",
@@ -20,29 +18,39 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-# 一次性导出 ONNX（非推理热路径）
 export = [
     "torch>=2.1",
     "onnx>=1.16",
     "onnxscript>=0.1",
 ]
+tui = [
+    "textual>=0.47",
+]
 dev = [
     "pytest>=8.0",
 ]
-# GPU：与 onnxruntime 互斥，由 setup/wsl/install.sh 安装 onnxruntime-rocm
 rocm = [
     "onnxruntime-rocm>=1.17; platform_system=='Linux'",
 ]
-# Windows：优先系统/Ryzen AI ORT（Dml+VitisAI）。可选 pip DirectML（可能与 VitisAI 冲突）
 windows = [
     "onnxruntime-directml>=1.17; platform_system=='Windows'",
 ]
+all = [
+    "torch>=2.1",
+    "onnx>=1.16",
+    "onnxscript>=0.1",
+    "textual>=0.47",
+    "pytest>=8.0",
+]
 
 [project.scripts]
-rife-export = "rife_amd.cli.export:main"
-rife-interpolate = "rife_amd.cli.interpolate:main"
-rife-benchmark = "rife_amd.cli.benchmark:main"
-rife-quantize = "rife_amd.cli.quantize:main"
+video4x = "video4x.cli.main:main"
+video4x-tui = "video4x.tui.app:run_tui"
+# Legacy aliases
+rife-export = "video4x.cli.export:main"
+rife-interpolate = "video4x.cli.interpolate:main"
+rife-benchmark = "video4x.cli.benchmark:main"
+rife-quantize = "video4x.cli.quantize:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
