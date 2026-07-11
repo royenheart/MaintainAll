@@ -1,0 +1,23 @@
+id: ad-hoc-script-check
+name: Script format check
+description: 检查 maintaince 下脚本的格式正确性
+skills: []
+schedule: null
+notify:
+  on_complete: true
+  on_failure: true
+allowed_commands:
+- pattern: ^bash\s+-n\b.+$
+  cwd: .
+- pattern: ^find\b.+maintaince\b.+$
+  cwd: .
+tasks:
+- id: main
+  name: Check script syntax
+  needs: []
+  instruction: Run bash -n on shell scripts under maintaince/ and report syntax issues.
+  expect:
+    type: report_section
+    name: summary
+  script: find maintaince -type f \( -name '*.sh' -o -name '*.bash' \) -exec bash
+    -n {} +

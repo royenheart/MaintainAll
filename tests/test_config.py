@@ -1,0 +1,95 @@
+from pathlib import Path
+from unittest.mock import patch
+import tomllib
+
+from MaintainAll.config import Settings, load_settings, save_non_secrets, set_secret, get_secret, migrate_legacy_json
+
+
+def test_default_model_is_v4_flash(tmp_path, monkeypatch):
+    monkeypatch.setenv("MAINTAINALL_CONFIG_DIR", str(tmp_path))
+    s = Settings(_env_file=None)
+    assert s.model == "deepseek-v4-flash"
+
+
+def test_save_non_secrets_roundtrip(tmp_path, monkeypatch):
+    monkeypatch.setenv("MAINTAINALL_CONFIG_DIR", str(tmp_path))
+    s = Settings(model="deepseek-v4-pro", api_base="https://api.deepseek.com")
+    path = save_non_secrets(s, config_dir=tmp_path)
+    data = tomllib.loads(path.read_text())
+    assert data["model"] == "deepseek-v4-pro"
+    assert "api_key" not in data
+
+
+def test_save_non_secrets_escapes_quotes(tmp_path, monkeypatch):
+    monkeypatch.setenv("MAINTAINALL_CONFIG_DIR", str(tmp_path))
+    s = Settings(model='deepseek-"pro"', data_dir='/path/with"quote')
+    path = save_non_secrets(s, config_dir=tmp_path)
+    data = tomllib.loads(path.read_text())
+    assert data["model"] == 'deepseek-"pro"'
+    assert data["data_dir"] == '/path/with"quote'
+    assert "repo_path" not in data
+
+
+def test_save_omits_repo_path(tmp_path, monkeypatch):
+    monkeypatch.setenv("MAINTAINALL_CONFIG_DIR", str(tmp_path))
+    s = Settings(repo_path="/tmp/should-not-persist", trusted_dirs=["/tmp/ws"])
+    # trusted path must exist for normalize — use tmp_path
+    ws = tmp_path / "ws"
+    ws.mkdir()
+    s = Settings(repo_path="/tmp/should-not-persist", trusted_dirs=[str(ws)])
+    data = tomllib.loads(save_non_secrets(s, config_dir=tmp_path).read_text())
+    assert "repo_path" not in data
+    assert str(ws.resolve()) in data["trusted_dirs"]
+
+
+def test_load_settings_env_overrides_file(tmp_path, monkeypatch):
+    monkeypatch.setenv("MAINTAINALL_CONFIG_DIR", str(tmp_path))
+    save_non_secrets(Settings(model="deepseek-v4-flash"), config_dir=tmp_path)
+    monkeypatch.setenv("MAINTAINALL_MODEL", "deepseek-v4-pro")
+    s = load_settings(config_dir_path=tmp_path)
+    assert s.model == "deepseek-v4-pro"
+
+
+def test_smtp_from_alias_roundtrip(tmp_path, monkeypatch):
+    """TOML key `from` must load into SmtpSettings.from_addr (model_copy needs field name)."""
+    monkeypatch.setenv("MAINTAINALL_CONFIG_DIR", str(tmp_path))
+    from MaintainAll.config import SmtpSettings
+
+    s = Settings(
+        smtp=SmtpSettings(
+            provider="gmail",
+            auth="oauth",
+            user="me@gmail.com",
+            from_addr="me@gmail.com",
+            to=["ops@example.com"],
+            client_id="cid",
+        )
+    )
+    save_non_secrets(s, config_dir=tmp_path)
+    raw = tomllib.loads((tmp_path / "config.toml").read_text())
+    assert raw["smtp"]["from"] == "me@gmail.com"
+    loaded = load_settings(config_dir_path=tmp_path)
+    assert loaded.smtp.from_addr == "me@gmail.com"
+    assert loaded.smtp.user == "me@gmail.com"
+    assert loaded.smtp.to == ["ops@example.com"]
+
+
+def test_secret_via_keyring_mock(tmp_path, monkeypatch):
+    store = {}
+    monkeypatch.setenv("MAINTAINALL_CONFIG_DIR", str(tmp_path))
+    with patch("MaintainAll.config.keyring.set_password", side_effect=lambda s, u, p: store.__setitem__((s, u), p)):
+        with patch("MaintainAll.config.keyring.get_password", side_effect=lambda s, u: store.get((s, u))):
+            set_secret("api_key", "sk-test")
+            assert get_secret("api_key") == "sk-test"
+
+
+def test_migrate_legacy_json(tmp_path, monkeypatch):
+    legacy = tmp_path / "legacy.json"
+    legacy.write_text('{"api_key":"sk-old","model":"deepseek-v4-flash","api_base":"https://api.deepseek.com"}')
+    monkeypatch.setenv("MAINTAINALL_CONFIG_DIR", str(tmp_path / "cfg"))
+    store = {}
+    with patch("MaintainAll.config.keyring.set_password", side_effect=lambda s, u, p: store.__setitem__((s, u), p)):
+        with patch("MaintainAll.config.keyring.get_password", side_effect=lambda s, u: store.get((s, u))):
+            migrate_legacy_json(legacy, config_dir=tmp_path / "cfg")
+    assert store[("maintainall", "api_key")] == "sk-old"
+    assert (tmp_path / "cfg" / "config.toml").exists()

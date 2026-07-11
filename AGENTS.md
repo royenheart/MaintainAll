@@ -1,14 +1,16 @@
-# MaintainAll TUI — 方案文档
+# MaintainAll AIOps Agent
 
 ## 目标
 
-在仓库顶层提供一个单文件 Python TUI（`maintain.py`），以类似 AI Agent 的方式帮助用户：
+仓库级 AIOps 控制台：用自然语言驱动运维任务，基于 **Skills**（先验知识）与 **Missions**（可固化 DAG），经 LangGraph 工作流执行白名单命令，并支持 cron daemon 与邮件通知。
 
-- 快速浏览仓库中的配置模板/部署脚本
-- 通过自然语言问答获取部署/命令/配置参考
-- 交互式填充配置模板中的占位符变量
-- 搜索并参考仓库中的关键命令片段
-- 通过插件机制运行仓库内的管理脚本（如 Environment Modules 管理）
+- AI 模式 TUI（Layout C）：对话 / 思考流 + 右侧 Missions/Skills + 运行态任务板
+- Skills：`.agents/skills/<name>/SKILL.md`
+- Missions：`.agents/missions/<id>/MISSION.yaml`（可选 cron `schedule`）
+- 运行时产物：`~/.maintainall/{reports,logs,history}/`（或 `data_dir`；不纳入版本控制）
+- Daemon：按 **trusted_dirs** 下固化 mission 的 cron 触发 `run_mission()`；调度键为 `{abs_repo}::{mission.id}`；产物写入全局 `data_dir`
+
+> **历史说明：** 旧版五 Tab TUI（浏览 / 对话 / 命令参考 / 模板填充 / 脚本工具）及 `PLUGIN_META` 插件面板已移除。Environment Modules 等能力改为 skill + mission + CLI（见 `scripts/modulefiles/manage_modules.py`）。
 
 ---
 
@@ -16,234 +18,145 @@
 
 | 项目 | 选择 | 理由 |
 |---|---|---|
-| TUI 框架 | **Textual** | 现代、支持鼠标、布局丰富，社区活跃 |
-| LLM 客户端 | **openai** SDK（可选依赖） | 兼容 OpenAI 接口的国内 API（DeepSeek、Qwen、SiliconFlow 等）均可直接对接 |
-| RAG 检索 | **纯 Python TF-IDF**（不引入 sklearn） | 仓库内容以配置文件和 shell 脚本为主，关键词匹配已足够，零额外依赖 |
-| 插件加载 | **importlib.util** 动态加载 | 无需修改主程序即可扩展新脚本工具 |
-
-### 最小依赖
-
-```
-textual>=0.47    # TUI 框架（必需）
-openai>=1.0     # LLM 调用（可选，不配置时自动降级为纯检索模式）
-```
+| TUI | **Textual** | AI 模式 Layout C |
+| 工作流 | **LangGraph** | assess → board → review → ReAct → validate → finalize |
+| LLM | **langchain-deepseek**（默认） | DeepSeek；`api_base` 非 DeepSeek 时可走 OpenAI 兼容 |
+| 配置 | **pydantic-settings** + **keyring** + **platformdirs** | 非密钥 TOML；密钥进 OS keyring |
+| Missions | **PyYAML** | DAG + `allowed_commands` 白名单 |
+| 调度 | **croniter** + systemd user unit | 固化 mission 定时跑 |
 
 ---
 
-## 整体布局
+## 架构概览
 
 ```
-┌──────────────────────────────────────────────────────────────────┐
-│  MaintainAll  [浏览] [对话] [命令参考] [模板填充] [脚本工具]  ⚙  │
-├─────────────────────┬────────────────────────────────────────────┤
-│                     │                                            │
-│  📁 仓库导航树      │   内容 / 对话区                            │
-│  ├ apps/            │                                            │
-│  ├ deploy/          │   （根据 Tab 切换展示内容）                 │
-│  ├ maintaince/      │                                            │
-│  ├ scripts/         │                                            │
-│  ├ stow-configs/    │                                            │
-│  └ templates/       │                                            │
-│                     │                                            │
-├─────────────────────┴────────────────────────────────────────────┤
-│  状态栏 / 快捷键提示                                             │
-└──────────────────────────────────────────────────────────────────┘
+User / Cron
+    → assess → build_board → review → react_loop → validate → finalize
+                                              ↑___________| (mismatch / rebuild)
+                                              validate may revise mission once → rebuild board
 ```
 
-左侧为始终可见的仓库文件导航树（`Tree` 组件），右侧根据顶部 Tab 切换不同功能面板。
+- **assess** 会带上当前 `mode`，由模型判断「在该模式下能否真正完成用户目标」；不可行则直接 reject，不进入 board / ReAct。
+- **finalize** 后：交互会话只要有可保存的 mission draft，即可弹出固化（不要求 `validation_ok`）；也可稍后输入 `/solidify`。
 
----
-
-## 五大功能模块
-
-### 1. 浏览（Browse）
-
-- 左侧 `Tree` 组件展示仓库完整目录结构，支持展开/折叠
-- 点击文件后，右侧内容区显示带语法高亮的文件内容（Textual 内置 `SyntaxHighlighter`）
-- 支持格式：`.md`、`.sh`、`.py`、`.yml`、`.yaml`、`.toml`、`.conf`、`.j2`、`.service` 等
-
-### 2. AI 对话（Chat）
-
-**RAG 流程（含 API 配置时）**：
-
-1. 启动时后台扫描仓库所有文本文件，构建纯 Python TF-IDF 索引
-2. 用户提问时，计算问题与各文件片段的余弦相似度，检索 Top-K 相关片段
-3. 将检索到的上下文 + 用户问题拼装为 `system prompt` 发送给 LLM
-4. 支持流式输出（`stream=True`），逐字显示回复
-
-**降级模式（无 API 配置时）**：
-
-- 根据 TF-IDF 检索展示最相关的文件列表，引导用户手动查看
-
-**对话特性**：
-
-- 保持多轮对话历史
-- 支持清空对话
-- 可在对话中直接引用仓库文件路径
-
-### 3. 命令参考（Commands）
-
-- 扫描仓库所有 shell/Python 脚本
-- 提取每个脚本的：
-  - 名称 + 所在路径
-  - 头部注释（用途说明）
-  - 关键命令行（`docker`、`ansible`、`systemctl`、`kubectl`、`ansible-playbook` 等）
-- 展示为可实时搜索/过滤的列表
-- 点击条目展开完整脚本内容 + 高亮关键命令
-
-### 4. 模板填充（Templates）
-
-**自动检测可填充模板**，识别以下特征：
-
-- 文件名含 `.example`（如 `jupyterhub_config.example.py`）
-- Jinja2 占位符 `{{ variable }}` / `{% for ... %}`（`.j2` 文件）
-- 明显的占位符：`xxx`、`your_xxx`、`<placeholder>`、`CHANGE_ME`
-
-**填充流程**：
-
-1. 自动解析占位符，生成对应的输入表单
-2. 用户逐一填写变量值
-3. 实时预览替换后的内容
-4. 可一键复制到剪贴板或保存为新文件
-
-### 5. 脚本工具（Scripts）
-
-通过 `importlib` 动态加载 `scripts/**/manage_*.py` 插件，提供可视化表单驱动的脚本执行界面。
-
-**布局**：
-```
-左侧：插件列表（自动发现所有 manage_*.py）
-右侧上：选中插件的 Action 按钮列表
-右侧下：执行结果（RichLog，支持颜色/高亮）
-```
-
-**执行流程**：
-1. 左侧选择插件 → 右侧显示 Action 列表
-2. 点击 Action → 弹出 `PluginActionScreen` 表单
-3. 填写参数后点击「执行」
-4. 后台线程执行 handler，结果实时输出到 RichLog
-
-**当前内置插件**：`scripts/modulefiles/manage_modules.py`（Environment Modules 管理）
-
-**快捷键**：`Ctrl+R` 刷新插件列表
-
----
-
-## 插件开发接口（PLUGIN_META）
-
-在 `scripts/` 任意子目录下创建 `manage_*.py`，暴露 `PLUGIN_META` 字典即可被 TUI 自动发现。
-
-```python
-PLUGIN_META = {
-    "name": str,           # 插件显示名称
-    "description": str,    # 插件简介
-    "version": str,        # 插件版本
-    "actions": [
-        {
-            "id": str,           # 唯一标识
-            "label": str,        # 显示名称
-            "description": str,  # 功能简介
-            "fields": [          # 表单字段列表
-                {
-                    "id":       str,   # 字段标识
-                    "label":    str,   # 显示名称
-                    "type":     str,   # str/path/select/bool/kvlist
-                    "required": bool,
-                    "default":  Any,   # 可选
-                    "options":  list,  # type=select 时必填
-                },
-            ],
-            "handler": str,      # 模块级 handler 函数名
-        },
-    ],
-}
-
-def action_xxx(fields: dict, *, interactive: bool = False) -> dict:
-    # interactive=True：命令行模式（可打印/询问）
-    # interactive=False：TUI 调用（静默，只返回数据）
-    return {"success": bool, "message": str, "data": Any}
-```
-
-| `type` 值 | TUI Widget | 说明 |
-|---|---|---|
-| `str` | `Input` | 普通字符串 |
-| `path` | `Input` | 文件系统路径 |
-| `select` | `Select` | 单选，需配合 `options` |
-| `bool` | `Switch` | 布尔开关 |
-| `kvlist` | `TextArea` | 多行键值对，格式 `VAR=/path` |
-
-详见 `docs/modulefile-manager.md`。
-
----
-
-## 配置文件
-
-路径：`~/.maintainall.json`
-
-首次运行时会交互式引导生成，内容示例：
-
-```json
-{
-  "api_base": "https://api.deepseek.com/v1",
-  "api_key": "sk-...",
-  "model": "deepseek-chat",
-  "repo_path": "/path/to/MaintainAll",
-  "rag_top_k": 5,
-  "rag_chunk_size": 500
-}
-```
-
-| 字段 | 说明 | 是否必需 |
-|---|---|---|
-| `api_base` | LLM API 基础 URL（兼容 OpenAI 接口） | 否（不填则降级） |
-| `api_key` | API 密钥 | 否（不填则降级） |
-| `model` | 模型名称 | 否（默认 `gpt-4o-mini`） |
-| `repo_path` | 仓库根目录绝对路径 | 否（默认为脚本所在目录） |
-| `rag_top_k` | RAG 检索返回的最大片段数 | 否（默认 5） |
-| `rag_chunk_size` | 文件分块大小（行数） | 否（默认 100） |
-
----
-
-## 文件结构
+包布局：
 
 ```
 MaintainAll/
-├── maintain.py                    # 单一入口，所有 TUI 逻辑
-├── AGENTS.md                      # 本文档
-├── docs/
-│   └── modulefile-manager.md      # Environment Modules 管理器详细方案
-├── templates/
-│   └── modulefiles/               # Tcl 模板文件
-│       ├── generic.tcl            # 通用软件包模板
-│       ├── devel.tcl              # 编译开发版模板
-│       └── custom.tcl             # 自定义模板
-└── scripts/
-    ├── generate-modulefiles/      # 旧 Bash 脚本（归档保留）
-    └── modulefiles/
-        └── manage_modules.py      # Environment Modules 管理插件
+├── maintain.py / maintain_daemon.py   # 薄入口
+├── pyproject.toml
+├── src/MaintainAll/
+│   ├── config.py                      # settings + keyring
+│   ├── skills/  missions/  tools/
+│   ├── graph/                         # LangGraph nodes + LLM
+│   ├── memory/  notify/  cron/
+│   ├── tui/                           # AI mode only
+│   └── daemon/service.py
+└── .agents/
+    ├── skills/                        # 版本库跟踪（每个可信工作区一份）
+    └── missions/                      # 版本库跟踪
+# 运行时数据默认在 ~/.maintainall/（Settings data_dir）
+#   reports/  logs/  history/  daemon_state.json  locks/
 ```
+
+---
+
+## UI（AI mode / Layout C）
+
+- **中央：** 思考 / 助手流 + 底部输入
+- **右侧（空闲）：** Missions 列表 → Skills 列表；点击打开详情浮层（Esc 关闭）
+- **右侧（运行中）：** mission 描述、`allowed_commands` 执行计数、任务板状态（pending/running/done/failed）
+- **模式：** `Shift+Tab` 循环（仅交互、未绑定 mission）：
+
+| 模式 | Review | 命令执行 |
+|---|---|---|
+| **`readonly`**（默认） | 需要人工确认 | **禁止** `subprocess`（dry-run 记录跳过） |
+| **`restricted`** | 需要人工确认 | 仅 `allowed_commands` 白名单（`re.fullmatch` 整行） |
+| **`unlimited`** | 自动通过 | 任意非空命令（无白名单） |
+
+- **Mission / cron 模式：** 仅允许该 mission 的 `allowed_commands` / 固化脚本；daemon 跳过交互 review
+
+---
+
+## Skills 与 Missions
+
+### Skill（`.agents/skills/<name>/SKILL.md`）
+
+YAML frontmatter：`name`、`description`。正文建议含 Context / Instructions / Constraints / Examples。启动时索引 name+description；触发时加载全文。
+
+### Mission（`.agents/missions/<id>/MISSION.yaml`）
+
+- `id` / `name` / `description` / `skills`
+- `schedule`: `null` 或 cron 字符串（仅固化 mission 由 daemon 调度）
+- `notify`: `{ on_complete, on_failure }`
+- `allowed_commands`: `[{ pattern, cwd }]` — 完整命令行正则；相对 cwd；禁止裸 shell
+- `tasks`: DAG（`needs`、`instruction`、`expect`；可选 `script` / 嵌套 `tasks`）
+
+`expect` 类型包括：`contains`、`report_section`、`file_exists` 等。
+
+### 内置内容
+
+| Skill | Missions |
+|---|---|
+| `daed-connectivity` | `daed-connectivity-check` — gost 连通性 + Telegram CIDR 核对 |
+| `modulefile-manager` | `modulefiles-list`、`modulefiles-scan-generate` — 调用 `manage_modules.py` CLI |
+
+---
+
+## 配置与密钥
+
+| 类型 | 位置 |
+|---|---|
+| 非密钥 | `~/.config/maintainall/config.toml`（platformdirs） |
+| 可信工作区 | `trusted_dirs`（绝对路径列表）；TUI 当前工作区取启动时的 `cwd`（不写入配置） |
+| 运行时数据 | `data_dir`（默认 `~/.maintainall`；可用 `MAINTAINALL_DATA_DIR`） |
+| 密钥（`api_key`、SMTP 密码） | OS keyring，service `maintainall`；内存中为 `SecretStr` |
+| 环境覆盖 | `MAINTAINALL_*`、`DEEPSEEK_API_KEY` |
+| keyring 不可用 | `~/.config/maintainall/secrets.toml`（mode `0600`）+ TUI 警告 |
+
+默认：
+
+- `api_base`: `https://api.deepseek.com`
+- `model`: `deepseek-v4-flash`（可改为 `deepseek-v4-pro`）
+- `agent_mode`: `readonly`
+- `report_language`: `zh-CN`（约束 assess 的 `reason`、OBSERVE / 报告正文；不影响 RUN 命令与协议关键字）
+- `data_dir`: `~/.maintainall`
+- `trusted_dirs`: 旧配置若只有 `repo_path`、无此字段，加载时迁入 `trusted_dirs` 后不再持久化 `repo_path`
+
+首次运行若存在旧版 `~/.maintainall.json`，会迁移到 TOML + keyring。TUI 设置（F1）可改 model / api_base / SMTP / 默认模式 / trusted dirs；密钥字段掩码显示。在未信任的目录启动 TUI 时会询问是否加入 `trusted_dirs`。
 
 ---
 
 ## 快速开始
 
 ```bash
-# 安装依赖
-pip install textual
-pip install openai   # 可选，需要 AI 对话功能时安装
-
-# 运行 TUI
+pip install -e ".[dev]"
 python maintain.py
+# user systemd daemon — run from the same conda/venv used for pip install:
+./deploy/systemd/install-user-daemon.sh
+# 可选：loginctl enable-linger "$USER"
+```
 
-# 独立运行 modulefile 管理工具
-python scripts/modulefiles/manage_modules.py          # 交互式菜单
+也可使用入口脚本：`maintainall` / `maintainall-daemon`。不要依赖 systemd 继承登录 shell 的 conda PATH；安装脚本会把当前环境的绝对路径写进 unit。
+
+独立 CLI（modulefiles，非 TUI 插件）：
+
+```bash
+python scripts/modulefiles/manage_modules.py list
 python scripts/modulefiles/manage_modules.py scan /opt/software
 python scripts/modulefiles/manage_modules.py add cuda 12.2 /usr/local/cuda-12.2
-python scripts/modulefiles/manage_modules.py list
 python scripts/modulefiles/manage_modules.py delete cuda 12.2
 ```
 
-首次运行会提示配置 API（可跳过），之后直接进入 TUI 界面。
+---
+
+## Daemon、报告与通知
+
+1. Daemon 迭代 `trusted_dirs`，加载各目录下带非空 `schedule` 的固化 mission；触发时 `chdir` 到该工作区并 `run_mission()`（跳过 review）。
+2. 调度身份为 `{abs_repo}::{mission.id}`；全局锁与 last_run 写在 `data_dir/locks/`、`data_dir/daemon_state.json`（可从旧 `.agents/.daemon_state.json` 迁移）。
+3. 完成后写 `data_dir/reports/<mission-id>@<repo-name>-<timestamp>.md`。
+4. 若配置了邮件 → 发信；否则尝试本地 `sendmail`/`mail`；都失败则保留报告。
+5. 每轮 scan 重新 `load_settings()`，改可信目录或 YAML 里的 `schedule` 一般无需重启 daemon。
 
 ---
 
@@ -251,11 +164,22 @@ python scripts/modulefiles/manage_modules.py delete cuda 12.2
 
 | 快捷键 | 功能 |
 |---|---|
-| `Tab` / `Shift+Tab` | 切换功能面板 |
-| `Ctrl+Q` | 退出程序 |
-| `Ctrl+F` | 在当前面板中搜索/过滤 |
-| `Ctrl+L` | 清空对话记录 |
-| `Ctrl+S` | 保存模板填充结果 |
-| `Ctrl+R` | 刷新脚本工具插件列表 |
-| `F1` | 打开设置面板 |
-| `Escape` | 关闭弹窗/返回上级 |
+| `Shift+Tab` | 循环 agent 模式（交互 unbound） |
+| `↑` / `↓`（光标在输入开头） | 切换历史输入（按仓库 `.maintainall/history/prompt.jsonl` 落盘） |
+| `Tab` | `/run`：在输入框上方弹出候选（↑↓ 选择，Enter/Tab 确认，Esc 关闭）；其它：接受补全预览 |
+| `/run <mission-id\|name>` | 运行已固化 mission（支持前缀；Tab 打开候选框） |
+| `/solidify` | 将当前 memory 中的 mission 固化到 `.agents/missions/` |
+| `F1` | 设置 |
+| `Escape` | 关闭浮层 / 取消 |
+| `Ctrl+Q` | 退出 |
+
+---
+
+## 开发与测试
+
+```bash
+pip install -e ".[dev]"
+python -m pytest -q
+```
+
+设计与实现计划见 `docs/superpowers/specs/2026-07-10-aiops-agent-design.md` 与 `docs/superpowers/plans/2026-07-10-aiops-agent.md`。

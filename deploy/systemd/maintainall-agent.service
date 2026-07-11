@@ -1,0 +1,17 @@
+[Unit]
+Description=MaintainAll AIOps mission daemon
+After=default.target
+
+[Service]
+Type=simple
+# Prefer generating this file with:
+#   ./deploy/systemd/install-user-daemon.sh
+# so ExecStart points at the absolute path of your conda/venv python or
+# maintainall-daemon. A bare "%h/.local/bin/..." only works if you pip-installed
+# into that prefix.
+ExecStart=%h/.local/bin/maintainall-daemon
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target

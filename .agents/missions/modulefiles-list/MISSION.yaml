@@ -1,0 +1,33 @@
+id: modulefiles-list
+name: 列出 Environment Modules
+description: |
+  通过 manage_modules.py list 列出当前 MODULEPATH 下已管理的 modulefile。
+skills: [modulefile-manager]
+schedule: null
+notify:
+  on_complete: true
+  on_failure: true
+allowed_commands:
+  - pattern: '^python3? scripts/modulefiles/manage_modules\.py list( .*)?$'
+    cwd: '.'
+tasks:
+  - id: list-modules
+    name: 列出 modulefiles
+    needs: []
+    instruction: |
+      运行 list；CLI 成功输出通常含 `modulefile`。
+      用 OBSERVE 把名称/版本汇总写入 ## modules。
+    script: python scripts/modulefiles/manage_modules.py list
+    expect:
+      type: contains
+      patterns: ['modulefile']
+  - id: write-report
+    name: 写入报告
+    needs: [list-modules]
+    instruction: |
+      确认报告含 ## modules，并落盘到
+      .maintainall/reports/modulefiles-list-*.md。
+    script: python scripts/modulefiles/manage_modules.py list
+    expect:
+      type: report_section
+      name: modules

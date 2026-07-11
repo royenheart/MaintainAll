@@ -225,5 +225,15 @@ start-codex.sh
 # ai
 .sisyphus
 .omo
+.superpowers
 
-temp
+temp.worktrees/
+
+.agents/reports/
+.agents/logs/
+.agents/history/
+.maintainall/
+.superpowers/
+.venv/
+.worktrees/
+docs/superpowers/
