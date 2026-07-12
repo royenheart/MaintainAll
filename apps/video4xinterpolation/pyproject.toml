@@ -1,0 +1,66 @@
+[build-system]
+requires = ["setuptools>=68", "wheel"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "video4x"
+version = "0.2.0"
+description = "Video4x — RIFE interpolate + Real-ESRGAN super-resolve on AMD GPU+NPU (ONNX Runtime)"
+readme = "README.md"
+requires-python = ">=3.10"
+license = { text = "MIT" }
+authors = [{ name = "MaintainAll" }]
+dependencies = [
+    "numpy>=1.24,<2",
+    "onnxruntime>=1.17",
+    "av>=12.0",
+    "psutil>=5.9",
+]
+
+[project.optional-dependencies]
+export = [
+    "torch>=2.1",
+    "onnx>=1.16",
+    "onnxscript>=0.1",
+]
+tui = [
+    "textual>=0.47",
+]
+dev = [
+    "pytest>=8.0",
+]
+rocm = [
+    "onnxruntime-rocm>=1.17; platform_system=='Linux'",
+]
+windows = [
+    "onnxruntime-directml>=1.17; platform_system=='Windows'",
+]
+all = [
+    "torch>=2.1",
+    "onnx>=1.16",
+    "onnxscript>=0.1",
+    "textual>=0.47",
+    "pytest>=8.0",
+]
+
+[project.scripts]
+video4x = "video4x.cli.main:main"
+video4x-tui = "video4x.tui.app:run_tui"
+# Legacy aliases
+rife-export = "video4x.cli.export:main"
+rife-interpolate = "video4x.cli.interpolate:main"
+rife-benchmark = "video4x.cli.benchmark:main"
+rife-quantize = "video4x.cli.quantize:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests/unit"]
+pythonpath = ["src"]
+addopts = "-q"
+markers = [
+    "requires_gpu: needs ROCm/CUDA EP",
+    "requires_npu: needs Vitis AI EP + amdxdna",
+    "perf: performance benchmark (not in default suite)",
+]
