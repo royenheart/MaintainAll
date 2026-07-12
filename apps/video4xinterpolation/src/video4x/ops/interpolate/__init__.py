@@ -39,8 +39,11 @@ class InterpolateOperator:
         self._extras = extras
 
     def init(self, **kwargs: Any) -> None:
-        mode = kwargs.get("backend") or self._engine.mode
-        self._engine.switch_mode(str(mode))
+        # Do not load ORT here: switch_mode used to init with dynamic ONNX and
+        # VitisAI aborts on H/W=-1. Fixed-tier bind happens in interpolate_*.
+        mode = kwargs.get("backend")
+        if mode is not None:
+            self._engine._config.mode = str(mode)
 
     def process_frame(self, frame: np.ndarray) -> np.ndarray:
         raise NotImplementedError("interpolate requires a frame pair")
@@ -52,13 +55,9 @@ class InterpolateOperator:
         *,
         timestep: float = 0.5,
     ) -> np.ndarray:
-        if not self._engine.is_ready:
-            self._engine.switch_mode(self._engine.mode)
         return self._engine.interpolate(img0, img1, timestep=timestep)
 
     def process_video(self, input_path: str | Path, output_path: str | Path, **kwargs: Any) -> dict:
-        if not self._engine.is_ready:
-            self._engine.switch_mode(self._engine.mode)
         result = self._engine.interpolate_video(input_path, output_path, **kwargs)
         return {
             "output_frames": result.output_frames,

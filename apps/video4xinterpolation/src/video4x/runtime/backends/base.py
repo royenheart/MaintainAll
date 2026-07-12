@@ -19,6 +19,8 @@ class BackendConfig:
     stage_split_idx: int = 1
     uvm_zero_copy: bool = False  # legacy alias; prefer memory_mode=shared
     memory_mode: str = "auto"  # auto|host|pinned|shared
+    # None → enable when memory_mode resolves to shared; True/False force on/off
+    use_iobinding: bool | None = None
     vai_config: str | None = None
     cache_dir: Path = field(default_factory=lambda: Path("./vitisai_cache"))
 
@@ -36,6 +38,7 @@ class BackendStats:
     providers: dict[str, str] = field(default_factory=dict)
     memory_mode: str = "host"
     memory_detail: str = ""
+    use_iobinding: bool = False
 
 
 @runtime_checkable

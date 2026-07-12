@@ -63,19 +63,21 @@ class RifeInferenceEngine:
         return self._backend is not None
 
     def switch_mode(self, mode: str | InferenceMode) -> None:
-        """Hot-swap inference backend without recreating the engine."""
+        """Select backend name only; ORT sessions load in ``bind_onnx_for_hw``.
+
+        Eager init with ``default_onnx_paths`` (dynamic H/W) makes VitisAI abort
+        (``input_shape[i] != -1``). Fixed-tier paths are chosen after frame size
+        is known.
+        """
         name = mode.value if isinstance(mode, InferenceMode) else str(mode)
         if name not in list_backends():
             raise KeyError(f"Unknown mode '{name}'. Available: {self.available_modes}")
         if self._active_mode == name and self._backend is not None and self._onnx_key is not None:
             return
         self.close()
-        self._backend = create_backend(name)
-        self._backend.init(self._config.to_backend_config())
+        self._config.mode = name
         self._active_mode = name
-        # Default dynamic paths until bind_onnx_for_hw selects a fixed tier.
-        self._onnx_key = ("default", name)
-        self._model_kind = "dynamic"
+        self._model_kind = "unset"
 
     def bind_onnx_for_hw(self, height: int, width: int) -> str:
         """Load Stage A/B (prefer fixed-tier + quant) matching padded H×W."""
@@ -85,7 +87,11 @@ class RifeInferenceEngine:
         mode_name = self._active_mode or str(self._config.mode)
         key = (fh, fw, kind, mode_name, str(paths["stage_a"]), str(paths.get("stage_b_quant")))
         if self._backend is not None and self._onnx_key == key:
-            return kind
+            if kind == "fixed" and paths.get("stage_b_quant") and Path(paths["stage_b_quant"]).is_file():
+                self._model_kind = "fixed+quant"
+            else:
+                self._model_kind = kind
+            return self._model_kind
         self.close()
         self._backend = create_backend(mode_name)
         cfg = self._config.to_backend_config()
@@ -106,8 +112,10 @@ class RifeInferenceEngine:
 
     def _ensure_backend(self) -> InterpolationBackend:
         if self._backend is None:
-            self.switch_mode(self._config.mode)
-        assert self._backend is not None
+            raise RuntimeError(
+                "ORT backend not loaded yet; bind_onnx_for_hw() must run after "
+                "frame size is known (do not init with dynamic ONNX + VitisAI)."
+            )
         return self._backend
 
     @property
@@ -117,6 +125,7 @@ class RifeInferenceEngine:
         return self._backend.device_hint
 
     def warmup(self, shape: tuple[int, ...] = (1, 3, 1080, 1920)) -> None:
+        self.bind_onnx_for_hw(int(shape[2]), int(shape[3]))
         self._ensure_backend().warmup(shape)
 
     def _progress_base(self, tracker: ProgressTracker, phase: str, **kwargs: object) -> ProgressEvent:
@@ -196,14 +205,22 @@ class RifeInferenceEngine:
             )
             backend = self._ensure_backend()
             out: list[np.ndarray] = []
-            for i in range(len(frames)):
-                out.append(frames[i])
-                if i < pairs:
-                    img0 = np.ascontiguousarray(batch[i : i + 1])
-                    img1 = np.ascontiguousarray(batch[i + 1 : i + 2])
-                    mid = backend.interpolate(img0, img1, timestep=0.5)
+            use_pipeline = bool(getattr(backend, "supports_pair_pipeline", False)) and hasattr(
+                backend, "interpolate_pairs"
+            )
+            if use_pipeline and pairs > 0:
+                pair_feeds = [
+                    (
+                        np.ascontiguousarray(batch[i : i + 1]),
+                        np.ascontiguousarray(batch[i + 1 : i + 2]),
+                    )
+                    for i in range(pairs)
+                ]
+                out.append(frames[0])
+                for i, mid in enumerate(backend.interpolate_pairs(pair_feeds, timestep=0.5)):
                     mid = crop_hw(mid, h, w)
                     out.append(mid[np.newaxis, ...] if mid.ndim == 3 else mid)
+                    out.append(frames[i + 1])
                     st = self.stats()
                     done = i + 1
                     last_ms, avg_ms, _ = tr.pair_timing(st.total_ms, done)
@@ -219,6 +236,30 @@ class RifeInferenceEngine:
                             eta_s=tr.eta(done, pairs, avg_ms),
                         )
                     )
+            else:
+                for i in range(len(frames)):
+                    out.append(frames[i])
+                    if i < pairs:
+                        img0 = np.ascontiguousarray(batch[i : i + 1])
+                        img1 = np.ascontiguousarray(batch[i + 1 : i + 2])
+                        mid = backend.interpolate(img0, img1, timestep=0.5)
+                        mid = crop_hw(mid, h, w)
+                        out.append(mid[np.newaxis, ...] if mid.ndim == 3 else mid)
+                        st = self.stats()
+                        done = i + 1
+                        last_ms, avg_ms, _ = tr.pair_timing(st.total_ms, done)
+                        tr.emit(
+                            self._progress_base(
+                                tr,
+                                "interpolate",
+                                message=f"pair {done}/{pairs}",
+                                current=done,
+                                total=pairs,
+                                last_ms=last_ms,
+                                avg_ms=avg_ms,
+                                eta_s=tr.eta(done, pairs, avg_ms),
+                            )
+                        )
             return out
         finally:
             if owns_tracker:

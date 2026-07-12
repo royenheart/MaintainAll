@@ -14,3 +14,5 @@ original-model-signature.txt
 
 # Local / scratch design notes (not versioned)
 docs/local/
+
+tmp/

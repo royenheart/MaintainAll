@@ -40,6 +40,7 @@ class InferenceConfig:
     platform: str = "auto"
     uvm_zero_copy: bool = False
     memory_mode: str = "auto"  # auto|host|pinned|shared
+    use_iobinding: bool | None = None
     vai_config: str | None = None
     cache_dir: Path = field(default_factory=lambda: Path("./vitisai_cache"))
 
@@ -67,6 +68,7 @@ class InferenceConfig:
             fp16=self.fp16,
             uvm_zero_copy=self.uvm_zero_copy,
             memory_mode=self.memory_mode,
+            use_iobinding=self.use_iobinding,
             vai_config=self.vai_config,
             cache_dir=self.cache_dir,
         )

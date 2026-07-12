@@ -30,7 +30,7 @@ def _discover() -> None:
     import video4x.runtime.backends as backends_pkg
 
     for mod in pkgutil.iter_modules(backends_pkg.__path__, backends_pkg.__name__ + "."):
-        if mod.name.endswith(("_ep_probe", "base", "registry")):
+        if mod.name.endswith(("_ep_probe", "_split_sessions", "base", "registry")):
             continue
         importlib.import_module(mod.name)
     _DISCOVERED = True

@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import ctypes
 import sys
+from threading import Lock
 from typing import Any
 
 import numpy as np
@@ -52,6 +53,7 @@ class BaseMemoryPlanner:
         self._mode = MemoryMode.HOST
         self._profile: MemoryProfile | None = None
         self._locked: list[np.ndarray] = []
+        self._lock = Lock()
 
     def profile(self) -> MemoryProfile:
         if self._profile is None:
@@ -85,24 +87,29 @@ class BaseMemoryPlanner:
     def allocate(self, shape: tuple[int, ...], *, dtype: Any = np.float32) -> np.ndarray:
         buf = np.empty(shape, dtype=dtype)
         if self._mode in (MemoryMode.PINNED, MemoryMode.SHARED):
-            if lock_pages(buf):
-                self._locked.append(buf)
+            with self._lock:
+                if lock_pages(buf):
+                    self._locked.append(buf)
         return buf
 
     def ensure(self, arr: np.ndarray) -> np.ndarray:
         """Return contiguous float32 buffer, page-locked when mode requires it."""
         out = np.ascontiguousarray(arr, dtype=np.float32)
         if self._mode in (MemoryMode.PINNED, MemoryMode.SHARED):
-            if out is arr and out.flags["OWNDATA"]:
-                if lock_pages(out):
-                    self._locked.append(out)
-                    return out
-            buf = self.allocate(out.shape, dtype=out.dtype)
-            np.copyto(buf, out)
-            return buf
+            with self._lock:
+                if out is arr and out.flags["OWNDATA"]:
+                    if lock_pages(out):
+                        self._locked.append(out)
+                        return out
+                buf = np.empty(out.shape, dtype=out.dtype)
+                if lock_pages(buf):
+                    self._locked.append(buf)
+                np.copyto(buf, out)
+                return buf
         return out
 
     def close(self) -> None:
-        for buf in self._locked:
-            unlock_pages(buf)
-        self._locked.clear()
+        with self._lock:
+            for buf in self._locked:
+                unlock_pages(buf)
+            self._locked.clear()

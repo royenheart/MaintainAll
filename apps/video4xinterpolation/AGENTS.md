@@ -55,6 +55,20 @@ numpy, onnxruntime, av, psutil
 
 插帧为 **2× 帧数**；输出 FPS = 片源 FPS × 2（自动探测）。30fps→60fps，24fps→48fps。
 
+## RIFE dual-stream（Windows）
+
+`dual-stream`：Stage A（DirectML）与 Stage B（VitisAI 优先）跨相邻 pair 线程重叠；非 Windows 回退顺序 split。单 pair `interpolate` 仍为 A→B 顺序。
+
+## RIFE 共享内存 / IOBinding
+
+`memory_mode=shared`（或 `BackendConfig.use_iobinding=True`）时：
+
+- 预分配 pinned `OrtValue` 槽（双缓冲，兼容 dual-stream 重叠）
+- Stage A/B 用 `run_with_iobinding` + `bind_ortvalue_*`，中间张量（flow/mask/feat/…）跨 A→B **同一 `data_ptr`**，不再每帧 `numpy` 往返拷贝
+- img0/img1/timestep 写入预分配缓冲一次；`merged` 仅在写出时 `np.copy` 一次取出
+- EP 不支持 bind 时明确 fallback，并写入 `fallback_reason` / `iobinding=fallback:…`（不静默假装零拷贝）
+- **dual-stream**：无 IOBinding 时跨 pair 线程重叠 A∥B；启用 IOBinding 时改为顺序 A→B（保留 OrtValue 零拷贝）。原因：DirectML Stage A 与 Stage B `run_with_iobinding` 并发不安全（classic A∥classic B 仍可用）
+
 ## Real-ESRGAN NPU
 
 导出 `fixed/256x256` 与 `fixed/512x512` 供 VitisAI；首次该 `cache_key` 编译可能很久。`split-pipeline` 下 body 上不了 NPU 会直接失败（不回退 DML）。

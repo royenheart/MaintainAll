@@ -35,7 +35,9 @@ def test_engine_switch_mode(inf_config: InferenceConfig) -> None:
 def test_engine_use_fluent(inf_config: InferenceConfig) -> None:
     engine = RifeInferenceEngine(inf_config)
     engine.use(InferenceMode.CPU_BASELINE)
-    assert engine.is_ready
+    assert engine.mode == "cpu-baseline"
+    # ORT loads lazily in bind_onnx_for_hw / interpolate — not on switch_mode.
+    assert engine.is_ready is False
     engine.close()
 
 

@@ -133,15 +133,46 @@ flowchart TB
 4. **仅缺 body/upsample 文件时** 才回退整图 `full` + single-ep。
 5. **`cache_key`**：由 ONNX 路径派生（如 `x2plus_fixed_256x256_realesrgan_body`），避免多个同名 `realesrgan_body.onnx` 污染 `vitisai_cache/`。
 
+### 插帧 `dual-stream` + 共享内存 IOBinding
+
+| 模式 | 行为 |
+|------|------|
+| `dual-stream`（无 IOBinding） | 跨相邻 pair：**Stage A(N+1)∥Stage B(N)** 线程重叠（Windows）；单 pair 仍顺序 A→B |
+| `--memory shared` / IOBinding | 预分配 pinned `OrtValue` 双缓冲；中间张量 A→B **同一 `data_ptr`**，避免每帧 numpy 往返 |
+| 二者同时开 | **仍是 GPU+NPU 协同**（A=Dml，B=VitisAI）；但 DirectML 与 `run_with_iobinding` 不能安全并发，故重叠改为**顺序 A→B**，`fallback_reason` 会写明 |
+
+固定档：片源 pad 到 32 对齐后须精确匹配 `736x1280` / `1088x1920`。VitisAI **不能**加载动态 H/W（`-1`）ONNX。`video4x run` 在知道分辨率后再绑定 fixed（勿在 init 时用动态图探 NPU）。
+
+短片冒烟（前 N 帧、强制 fixed）：
+
+```powershell
+python scripts\smoke_short_video.py -i in.mp4 -o tmp\smoke.mp4 `
+  --max-frames 36 --backend dual-stream --memory shared `
+  --fixed-tier 1088x1920 --use-iobinding on
+```
+
 ### Backend 对照
 
 | Backend | 插帧 | 超分 |
 |---------|------|------|
-| `split-pipeline` | A=GPU + B=NPU | body=**NPU 必选** + upsample=GPU |
+| `split-pipeline` | A=GPU + B=NPU（顺序） | body=**NPU 必选** + upsample=GPU |
+| `dual-stream` | 同上 EP；无 IOBinding 时可 A∥B 重叠 | （插帧专用） |
 | `single-ep` | 单 session | 整图 `realesrgan_full.onnx` |
 | `cpu-baseline` | CPU | 用 single-ep + CPU EP |
 
-进度行示例：`ep=[body=VitisAI,upsample=Dml]`、`gpu_hits=… npu_hits=…`、`res=[CPU=…%,GPU=…%,RSS=…MB]`。
+进度行示例：`models=fixed+quant`、`ep=[stage_a=Dml,stage_b=VitisAI]` 或 `ep=[body=VitisAI,upsample=Dml]`、`gpu_hits` / `npu_hits`、`mem=shared`。
+
+### ORT 注意（Ryzen AI conda）
+
+conda 里必须是 **`onnxruntime-vitisai`**（providers 含 `VitisAI` + `Dml`）。若 `pip install` 又装回官方 `onnxruntime`，会只剩 CPU：
+
+```powershell
+pip uninstall onnxruntime onnxruntime-directml -y
+pip install --force-reinstall --no-deps "C:\Program Files\RyzenAI\1.7.1\onnxruntime_vitisai-1.23.3-cp312-cp312-win_amd64.whl"
+python -c "import onnxruntime as ort; print(ort.get_available_providers())"
+```
+
+`pip install -e .` 时建议加 `--no-deps`，避免再次拉官方 ORT。
 
 ---
 
@@ -153,15 +184,24 @@ flowchart TB
 conda activate ryzen-ai-1.7.1
 $env:RYZEN_AI_INSTALLATION_PATH = 'C:\Program Files\RyzenAI\1.7.1'
 cd D:\Gits\MaintainAll\apps\video4xinterpolation
+# 或: . .\setup\windows\env.ps1
 ```
 
 ### 仅插帧（GPU+NPU）
 
 ```powershell
+# 顺序 split（默认）
 video4x run -i in.mp4 -o in_rife48.mp4 `
   --ops interpolate --platform windows `
   --fi-backend split-pipeline
+
+# dual-stream + 共享内存零拷贝（IOBinding 开时不做 A∥B 重叠）
+video4x run -i in.mp4 -o in_rife48.mp4 `
+  --ops interpolate --fi-backend dual-stream --memory shared
 ```
+
+`[init]` 应见 `models=fixed+quant` 与 `ep=[stage_a=Dml…, stage_b=VitisAI…]`。若出现 `models=dynamic` 或两边 CPU，先查 ORT providers / 固定档是否匹配。
+
 
 ### 仅超分（GPU+NPU，x2 → 约 4K@1080p 源）
 
@@ -265,13 +305,14 @@ with RifeInferenceEngine(InferenceConfig(mode="split-pipeline", platform="auto")
 
 ```
 src/video4x/
-  runtime/          # EP 探测、OrtSession、memory、resources、video_io
-    backends/       # split_pipeline / single_ep / vitisai_probe / cache_key
-  ops/interpolate/  # RIFE
+  runtime/          # EP 探测、OrtSession/IOBinding、memory、resources、video_io
+    backends/       # split_pipeline / dual_stream / single_ep / vitisai_probe
+  ops/interpolate/  # RIFE（lazy bind fixed-tier）
   ops/superresolve/ # Real-ESRGAN（engine / tile / backends / export）
   job/              # EnhanceJob + 可排序 Pipeline
   cli/main.py       # video4x 子命令
   tui/app.py        # Textual 薄壳
+scripts/smoke_short_video.py  # 前 N 帧冒烟（可强制 fixed-tier / IOBinding）
 ```
 
 兼容旧命令：`rife-interpolate`、`scripts\interpolate.py` 等仍可用。
