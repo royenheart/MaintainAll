@@ -160,6 +160,7 @@ docker restart daed
 | `streaming` | `min_moving_avg` | Netflix / Disney+ / Spotify |
 | `telegram` | `min_moving_avg` | Telegram |
 | `discord` | `fixed(0)` | Discord |
+| `docker` | `fixed(0)` | Docker Hub / ghcr.io / quay.io / 容器镜像拉取（固定节点防断连） |
 
 手工补种（不重建 sync 镜像时）：
 
