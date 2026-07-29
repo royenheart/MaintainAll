@@ -18,8 +18,90 @@ reset the password after restoring:
 """
 
 import sqlite3
+import subprocess
 import sys
 import os
+
+
+PRIVATE_RULES_MARKER = "# private-rules"
+
+
+def expand_private_rules(config_dir: str, known_groups: set) -> list:
+    """Translate config/private.conf DSL into dae routing lines."""
+    private = os.path.join(config_dir, "private.conf")
+    if not os.path.exists(private):
+        return []
+    awk_script = os.path.join(
+        os.path.dirname(os.path.abspath(__file__)),
+        "daed-config-sync",
+        "expand-private.awk",
+    )
+    try:
+        result = subprocess.run(
+            [
+                "awk",
+                "-v",
+                "mode=routing",
+                "-v",
+                "known_groups=" + " ".join(sorted(known_groups)),
+                "-f",
+                awk_script,
+                private,
+                private,
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        print(f"Warning: failed to expand {private}: {exc}")
+        return []
+    if result.stderr:
+        print(result.stderr, end="")
+    return result.stdout.splitlines()
+
+
+def inject_private_rules(routing_text: str, private_lines: list) -> str:
+    if not private_lines:
+        return routing_text
+    if not any(
+        line.strip() == PRIVATE_RULES_MARKER for line in routing_text.splitlines()
+    ):
+        print(
+            f"Warning: expanded private rules exist but no"
+            f" '{PRIVATE_RULES_MARKER}' marker in routing.conf; skipping"
+        )
+        return routing_text
+
+    merged = []
+    for line in routing_text.splitlines():
+        if line.strip() == PRIVATE_RULES_MARKER:
+            merged.append(
+                "# ── Private rules (private.conf, not version-controlled) ──"
+            )
+            merged.extend(private_lines)
+        else:
+            merged.append(line)
+    print("Merged private rules from private.conf")
+    return "\n".join(merged)
+
+
+def known_group_names(db_conn, config_dir: str) -> set:
+    names = set()
+    try:
+        names.update(
+            row[0] for row in db_conn.execute("SELECT name FROM groups")
+        )
+    except sqlite3.Error:
+        pass
+    groups_txt = os.path.join(config_dir, "groups.txt")
+    if os.path.exists(groups_txt):
+        with open(groups_txt, "r") as f:
+            for raw in f:
+                name = raw.split("#", 1)[0].split("|", 1)[0].strip()
+                if name:
+                    names.add(name)
+    return names
 
 
 def restore_config(db_path: str, input_dir: str):
@@ -49,6 +131,15 @@ def restore_config(db_path: str, input_dir: str):
 
         with open(filepath, "r") as f:
             inner_content = f.read().strip()
+
+        if section == "routing":
+            config_dir = os.path.dirname(db_path)
+            private_lines = expand_private_rules(
+                config_dir, known_group_names(conn, config_dir)
+            )
+            inner_content = inject_private_rules(
+                inner_content, private_lines
+            ).strip()
 
         # Wrap with section header
         wrapped = f"{section} {{\n{inner_content}\n}}\n"

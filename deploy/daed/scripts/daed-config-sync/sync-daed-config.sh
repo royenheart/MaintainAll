@@ -206,9 +206,71 @@ require_file "$CONFIG_DIR/global.conf"
 require_file "$CONFIG_DIR/dns.conf"
 require_file "$CONFIG_DIR/routing.conf"
 
+SCRIPT_DIR="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+EXPAND_AWK="${EXPAND_AWK:-$SCRIPT_DIR/expand-private.awk}"
+
+# Expand config/private.conf (git-ignored DSL: group defs + shorthand rules).
+# Groups are upserted into wing.db; rules are injected into the routing config
+# at the "# private-rules" marker. Private URLs land only in wing.db (also
+# git-ignored), never in the tracked routing.conf.
+merge_private_rules() {
+  src="$1"
+  priv="$2"
+  out="$3"
+
+  if [ ! -s "$priv" ]; then
+    cp "$src" "$out"
+    return
+  fi
+
+  if ! grep -Eq '^# private-rules[[:space:]]*$' "$src"; then
+    cp "$src" "$out"
+    echo "warn: expanded private rules exist but no '# private-rules' marker in $src; skipping private rules" >&2
+    return
+  fi
+
+  awk -v priv="$priv" '
+    /^# private-rules[[:space:]]*$/ {
+      print "# ── Private rules (private.conf, not version-controlled) ──"
+      while ((getline line < priv) > 0) print line
+      close(priv)
+      next
+    }
+    { print }
+  ' "$src" >"$out"
+  echo "merged private rules from private.conf"
+}
+
+PRIVATE_CONF="$CONFIG_DIR/private.conf"
+PRIVATE_ROUTING="$TMP_DIR/private.routing"
+PRIVATE_GROUPS="$TMP_DIR/private.groups"
+ROUTING_MERGED="$TMP_DIR/routing.merged.conf"
+: >"$PRIVATE_ROUTING"
+: >"$PRIVATE_GROUPS"
+
+if [ -f "$PRIVATE_CONF" ]; then
+  known_groups="$(
+    {
+      if [ -f "$CONFIG_DIR/groups.txt" ]; then
+        sed 's/#.*//;s/|.*//;s/[[:space:]]//g' "$CONFIG_DIR/groups.txt"
+      fi
+      sqlite3 "$DB_PATH" "SELECT name FROM groups;" 2>/dev/null || true
+    } | awk 'NF' | sort -u | tr '\n' ' '
+  )"
+  awk -v mode=routing -v known_groups="$known_groups" \
+    -f "$EXPAND_AWK" "$PRIVATE_CONF" "$PRIVATE_CONF" >"$PRIVATE_ROUTING"
+  awk -v mode=groups -f "$EXPAND_AWK" "$PRIVATE_CONF" "$PRIVATE_CONF" \
+    >"$PRIVATE_GROUPS"
+fi
+
+merge_private_rules "$CONFIG_DIR/routing.conf" "$PRIVATE_ROUTING" "$ROUTING_MERGED"
+
 sync_selected_row "configs" "global" "global" "$CONFIG_DIR/global.conf"
 sync_selected_row "dns" "dns" "dns" "$CONFIG_DIR/dns.conf"
-sync_selected_row "routings" "routing" "routing" "$CONFIG_DIR/routing.conf"
+sync_selected_row "routings" "routing" "routing" "$ROUTING_MERGED"
 sync_groups "$CONFIG_DIR/groups.txt"
+if [ -s "$PRIVATE_GROUPS" ]; then
+  sync_groups "$PRIVATE_GROUPS"
+fi
 
 echo "daed config sync complete"

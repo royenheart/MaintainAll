@@ -8,6 +8,8 @@ Use this for a one-shot update without rebuilding the sync image:
     python3 scripts/seed_groups.py
     docker restart daed
 
+Groups defined in config/private.conf (git-ignored DSL) are included too.
+
 Does NOT attach nodes after first seed — add/replace them in the Web UI.
 Empty fixed groups get exactly one node cloned from proxy (dae constraint).
 """
@@ -16,6 +18,7 @@ from __future__ import annotations
 
 import os
 import sqlite3
+import subprocess
 import sys
 from pathlib import Path
 
@@ -42,6 +45,39 @@ def parse_groups(path: Path) -> list[tuple[str, str, str]]:
     return rows
 
 
+def expand_private_groups(private_conf: Path) -> list[tuple[str, str, str]]:
+    awk_script = (
+        Path(__file__).resolve().parent / "daed-config-sync" / "expand-private.awk"
+    )
+    try:
+        result = subprocess.run(
+            [
+                "awk",
+                "-v",
+                "mode=groups",
+                "-f",
+                str(awk_script),
+                str(private_conf),
+                str(private_conf),
+            ],
+            capture_output=True,
+            text=True,
+            check=True,
+        )
+    except (FileNotFoundError, subprocess.CalledProcessError) as exc:
+        print(f"warn: failed to expand {private_conf}: {exc}", file=sys.stderr)
+        return []
+    if result.stderr:
+        print(result.stderr, file=sys.stderr, end="")
+    rows: list[tuple[str, str, str]] = []
+    for line in result.stdout.splitlines():
+        parts = [p.strip() for p in line.split("|")]
+        while len(parts) < 3:
+            parts.append("")
+        rows.append((parts[0], parts[1], parts[2]))
+    return rows
+
+
 def seed_groups(db_path: Path, groups_file: Path) -> int:
     if not db_path.is_file():
         print(f"Error: wing.db not found at {db_path}", file=sys.stderr)
@@ -51,6 +87,9 @@ def seed_groups(db_path: Path, groups_file: Path) -> int:
         return 1
 
     rows = parse_groups(groups_file)
+    private_conf = db_path.parent / "private.conf"
+    if private_conf.is_file():
+        rows += expand_private_groups(private_conf)
     if not rows:
         print("No groups defined.")
         return 0

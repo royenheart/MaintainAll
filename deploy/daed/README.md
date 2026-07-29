@@ -139,6 +139,36 @@ python3 scripts/restore_config.py
 docker restart daed
 ```
 
+### 私有规则（分组 + URL，不入版本库）
+
+私人分组和不想提交进 git 的地址，写进 `config/private.conf`（已在 `.gitignore` 中）。它是一个小 DSL：先定义组，再用简写规则把地址指到组：
+
+```bash
+cp config/private.conf.example config/private.conf
+```
+
+```
+group work = fixed               # random|fixed|fixed(N)|min|min_avg10|min_moving_avg
+group home = min_moving_avg
+
+suffix:internal.example.com, corp.example.org -> work
+keyword:myhost -> home
+ip:203.0.113.10/32 -> work
+domain(suffix: extra.example.com) -> proxy   # 原生 dae 规则也可直接写
+```
+
+- 匹配器：`suffix` / `full` / `keyword` / `regex` / `ip` / `geosite` / `geoip`，多个值用逗号分隔
+- 目标可以是本文件定义的组、`groups.txt` 里的组，或内建 `direct` / `block` / `proxy` 等
+- 空组会自动从 `proxy` 塞 1 个节点，之后在 Web UI 改成员不会被覆盖
+
+生效（组种子 + 路由合并一次完成）：
+
+```bash
+docker compose up -d --build daed-config-sync && docker restart daed
+```
+
+机制：daed 启动前 `daed-config-sync` 展开 DSL —— 组 upsert 进 `wing.db`，规则注入 `routing.conf` 的 `# private-rules` 标记处（默认在 geo CN / fallback 之前，优先级更高）。私有地址只存在于本文件与 `wing.db`（均不入版本库）；`export_config.py` 导出的 `exported/` 也在 `.gitignore` 中。免重建镜像只补组：`python3 scripts/seed_groups.py && docker restart daed`。
+
 ### 出站分组（自动种子）
 
 `docker compose up` 时，`daed-config-sync` 会：
@@ -246,6 +276,8 @@ deploy/daed/
 │   ├── groups.txt                  # 出站分组种子（compose 自动同步）
 │   ├── subscriptions.txt.example   # 订阅信息模板
 │   ├── subscriptions.txt           # 订阅信息（用户自填，不入版本库）
+│   ├── private.conf.example        # 私有规则 DSL 模板
+│   ├── private.conf                # 私有分组 + 规则（用户自填，不入版本库）
 │   └── wing.db                     # 运行时数据库
 ├── gost/
 │   ├── gost.service                # gost 系统级 systemd 服务
