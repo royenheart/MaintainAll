@@ -45,14 +45,33 @@ sync_selected_row() {
   section="$3"
   source_file="$4"
 
-  selected_count="$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM $table WHERE selected = 1;")"
-  if [ "$selected_count" -lt 1 ]; then
-    echo "no selected row found in table $table" >&2
+  table_exists="$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='$table';")"
+  if [ "$table_exists" -lt 1 ]; then
+    echo "error: table '$table' missing in $DB_PATH (fresh database?)" >&2
+    echo "hint: boot daed once to initialize the schema: docker compose up -d --no-deps daed" >&2
     exit 1
   fi
 
   prepared_file="$TMP_DIR/$table.conf"
   prepare_section_file "$section" "$source_file" "$prepared_file"
+
+  selected_count="$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM $table WHERE selected = 1;")"
+  if [ "$selected_count" -lt 1 ]; then
+    row_count="$(sqlite3 "$DB_PATH" "SELECT COUNT(*) FROM $table;")"
+    if [ "$row_count" -lt 1 ]; then
+      # dae-wing creates tables on first boot but no default config rows;
+      # insert one so a fresh deployment can sync without manual UI steps.
+      sqlite3 "$DB_PATH" "
+        INSERT INTO $table (name, \"$column\", selected, version)
+        VALUES ('default', CAST(readfile('$prepared_file') AS TEXT), 1, 0);
+      "
+      echo "initialized $table with default selected row"
+      return
+    fi
+    first_id="$(sqlite3 "$DB_PATH" "SELECT id FROM $table ORDER BY id LIMIT 1;")"
+    sqlite3 "$DB_PATH" "UPDATE $table SET selected = 1 WHERE id = $first_id;"
+    echo "warn: no selected row in $table; fell back to id=$first_id" >&2
+  fi
 
   before_version="$(sqlite3 "$DB_PATH" "SELECT version FROM $table WHERE selected = 1 LIMIT 1;")"
   sqlite3 "$DB_PATH" "
@@ -201,7 +220,11 @@ sync_groups() {
   sqlite3 "$DB_PATH" "SELECT id, name, policy FROM groups ORDER BY id;" | sed 's/^/  /'
 }
 
-require_file "$DB_PATH"
+if [ ! -f "$DB_PATH" ]; then
+  echo "wing.db not found at $DB_PATH; skipping sync."
+  echo "daed creates it on first boot; re-run sync afterwards (docker compose up -d)."
+  exit 0
+fi
 require_file "$CONFIG_DIR/global.conf"
 require_file "$CONFIG_DIR/dns.conf"
 require_file "$CONFIG_DIR/routing.conf"

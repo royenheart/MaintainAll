@@ -373,6 +373,20 @@ def _gql_query(payload: str, token: str = "") -> dict:
         return json.loads(resp.read())
 
 
+def _compose_cmd() -> list[str]:
+    """返回可用的 docker compose 命令前缀。"""
+    for cmd in (["docker", "compose"], ["docker-compose"]):
+        try:
+            r = subprocess.run(
+                cmd + ["version"], capture_output=True, timeout=10
+            )
+            if r.returncode == 0:
+                return cmd
+        except Exception:
+            continue
+    fail("Docker Compose 不可用")
+
+
 def start_daed_and_proxy(
     proj_dir: str,
     config_dir: str,
@@ -383,16 +397,20 @@ def start_daed_and_proxy(
     """启动 daed，创建用户，导入订阅，分组，启动代理。返回实际用户名。"""
     print(f"{CYAN}[8/8] 启动 daed...{NC}")
 
-    # docker compose up
     os.chdir(proj_dir)
-    for cmd in (["docker", "compose", "up", "-d"], ["docker-compose", "up", "-d"]):
-        try:
-            subprocess.run(cmd, capture_output=True, check=True, timeout=30)
-            break
-        except Exception:
-            continue
-    else:
-        fail("Docker Compose 启动失败")
+    compose = _compose_cmd()
+
+    # 先单独拉起 daed：全新 wing.db 需由 daed 首启建表，config-sync 依赖
+    # 已有 schema，直接 compose up 会因 depends_on 卡死在 config-sync 上
+    try:
+        subprocess.run(
+            compose + ["up", "-d", "--no-deps", "daed"],
+            capture_output=True,
+            check=True,
+            timeout=180,
+        )
+    except Exception:
+        fail("daed 容器启动失败，请检查 docker logs daed")
 
     print("  等待 daed 就绪...")
     if not wait_for_daed():
@@ -402,6 +420,19 @@ def start_daed_and_proxy(
 
     ok("daed 已启动")
     time.sleep(2)
+
+    # schema 就绪后全量 compose up：跑 config-sync 同步 conf 并种子出站分组。
+    # --build 确保镜像内的 sync 脚本与仓库当前版本一致（脚本是 COPY 进镜像的）
+    try:
+        subprocess.run(
+            compose + ["up", "-d", "--build"],
+            capture_output=True,
+            check=True,
+            timeout=900,
+        )
+        ok("配置与出站分组已同步")
+    except Exception:
+        warn("config-sync 失败，请检查 docker logs daed-daed-config-sync-1")
 
     # ── 创建/登录获取 token ──
     token, admin_user = _ensure_user_and_token(config_dir, admin_user, admin_pass)
@@ -441,6 +472,18 @@ def start_daed_and_proxy(
         _group_add_subscriptions(token, group_id, all_sub_ids)
         ok("订阅已关联到 proxy 分组")
     print()
+
+    # ── 订阅就位后补种 sticky 分组 ──
+    # config-sync 首次运行时库里还没有节点，sticky 组为空；
+    # 空组被 routing 引用会导致 dae 拒绝加载，故需再次补种
+    seed_script = os.path.join(proj_dir, "scripts", "seed_groups.py")
+    r = subprocess.run(
+        ["python3", seed_script], capture_output=True, text=True, timeout=60
+    )
+    if r.returncode == 0:
+        ok("sticky 分组已补种节点")
+    else:
+        warn(f"分组补种失败: {r.stderr.strip() or r.stdout.strip()}")
 
     # ── 启动代理 ──
     try:
