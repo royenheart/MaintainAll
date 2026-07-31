@@ -246,6 +246,21 @@ DAED_USER=admin DAED_PASS='***' python3 scripts/bench_nodes.py
 - 国内域名 → 阿里 DNS (`223.5.5.5`)
 - 其他域名 → Google DNS (`dns.google`)
 
+### DNS 模式（normal / DoH）
+
+默认部署使用直连 UDP/TCP 53 上游（`dns.conf`），适用于 DNS 正常的主机。若主机出站 **53 被拦**（ICMP/HTTPS 正常、公共 DNS 全超时，见 [`deploy/doh-dns`](../doh-dns/README.md)），可切换到 **DoH 模式**复用宿主机 `dnscrypt-proxy`（`127.0.0.1:5353`）：
+
+| 文件 | 说明 |
+|---|---|
+| `config/dns.conf.normal` | 直连 53 上游模板（默认） |
+| `config/dns.conf.doh` | 复用宿主机 `127.0.0.1:5353` 的 DoH 模板 |
+| `config/dns.conf` | 生效配置（由模板复制，一般不改） |
+
+- 部署时选择：`python3 scripts/setup.py --dns-mode doh`（默认 `normal`）
+- 部署后切换：`python3 scripts/switch-dns-mode.py doh|normal`（自动重跑 config-sync 并重启 daed）
+
+DoH 模式下 `global.conf` 的 `fallback_resolver` / `udp_check_dns` 也会一并指向 `127.0.0.1:5353`。前提：宿主机已部署并启动 `deploy/doh-dns`；daed 容器为 `network_mode: host`，可直接访问该端口。若 `dnscrypt-proxy` 不可用，可把 `dns.conf.doh` 的上游改为直连 DoH：`localdoh: 'https://223.5.5.5/dns-query'`（走 443，国内可达）。
+
 ### 路由规则 (routing.conf)
 
 - 局域网/私有 IP → 直连

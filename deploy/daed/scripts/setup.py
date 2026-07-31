@@ -5,12 +5,14 @@ daed + gost 一键部署脚本
 引导用户填写必要配置后自动部署透明代理。
 """
 
+import argparse
 import getpass
 import json
 import os
 import platform
 import re
 import shutil
+import socket
 import sqlite3
 import subprocess
 import sys
@@ -180,6 +182,82 @@ def update_global_conf(proj_dir: str, lan_iface: str):
         ok(f"lan_interface 已配置")
 
     print()
+
+
+# global.conf 中随 DNS 模式切换的两个键：normal 直连 53，doh 复用本机 dnscrypt-proxy
+_GLOBAL_DNS_PATCHES = {
+    "normal": {
+        "fallback_resolver": '"223.5.5.5:53"',
+        "udp_check_dns": '"dns.google:53,8.8.8.8"',
+    },
+    "doh": {
+        "fallback_resolver": '"127.0.0.1:5353"',
+        "udp_check_dns": '"127.0.0.1:5353"',
+    },
+}
+
+
+def _patch_global_dns(proj_dir: str, mode: str):
+    """按模式改写 global.conf 的 fallback_resolver / udp_check_dns。"""
+    conf = os.path.join(proj_dir, "config", "global.conf")
+    with open(conf) as f:
+        content = f.read()
+    patches = _GLOBAL_DNS_PATCHES[mode]
+    for key, value in patches.items():
+        content = re.sub(
+            rf"^{re.escape(key)}:.*$", f'{key}: {value}', content, flags=re.M
+        )
+    with open(conf, "w") as f:
+        f.write(content)
+
+
+def _port_open(host: str, port: int, timeout: float = 1.0) -> bool:
+    """探测 TCP 端口是否可连（dnscrypt-proxy 同时监听 UDP+TCP，用 TCP 探测即可）。"""
+    try:
+        with socket.create_connection((host, port), timeout=timeout):
+            return True
+    except OSError:
+        return False
+
+
+def apply_dns_mode(proj_dir: str, mode: str):
+    """按 --dns-mode 落地 DNS 配置（normal/doh）。
+
+    - normal: 保持默认直连 53 上游，不动作（dns.conf 即为 normal 内容）。
+    - doh:    将 config/dns.conf.doh 复制为生效 dns.conf，并把 global.conf 的
+              fallback_resolver / udp_check_dns 指向 127.0.0.1:5353。
+              前提是宿主机已部署 deploy/doh-dns（dnscrypt-proxy 监听 5353）。
+    """
+    print(f"{CYAN}[DNS 模式] {mode}{NC}")
+    config_dir = os.path.join(proj_dir, "config")
+    dns_conf = os.path.join(config_dir, "dns.conf")
+
+    if mode == "doh":
+        template = os.path.join(config_dir, "dns.conf.doh")
+        if not os.path.exists(template):
+            fail(f"找不到 DoH 模板 {template}")
+        # 备份当前生效配置为 normal 模板，切换回 normal 时不丢用户改动
+        normal_bak = os.path.join(config_dir, "dns.conf.normal")
+        if not os.path.exists(normal_bak) or not _same_file(dns_conf, normal_bak):
+            shutil.copy2(dns_conf, normal_bak)
+        shutil.copy2(template, dns_conf)
+        _patch_global_dns(proj_dir, "doh")
+        ok("dns.conf 已切换为 DoH 上游 (127.0.0.1:5353)")
+        if not _port_open("127.0.0.1", 5353):
+            warn("未检测到 127.0.0.1:5353 (doh-dns/dnscrypt-proxy 未运行)")
+            warn("请先部署并启动 deploy/doh-dns，否则 daed 域名解析不可用")
+    else:
+        ok("保持默认直连 53 上游")
+    print()
+
+
+def _same_file(a: str, b: str) -> bool:
+    try:
+        import filecmp
+
+        return filecmp.cmp(a, b, shallow=False)
+    except OSError:
+        return False
 
 
 def input_admin_account() -> tuple[str, str]:
@@ -658,6 +736,15 @@ def main():
     print(f"{GREEN}{'=' * 44}{NC}")
     print()
 
+    parser = argparse.ArgumentParser(description="daed + gost 一键部署")
+    parser.add_argument(
+        "--dns-mode",
+        choices=["normal", "doh"],
+        default="normal",
+        help="DNS 上游模式: normal=直连 53 (默认); doh=复用宿主机 doh-dns (127.0.0.1:5353)",
+    )
+    args = parser.parse_args()
+
     script_dir = os.path.dirname(os.path.abspath(__file__))
     proj_dir = os.path.dirname(script_dir)
     config_dir = os.path.join(proj_dir, "config")
@@ -675,6 +762,9 @@ def main():
 
     # 4
     update_global_conf(proj_dir, lan_iface)
+
+    # DNS 模式（normal 默认 / doh 复用 deploy/doh-dns）
+    apply_dns_mode(proj_dir, args.dns_mode)
 
     # 5
     admin_user, admin_pass = input_admin_account()
