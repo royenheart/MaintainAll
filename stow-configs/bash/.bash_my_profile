@@ -27,8 +27,8 @@ export CMAKE_CXX_COMPILER_LAUNCHER=ccache
 export MODULEPATH=${HOME}/envs:${HOME}/modulefiles:/opt/modulefiles:$MODULEPATH
 
 function do_sync() {
-sudo bash -c "echo 3 > /proc/sys/vm/drop_caches"
-sudo sync
+    sudo bash -c "echo 3 > /proc/sys/vm/drop_caches"
+    sudo sync
 }
 
 function loop_cmd_until_success() {
@@ -67,8 +67,100 @@ alias gitlog1='git log --oneline'
 # === my skill list ===
 
 function sync_skills() {
-    skills add https://github.com/obra/superpowers
+    # npx skills add https://github.com/obra/superpowers
     npx skills add https://github.com/googleworkspace/cli
+    npx skills add https://github.com/royenheart/MaintainAll
+}
+
+# 移除通过 npx skills 安装的技能
+# 用法: remove_skills <skill-name>   例: remove_skills dws
+#       remove_skills superpowers   移除整个 superpowers 技能集 + OpenCode 插件
+# 布局: ~/.claude/skills/<name> 为软链 -> ~/.agents/skills/<name> 为实体目录
+function remove_skills() {
+    local skill="$1"
+    if [[ -z "$skill" ]]; then
+        echo "用法: remove_skills <skill-name|superpowers>" >&2
+        return 1
+    fi
+
+    local names=("$skill")
+    if [[ "$skill" == "superpowers" ]]; then
+        names=(brainstorming dispatching-parallel-agents executing-plans
+               finishing-a-development-branch receiving-code-review requesting-code-review
+               subagent-driven-development systematic-debugging test-driven-development
+               using-git-worktrees using-superpowers verification-before-completion
+               writing-plans writing-skills)
+    fi
+
+    local name target
+    for name in "${names[@]}"; do
+        echo "==> 移除 $name"
+        npx skills remove -g -y "$name" || true   # 官方命令, 失败则走下面手动清理
+
+        # 手动兜底: 软链用 rm -f, 实体目录用 rm -rf
+        for target in \
+            "$HOME/.claude/skills/$name" \
+            "$HOME/.agents/skills/$name" \
+            "$HOME/.config/opencode/skills/$name" \
+            "$HOME/.codex/skills/$name"
+        do
+            if [[ -L "$target" ]]; then
+                rm -f "$target"
+                echo "  已移除软链: $target"
+            elif [[ -d "$target" ]]; then
+                rm -rf "$target"
+                echo "  已移除目录: $target"
+            fi
+        done
+
+        if [[ -e "$HOME/.claude/skills/$name" || -e "$HOME/.agents/skills/$name" ]]; then
+            echo "  警告: $name 仍有残留, 请检查" >&2
+        fi
+    done
+
+    # superpowers 还以 OpenCode 插件形式安装, 需要单独清理
+    if [[ "$skill" == "superpowers" ]]; then
+        # 配置可能是 opencode.json 或 opencode.jsonc (.json 优先, 与 opencode 加载优先级一致)
+        local cfg=""
+        for c in "$HOME/.config/opencode/opencode.json" "$HOME/.config/opencode/opencode.jsonc"; do
+            if [[ -f "$c" ]]; then cfg="$c"; break; fi
+        done
+        if [[ -n "$cfg" ]] && grep -q 'superpowers' "$cfg"; then
+            local backup="$cfg.bak.$(date +%Y%m%d_%H%M%S)"
+            cp -f "$cfg" "$backup"
+            echo "已备份: $cfg -> $backup"
+            if [[ "$cfg" == *.json ]] && command -v python3 >/dev/null 2>&1; then
+                # 严格 JSON: 从 plugin 数组移除 superpowers 项, 并校验/修复 (悬空逗号)
+                python3 - "$cfg" <<'PY'
+import json, sys
+p = sys.argv[1]
+try:
+    with open(p) as f:
+        cfg = json.load(f)
+except Exception as e:
+    print(f"警告: 无法解析 {p}: {e}, 请手动删除 superpowers 插件行", file=sys.stderr)
+    sys.exit(1)
+plugins = [x for x in cfg.get("plugin", []) if "superpowers" not in x]
+if len(plugins) != len(cfg.get("plugin", [])):
+    cfg["plugin"] = plugins
+    with open(p, "w") as f:
+        json.dump(cfg, f, indent=2, ensure_ascii=False)
+        f.write("\n")
+    print(f"已从 {p} 移除 superpowers 插件声明")
+PY
+            else
+                # .jsonc 允许注释/尾随逗号: 按行删除, 保留其余内容与注释
+                sed -i '/"superpowers@git+https:\/\/github.com\/obra\/superpowers.git",/d' "$cfg"
+                echo "已从 ${cfg##*/} 移除 superpowers 插件声明(按行删除, 保留注释)"
+            fi
+        else
+            echo "未找到含 superpowers 的 opencode 配置 ($HOME/.config/opencode/opencode.json 或 .jsonc)"
+        fi
+        rm -rf "$HOME/.cache/opencode/packages/superpowers@git+https:"
+        echo "已清理 OpenCode 插件缓存: ~/.cache/opencode/packages/superpowers@git+https:"
+    fi
+
+    echo "done"
 }
 
 # =========== SET WSL VPN ===========
