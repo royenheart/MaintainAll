@@ -1,0 +1,66 @@
+#!/bin/bash
+set -euo pipefail
+
+UNIT=doh-dns.service
+PREFIX="${INSTALL_PREFIX:-/opt/doh-dns}"
+ENV_FILE="${PREFIX}/config.env"
+LISTEN_ADDR=127.0.0.1
+LISTEN_PORT=5353
+
+if [ -f "$ENV_FILE" ]; then
+  # shellcheck disable=SC1090
+  set -a
+  # shellcheck disable=SC1091
+  source "$ENV_FILE"
+  set +a
+  LISTEN_ADDR="${DOH_LISTEN_ADDR:-$LISTEN_ADDR}"
+  LISTEN_PORT="${DOH_LISTEN_PORT:-$LISTEN_PORT}"
+fi
+
+usage() {
+  cat <<'EOF'
+Usage: dohctl <on|off|status|test|restart>
+
+  on       start DoH (systemctl start doh-dns)
+  off      stop DoH
+  restart  restart DoH
+  status   service + resolvectl + listeners
+  test     probe local stub and system resolver
+EOF
+}
+
+cmd="${1:-}"
+case "$cmd" in
+  on)
+    systemctl start "$UNIT"
+    systemctl --no-pager --full status "$UNIT" | head -20
+    ;;
+  off)
+    systemctl stop "$UNIT"
+    echo "DoH stopped."
+    ;;
+  restart)
+    systemctl restart "$UNIT"
+    systemctl --no-pager --full status "$UNIT" | head -20
+    ;;
+  status)
+    systemctl is-active "$UNIT" 2>/dev/null || true
+    systemctl --no-pager --full status "$UNIT" 2>/dev/null | head -25 || true
+    echo "----- resolvectl -----"
+    resolvectl status 2>/dev/null | head -50 || true
+    echo "----- listeners -----"
+    ss -ulnp 2>/dev/null | grep -E "${LISTEN_PORT}|127.0.0.53" || true
+    ;;
+  test)
+    echo "dig @${LISTEN_ADDR} -p ${LISTEN_PORT} www.baidu.com"
+    dig @"$LISTEN_ADDR" -p "$LISTEN_PORT" www.baidu.com +time=3 +tries=1 +short || true
+    echo "dig example.com (system)"
+    dig example.com +time=3 +tries=1 +short || true
+    echo "curl -I https://www.baidu.com"
+    curl -sS -I --connect-timeout 5 --max-time 8 https://www.baidu.com | head -5 || true
+    ;;
+  *)
+    usage
+    exit 2
+    ;;
+esac

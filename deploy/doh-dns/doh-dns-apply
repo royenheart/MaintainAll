@@ -1,0 +1,120 @@
+#!/bin/bash
+# Wire systemd-resolved to the local DoH stub, or restore previous DNS.
+set -euo pipefail
+
+PREFIX="${INSTALL_PREFIX:-/opt/doh-dns}"
+ENV_FILE="${PREFIX}/config.env"
+STATE_DIR=/var/lib/doh-dns
+STATE_FILE="$STATE_DIR/previous-dns.env"
+
+if [ -f "$ENV_FILE" ]; then
+  # shellcheck disable=SC1090
+  set -a
+  # shellcheck disable=SC1091
+  source "$ENV_FILE"
+  set +a
+fi
+
+LISTEN_ADDR="${DOH_LISTEN_ADDR:-127.0.0.1}"
+LISTEN_PORT="${DOH_LISTEN_PORT:-5353}"
+LISTEN="${LISTEN_ADDR}:${LISTEN_PORT}"
+IFACE="${DOH_DNS_IFACE:-}"
+
+need_resolvectl() {
+  if ! command -v resolvectl >/dev/null 2>&1; then
+    echo "resolvectl not found. This kit targets systemd-resolved hosts." >&2
+    echo "Fallback: point /etc/resolv.conf nameserver to ${LISTEN_ADDR} (and free port 53)," >&2
+    echo "or run a local forwarder yourself." >&2
+    exit 1
+  fi
+}
+
+detect_iface() {
+  if [ -n "$IFACE" ]; then
+    echo "$IFACE"
+    return
+  fi
+  local dev
+  dev="$(ip -4 route show default 2>/dev/null | awk '{print $5; exit}')"
+  if [ -n "$dev" ]; then
+    echo "$dev"
+    return
+  fi
+  # Last resort: first non-lo UP ipv4 iface
+  ip -4 -o addr show scope global 2>/dev/null | awk '{print $2; exit}'
+}
+
+save_state() {
+  local iface="$1"
+  mkdir -p "$STATE_DIR"
+  local dns domains
+  dns="$(resolvectl dns "$iface" 2>/dev/null | sed -n 's/.*:[[:space:]]*//p' | head -1 || true)"
+  domains="$(resolvectl domain "$iface" 2>/dev/null | sed -n 's/.*:[[:space:]]*//p' | head -1 || true)"
+  cat >"$STATE_FILE" <<EOF
+IFACE=$iface
+DNS=$dns
+DOMAINS=$domains
+EOF
+}
+
+apply_on() {
+  need_resolvectl
+  local iface
+  iface="$(detect_iface)"
+  if [ -z "$iface" ]; then
+    echo "Cannot detect network interface; set DOH_DNS_IFACE in $ENV_FILE" >&2
+    exit 1
+  fi
+  if [ ! -f "$STATE_FILE" ]; then
+    save_state "$iface"
+  fi
+  resolvectl dns "$iface" "$LISTEN"
+  resolvectl domain "$iface" '~.'
+  resolvectl default-route "$iface" true 2>/dev/null || true
+  resolvectl flush-caches 2>/dev/null || true
+  echo "DoH applied: $iface -> $LISTEN"
+}
+
+apply_off() {
+  need_resolvectl
+  local iface dns domains
+  if [ -f "$STATE_FILE" ]; then
+    # shellcheck disable=SC1090
+    source "$STATE_FILE"
+    iface="${IFACE:-$(detect_iface)}"
+    dns="${DNS:-}"
+    domains="${DOMAINS:-}"
+  else
+    iface="$(detect_iface)"
+    dns=""
+    domains=""
+  fi
+
+  if [ -n "$dns" ] && [ "$dns" != "$LISTEN" ]; then
+    # shellcheck disable=SC2086
+    resolvectl dns "$iface" $dns
+  else
+    resolvectl dns "$iface" ""
+  fi
+
+  if [ -n "$domains" ] && [ "$domains" != "~." ]; then
+    # shellcheck disable=SC2086
+    resolvectl domain "$iface" $domains
+  else
+    resolvectl domain "$iface" ""
+  fi
+
+  resolvectl flush-caches 2>/dev/null || true
+  rm -f "$STATE_FILE"
+  echo "DoH removed from ${iface:-unknown} (previous DNS restored if known)"
+}
+
+cmd="${1:-}"
+case "$cmd" in
+  on) apply_on ;;
+  off) apply_off ;;
+  *)
+    echo "Usage: $0 on|off" >&2
+    exit 2
+    ;;
+esac

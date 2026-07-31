@@ -1,0 +1,4 @@
+config.env
+vendor/
+*.tar.gz
+*.tar.gz.minisig

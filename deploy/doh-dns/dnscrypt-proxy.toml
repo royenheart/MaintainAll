@@ -1,0 +1,52 @@
+# DoH-only profile for hosts where plain DNS (UDP/TCP 53) is blocked
+# but HTTPS/443 still works. Static stamps only — no resolver-list fetch.
+
+listen_addresses = ['127.0.0.1:5353']
+
+max_clients = 250
+ipv4_servers = true
+ipv6_servers = false
+dnscrypt_servers = false
+doh_servers = true
+http3 = false
+odoh_servers = false
+
+require_dnssec = false
+require_nolog = false
+require_nofilter = false
+
+force_tcp = false
+timeout = 5000
+keepalive = 30
+
+lb_strategy = 'p2'
+lb_estimator = true
+
+block_ipv6 = true
+block_unqualified = true
+block_undelegated = true
+reject_ttl = 10
+
+cache = true
+cache_size = 4096
+cache_min_ttl = 60
+cache_max_ttl = 86400
+cache_neg_min_ttl = 10
+cache_neg_max_ttl = 60
+
+# Default: mainland-China friendly DoH. Edit server_names / [static] as needed.
+server_names = ['alidns-doh', 'alidns-doh-2', 'dnspod-doh']
+
+[static]
+
+  [static.alidns-doh]
+  # AliDNS DoH — 223.5.5.5
+  stamp = 'sdns://AgAAAAAAAAAACTIyMy41LjUuNSCY49XlNq8pWM0vfxT3BO9KJ20l4zzWXy5l9eTycnwTMAkyMjMuNS41LjUKL2Rucy1xdWVyeQ'
+
+  [static.alidns-doh-2]
+  # AliDNS DoH — 223.6.6.6
+  stamp = 'sdns://AgAAAAAAAAAACTIyMy42LjYuNiCY49XlNq8pWM0vfxT3BO9KJ20l4zzWXy5l9eTycnwTMAkyMjMuNi42LjYKL2Rucy1xdWVyeQ'
+
+  [static.dnspod-doh]
+  # DNSPod Public DoH — 1.12.12.12
+  stamp = 'sdns://AgAAAAAAAAAACjEuMTIuMTIuMTIACjEuMTIuMTIuMTIKL2Rucy1xdWVyeQ'
