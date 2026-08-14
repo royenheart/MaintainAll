@@ -30,6 +30,7 @@ export const zh: Record<SkillManagerKey, string> = {
   'action.close': '关闭',
   'action.clear-selection': '清除选择',
   'action.add-skill': '添加技能',
+  'action.clear-search': '清除搜索',
 
   'status.enabled': '已启用',
   'status.disabled': '已禁用',

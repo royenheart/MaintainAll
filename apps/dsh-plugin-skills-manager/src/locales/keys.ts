@@ -38,6 +38,7 @@ export const SKILL_MANAGER_KEYS = [
   'action.close',
   'action.clear-selection',
   'action.add-skill',
+  'action.clear-search',
 
   // status
   'status.enabled',

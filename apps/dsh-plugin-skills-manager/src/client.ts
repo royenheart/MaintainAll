@@ -127,6 +127,7 @@ function SkillPanel(props: {
   const [newName, setNewName] = React.useState('')
   const [selection, setSelection] = React.useState<ReadonlySet<string>>(new Set<string>())
   const [anchor, setAnchor] = React.useState<string | null>(null)
+  const [query, setQuery] = React.useState('')
 
   React.useEffect(() => scope.subscribe(() => force()), [scope])
 
@@ -197,7 +198,16 @@ function SkillPanel(props: {
   for (const scoped of Object.values(section.workspaces ?? {})) for (const name of Object.keys(scoped)) names.add(name)
   for (const scoped of Object.values(section.sessions ?? {})) for (const name of Object.keys(scoped)) names.add(name)
   const sortedNames = [...names].sort()
-  const rows = sortedNames.map((name) => ({
+  // Live filter over name + description (case-insensitive).
+  const normalizedQuery = query.trim().toLowerCase()
+  const visibleNames = normalizedQuery === ''
+    ? sortedNames
+    : sortedNames.filter((name) => {
+        const entry = entries.find((e) => e.name === name)
+        return name.toLowerCase().includes(normalizedQuery)
+          || (entry?.description ?? '').toLowerCase().includes(normalizedQuery)
+      })
+  const rows = visibleNames.map((name) => ({
     name,
     description: entries.find((e) => e.name === name)?.description ?? '',
     state: resolveSkillState(store, name, view),
@@ -240,11 +250,11 @@ function SkillPanel(props: {
   // toggle; plain click = single selection.
   const select = (name: string, event: { shiftKey?: boolean; ctrlKey?: boolean; metaKey?: boolean }) => {
     if (event.shiftKey && anchor) {
-      const i1 = sortedNames.indexOf(anchor)
-      const i2 = sortedNames.indexOf(name)
+      const i1 = visibleNames.indexOf(anchor)
+      const i2 = visibleNames.indexOf(name)
       if (i1 >= 0 && i2 >= 0) {
         const [lo, hi] = i1 < i2 ? [i1, i2] : [i2, i1]
-        setSelection(new Set(sortedNames.slice(lo, hi + 1)))
+        setSelection(new Set(visibleNames.slice(lo, hi + 1)))
         return
       }
     }
@@ -266,6 +276,15 @@ function SkillPanel(props: {
     React.createElement('header', { className: 'skills-manager-panel__header' },
       React.createElement('h2', null, title),
       React.createElement('p', { className: 'skills-manager-panel__description' }, t('page.description')),
+    ),
+    React.createElement('div', { className: 'skills-manager-search' },
+      React.createElement('input', {
+        className: 'skills-manager-search__input',
+        value: query,
+        placeholder: t('search.placeholder'),
+        onChange: (e: { target: { value: string } }) => setQuery(e.target.value),
+      }),
+      React.createElement('button', { className: 'skills-manager-btn', onClick: () => setQuery('') }, t('action.clear-search')),
     ),
     React.createElement('div', { className: 'skills-manager-toolbar' },
       selection.size > 0
@@ -442,6 +461,28 @@ const css = `.skills-manager-panel {
 .skills-manager-panel__description {
   margin: 4px 0 0;
   color: var(--dsw-alias-label-tertiary);
+}
+.skills-manager-search {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  padding: 8px 16px;
+  border-bottom: 1px solid var(--dsw-alias-border-l2);
+}
+.skills-manager-search__input {
+  flex: 1;
+  min-width: 0;
+  height: 24px;
+  padding: 0 8px;
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: 4px;
+  color: var(--dsw-alias-label-primary);
+  background: var(--dsw-alias-bg-layer-2);
+  font: var(--dsw-font-xxs-12);
+}
+.skills-manager-search__input:focus-visible {
+  outline: 1px solid var(--dsw-alias-state-business-primary);
+  outline-offset: 1px;
 }
 .skills-manager-toolbar {
   display: flex;

@@ -30,6 +30,7 @@ export const en: Record<SkillManagerKey, string> = {
   'action.close': 'Close',
   'action.clear-selection': 'Clear selection',
   'action.add-skill': 'Add skill',
+  'action.clear-search': 'Clear search',
 
   'status.enabled': 'Enabled',
   'status.disabled': 'Disabled',
