@@ -32,7 +32,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-slots'
 
 import { dictionaries, NAMESPACE } from './locales/index.ts'
 import type { SkillManagerKey } from './locales/keys.ts'
-import { normalizeSection, overrideFieldFor, setOverrideInSection, SETTINGS_NAMESPACE, toStoreData, type SkillsManagerSection } from './core/settings-schema.ts'
+import { normalizeSection, overrideFieldFor, setOverrideInSection, setOverridesInSection, SETTINGS_NAMESPACE, toStoreData, type SkillsManagerSection } from './core/settings-schema.ts'
 import { resolveSkillState, type ScopeKind } from './core/scope.ts'
 import { isGlobalSource, isManagedSource } from './core/skill-filter.ts'
 
@@ -107,6 +107,7 @@ export function apply(ctx: Context): void {
 
   registerSettingsSection(slots, t, scope, api, sessions)
   registerSessionTab(slots, t, scope, api)
+  registerNewSessionControl(slots, t, scope, api)
   registerWorkspaceEntry(slots, t, scope, api)
 }
 
@@ -208,7 +209,8 @@ function SkillPanel(props: {
   }
 
   const toggleSelected = (enabled: boolean) => {
-    for (const name of selection) toggle(name, enabled)
+    const { field, value } = setOverridesInSection(section, scopeKind, scopeKey ?? sessionId, [...selection], enabled)
+    scope.set(field, value).catch(() => {})
     setSelection(new Set<string>())
     setAnchor(null)
   }
@@ -317,13 +319,71 @@ function SkillPanel(props: {
 
 function registerSettingsSection(slots: Slots, t: Translate, scope: BoundScope, api?: { skills?: SkillsApiFace }, sessions?: SessionsFace): void {
   slots.register({ name: 'settings.section', id: 'skills-manager', order: 900, label: t('nav.settings-section') }, () =>
-    SkillPanel({ title: t('page.global-title'), scopeKind: 'global', t, scope, api, sessions }),
+    React.createElement(SkillPanel, { title: t('page.global-title'), scopeKind: 'global', t, scope, api, sessions }),
   )
 }
 
 function registerSessionTab(slots: Slots, t: Translate, scope: BoundScope, api?: { skills?: SkillsApiFace }): void {
   slots.register({ name: 'conversation.view', id: 'skills', order: 200, label: t('nav.session-tab') }, (inject: { sessionId?: string }) =>
-    SkillPanel({ title: t('page.session-title'), scopeKind: 'session', sessionId: inject.sessionId, t, scope, api }),
+    React.createElement(SkillPanel, { title: t('page.session-title'), scopeKind: 'session', sessionId: inject.sessionId, t, scope, api }),
+  )
+}
+
+function registerNewSessionControl(slots: Slots, t: Translate, scope: BoundScope, api?: { skills?: SkillsApiFace }): void {
+  slots.register({ name: 'conversation.input.right', id: 'skills-manager', order: 100 }, (inject: { sessionId?: string }) =>
+    React.createElement(SkillsTrigger, { t, scope, api, sessionId: inject.sessionId }),
+  )
+}
+
+/**
+ * A "技能" trigger beside the model selector for a (new) session: a
+ * select-like button that pops a self-contained overlay hosting the session
+ * skill panel.
+ */
+function SkillsTrigger(props: {
+  t: Translate
+  scope: BoundScope
+  api?: { skills?: SkillsApiFace }
+  sessionId?: string
+}): React.ReactElement {
+  const { t, scope, api, sessionId } = props
+  const [open, setOpen] = React.useState(false)
+
+  return React.createElement(
+    React.Fragment,
+    null,
+    React.createElement('button', {
+      className: 'skills-manager-trigger',
+      onClick: () => setOpen(true),
+      'aria-label': t('nav.new-session'),
+      'aria-haspopup': 'dialog',
+      'aria-expanded': open,
+    },
+      React.createElement('span', { className: 'skills-manager-trigger__label' }, t('nav.new-session')),
+      React.createElement('svg', {
+        width: 14,
+        height: 14,
+        viewBox: '0 0 14 14',
+        fill: 'none',
+        className: 'skills-manager-trigger__chevron' + (open ? ' skills-manager-trigger__chevron--open' : ''),
+        'aria-hidden': true,
+      },
+        React.createElement('path', {
+          d: 'M11.8486 5.5L11.4238 5.92383L8.69727 8.65137C8.44157 8.90706 8.21562 9.13382 8.01172 9.29785C7.79912 9.46883 7.55595 9.61756 7.25 9.66602C7.08435 9.69222 6.91565 9.69222 6.75 9.66602C6.44405 9.61756 6.20088 9.46883 5.98828 9.29785C5.78438 9.13382 5.55843 8.90706 5.30273 8.65137L2.57617 5.92383L2.15137 5.5L3 4.65137L3.42383 5.07617L6.15137 7.80273C6.42595 8.07732 6.59876 8.24849 6.74023 8.3623C6.87291 8.46904 6.92272 8.47813 6.9375 8.48047C6.97895 8.48703 7.02105 8.48703 7.0625 8.48047C7.07728 8.47813 7.12709 8.46904 7.25977 8.3623C7.40124 8.24849 7.57405 8.07732 7.84863 7.80273L10.5762 5.07617L11 4.65137L11.8486 5.5Z',
+          fill: 'currentColor',
+        }),
+      ),
+    ),
+    open && React.createElement(
+      'div',
+      { className: 'skills-manager-overlay', onClick: () => setOpen(false) },
+      React.createElement(
+        'div',
+        { className: 'skills-manager-modal', onClick: (event: { stopPropagation: () => void }) => event.stopPropagation() },
+        React.createElement('button', { className: 'skills-manager-close', onClick: () => setOpen(false) }, t('action.close')),
+        React.createElement(SkillPanel, { title: t('page.session-title'), scopeKind: 'session', sessionId, t, scope, api }),
+      ),
+    ),
   )
 }
 
@@ -341,7 +401,7 @@ function registerWorkspaceEntry(
 ): void {
   try {
     slots.register({ name: 'sidebar.workspaces.entry', id: 'skills-manager', label: t('nav.workspace-entry'), order: 100 }, (inject: { workspacePath?: string }) =>
-      SkillPanel({ title: t('page.workspace-title'), scopeKind: 'workspace', scopeKey: inject.workspacePath, t, scope, api }),
+      React.createElement(SkillPanel, { title: t('page.workspace-title'), scopeKind: 'workspace', scopeKey: inject.workspacePath, t, scope, api }),
     )
   } catch {
     // Slot not declared by the current workspace browser.
@@ -385,8 +445,10 @@ const css = `.skills-manager-panel {
 }
 .skills-manager-toolbar {
   display: flex;
+  flex-wrap: wrap;
   align-items: center;
   gap: 6px;
+  row-gap: 6px;
   padding: 8px 16px;
   border-bottom: 1px solid var(--dsw-alias-border-l2);
 }
@@ -486,6 +548,100 @@ const css = `.skills-manager-panel {
 .skills-manager-empty {
   padding: 16px;
   color: var(--dsw-alias-label-tertiary);
+}
+/* Composer trigger: a select-like chip beside the model selector
+   (matches ui-model-selection's ToggleButton). */
+.skills-manager-trigger {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  min-width: 0;
+  height: 28px;
+  padding: 0 4px 0 8px;
+  border: none;
+  border-radius: 24px;
+  outline: none;
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  font-size: 13px;
+  line-height: 20px;
+  font-weight: 500;
+  cursor: pointer;
+}
+.skills-manager-trigger:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+.skills-manager-trigger:focus-visible {
+  box-shadow: 0 0 0 2px var(--dsw-alias-border-l3);
+}
+.skills-manager-trigger__label {
+  min-width: 0;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.skills-manager-trigger__chevron {
+  flex: 0 0 auto;
+  color: var(--dsw-alias-label-caption);
+  transition: transform 120ms ease;
+}
+.skills-manager-trigger__chevron--open {
+  transform: rotate(180deg);
+}
+/* Centered overlay + dialog hosting the session panel (Modal primitive
+   material: mask + blur, r24 dialog, layer-2 fill, inverted border). */
+.skills-manager-overlay {
+  position: fixed;
+  inset: 0;
+  z-index: 1000;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 24px;
+  background: var(--dsw-alias-bg-mask-1);
+  backdrop-filter: var(--dsw-mask-blur);
+}
+.skills-manager-modal {
+  position: relative;
+  z-index: 1;
+  display: flex;
+  flex-direction: column;
+  width: min(560px, 90vw);
+  max-height: 80vh;
+  overflow: hidden;
+  border: 1px solid var(--dsw-alias-border-inverted);
+  border-radius: 24px;
+  background: var(--dsw-alias-bg-layer-2);
+  box-shadow: var(--dsw-shadow-lv3);
+}
+/* Let the hosted panel fill the dialog: the panel's own height:100% has
+   no definite parent here, so turn it into a shrinkable flex item whose
+   height is bounded by the dialog's max-height instead. */
+.skills-manager-modal > .skills-manager-panel {
+  height: auto;
+  flex: 1 1 auto;
+  min-height: 0;
+  max-height: none;
+}
+.skills-manager-close {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  z-index: 2;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px;
+  padding: 0 12px;
+  border: none;
+  border-radius: 8px;
+  background: var(--dsw-alias-bg-layer-2);
+  color: var(--dsw-alias-label-secondary);
+  font: var(--dsw-font-xxs-12);
+  cursor: pointer;
+}
+.skills-manager-close:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
 }
 `
 

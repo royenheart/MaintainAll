@@ -126,13 +126,32 @@ export function setOverrideInSection(
   name: string,
   enabled: boolean,
 ): { field: SectionField; value: unknown } {
+  return setOverridesInSection(section, scopeKind, scopeKey, [name], enabled)
+}
+
+/**
+ * Batch form of {@link setOverrideInSection}: record several overrides for the
+ * same scope in ONE field value. The client uses this for multi-select
+ * enable/disable so every selected name lands in a single `set(field, value)`
+ * (writing per-name against the same stale section would drop all but the last).
+ */
+export function setOverridesInSection(
+  section: SkillsManagerSection,
+  scopeKind: ScopeKind,
+  scopeKey: string | undefined,
+  names: readonly string[],
+  enabled: boolean,
+): { field: SectionField; value: unknown } {
   const field = overrideFieldFor(scopeKind)
   if (scopeKind === 'global') {
-    return { field, value: { ...(section.global ?? {}), [name]: enabled } }
+    const global = { ...(section.global ?? {}) }
+    for (const name of names) global[name] = enabled
+    return { field, value: global }
   }
   // scopeKind is 'workspace' | 'session' here, so the field is a map of
   // scope-key -> overrides (narrowed explicitly so spreading type-checks).
   const map = (scopeKind === 'workspace' ? section.workspaces : section.sessions) ?? {}
-  const inner = { ...(map[scopeKey ?? ''] ?? {}), [name]: enabled }
+  const inner = { ...(map[scopeKey ?? ''] ?? {}) }
+  for (const name of names) inner[name] = enabled
   return { field, value: { ...map, [scopeKey ?? '']: inner } }
 }

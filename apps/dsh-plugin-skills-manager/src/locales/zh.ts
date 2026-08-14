@@ -4,6 +4,7 @@ import type { SkillManagerKey } from './keys.ts'
 export const zh: Record<SkillManagerKey, string> = {
   'nav.workspace-entry': '技能管理',
   'nav.session-tab': '技能',
+  'nav.new-session': '技能管理',
   'nav.settings-section': '技能',
 
   'page.title': '技能管理',

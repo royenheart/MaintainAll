@@ -7,6 +7,7 @@ import {
   overrideFieldFor,
   SETTINGS_NAMESPACE,
   setOverrideInSection,
+  setOverridesInSection,
   toStoreData,
 } from '../src/core/settings-schema.ts'
 import { withOverride } from '../src/core/scope.ts'
@@ -108,5 +109,18 @@ describe('overrideFieldFor / setOverrideInSection', () => {
     const { field, value } = setOverrideInSection(section, 'workspace', '/ws/a', 'foo', false)
     assert.equal(field, 'workspaces')
     assert.deepEqual(value, { '/ws/a': { bar: true, foo: false } })
+  })
+
+  it('setOverridesInSection batches every name into one field value', () => {
+    const { field, value } = setOverridesInSection({}, 'global', undefined, ['a', 'b', 'c'], false)
+    assert.equal(field, 'global')
+    assert.deepEqual(value, { a: false, b: false, c: false })
+  })
+
+  it('setOverridesInSection merges a batch into an existing scoped map', () => {
+    const section = { workspaces: { '/ws/a': { keep: true } } }
+    const { field, value } = setOverridesInSection(section, 'workspace', '/ws/a', ['x', 'y'], true)
+    assert.equal(field, 'workspaces')
+    assert.deepEqual(value, { '/ws/a': { keep: true, x: true, y: true } })
   })
 })

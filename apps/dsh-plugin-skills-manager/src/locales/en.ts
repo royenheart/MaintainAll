@@ -4,6 +4,7 @@ import type { SkillManagerKey } from './keys.ts'
 export const en: Record<SkillManagerKey, string> = {
   'nav.workspace-entry': 'Manage skills',
   'nav.session-tab': 'Skills',
+  'nav.new-session': 'Manage skills',
   'nav.settings-section': 'Skills',
 
   'page.title': 'Skill Management',

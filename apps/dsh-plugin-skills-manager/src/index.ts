@@ -127,7 +127,7 @@ export class SkillManagerService extends Service {
   private listBlocks(cwd?: string, sessionId?: string) {
     return this.disabledNamesFor(cwd, sessionId).map((name) => ({
       name,
-      description: '',
+      description: 'Disabled by skills-manager',
       whenToUse: undefined,
       invocation: { modelInvocable: false, userInvocable: false },
       source: 'custom',
@@ -140,7 +140,7 @@ export class SkillManagerService extends Service {
   private blockDefinition(candidate: SkillCandidate): SkillDefinition {
     return {
       name: candidate.name,
-      description: '',
+      description: 'Disabled by skills-manager',
       invocation: { modelInvocable: false, userInvocable: false },
       source: 'custom',
       provider: this.providerName,

@@ -9,6 +9,7 @@ export const SKILL_MANAGER_KEYS = [
   // navigation / labels
   'nav.workspace-entry',
   'nav.session-tab',
+  'nav.new-session',
   'nav.settings-section',
 
   // page copy
