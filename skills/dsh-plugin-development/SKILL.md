@@ -1,6 +1,6 @@
 ---
 name: dsh-plugin-development
-description: "When to use — build, extend, or debug a DeepSeek Harness (dsh) plugin: the host/client entry split, cordis services, client slots/settings/locale, the apiproxy RPC, profiles, packaging, loading, the develop→load→reload loop, or proposing a change to dsh itself."
+description: "When to use — build, extend, or debug a DeepSeek Harness (dsh) plugin: the host/client entry split, cordis services, client slots/settings/locale, the apiproxy RPC, profiles and presets, packaging, loading, the develop→load→reload loop, or proposing a change to dsh itself."
 ---
 
 # DSH plugin development
@@ -21,6 +21,16 @@ dsh's user config lives under `$DSH_HOME` (default `~/.dsh`). A **profile** is a
 - `node_modules/` — plugins installed for this profile.
 
 `$DSH_HOME/cordis.patch.yml` is a **home-level** patch applied over every profile. Pick a profile with `--profile <name>` (the GUI `web` profile is the common one). A profile is unrelated to a workspace/cwd.
+
+## Preset
+
+A **preset** is an agent-plane composition — the tools, prompt sections, and services that build one session's agent. It is orthogonal to a **profile**: a profile is process/host-plane (registries, sandbox, approval, persistence, model route), while a preset decides what each agent can do.
+
+- Each preset is one agent-plane roster (named presets include `standard`, `code`, `minimal`, `cordis`, `online`), mounted once per process under a standing scope; every session naming it joins by scope parentage.
+- A preset mounts its own per-agent copies (shell/filesystem tools, skills discovery + catalog loader, goals, plan mode, compaction, delegation/workflows); the host composition keeps the shared registries.
+- Per-agent service rows sit inside a group carrying an `isolate` realm (entry-local = one private instance per mounted session).
+- Use it by creating a session against a preset — `session.create({ agentPreset })`; the id is stored on the session header and resume rebuilds the same agent. The default is the user's stored choice, else the deployment default (`standard`).
+- Manage presets through the `agentPreset.*` RPCs (list / select / read / copy / remove / openDocument).
 
 ## Package shape
 
@@ -60,7 +70,7 @@ The client bundle is CJS wrapped in `window.__ModuleLoader__.load({ id, factory 
 
 ## Proposing a change to dsh itself
 
-A plugin should avoid forking the harness, but some needs (a slot, a wire field, a registry semantic) require a change to dsh. First **search the existing discussions** — dsh's GitHub Discussions and its Agent Notes tree — to check whether a similar proposal already exists; if so, build on it instead of duplicating.
+A plugin should avoid forking the harness, but some needs (a slot, a wire field, a registry semantic) require a change to dsh. **The change must be general-purpose — reusable beyond the one plugin that needs it, never a bespoke seam for it — and must fit the dsh / cordis design philosophy (plugin-first composition, explicit typed boundaries, minimal API surface).** First **search the existing discussions** — dsh's GitHub Discussions and its Agent Notes tree — to check whether a similar proposal already exists; if so, build on it instead of duplicating.
 
 For a new proposal, write a short discussion draft with this structure (sections only — mirror the existing drafts, don't hardcode them):
 
