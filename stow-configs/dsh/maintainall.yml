@@ -1,0 +1,18 @@
+# MaintainAll dsh 插件集 (plugin set)。
+#
+# 本目录只 stow 这一个文件: `stow dsh -t "$DSH_HOME/profiles/<name>"` 会把它
+# 软链到 `$DSH_HOME/profiles/<name>/maintainall.yml` (必须和 cordis.yml 同目录,
+# 这样下面的裸包名才会从 profile 的 node_modules 解析)。cordis 配置不在这里
+# (见 stow-configs/README.md, 需要在 cordis.patch.yml 里手工加一条 cordis:include)。
+#
+# 本文件是唯一需要维护的插件清单: 后续新增/移除 dsh 插件只改这里,
+# cordis.patch.yml 里那条 cordis:include 引用装一次即可, 不用再动。
+#
+# 每个 entry 的 `name` 写 npm 包名 (裸说明符), loader 从 profile 的 node_modules
+# 解析——这是 dsh 的正常插件加载方式。插件本体用 `dsh plugin add` 装进 profile,
+# 见 stow-configs/README.md。
+
+# ── 技能管理插件 ─────────────────────────────────────────────────────────────
+- id: skills-manager
+  name: '@maintainall/dsh-plugin-skills-manager'
+  config: {}

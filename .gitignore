@@ -237,3 +237,4 @@ temp.worktrees/
 .venv/
 .worktrees/
 docs/superpowers/
+tmp
