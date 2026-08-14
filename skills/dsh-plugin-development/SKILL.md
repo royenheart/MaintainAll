@@ -1,6 +1,6 @@
 ---
 name: dsh-plugin-development
-description: When to use — build, extend, or debug a DeepSeek Harness (dsh) plugin: the host/client entry split, cordis services, client slots/settings/locale, the apiproxy RPC, profiles, packaging, loading, the develop→load→reload loop, or proposing a change to dsh itself.
+description: "When to use — build, extend, or debug a DeepSeek Harness (dsh) plugin: the host/client entry split, cordis services, client slots/settings/locale, the apiproxy RPC, profiles, packaging, loading, the develop→load→reload loop, or proposing a change to dsh itself."
 ---
 
 # DSH plugin development
