@@ -155,3 +155,23 @@ export function setOverridesInSection(
   for (const name of names) inner[name] = enabled
   return { field, value: { ...map, [scopeKey ?? '']: inner } }
 }
+
+/**
+ * Compute the settings field + value that clears ONE scope instance's overrides.
+ * Global clears the whole field; workspace/session remove only that key's entry
+ * (so resetting one session does not wipe every other session's overrides).
+ */
+export function resetScopeInSection(
+  section: SkillsManagerSection,
+  scopeKind: ScopeKind,
+  scopeKey: string | undefined,
+): { field: SectionField; value: unknown } {
+  const field = overrideFieldFor(scopeKind)
+  if (scopeKind === 'global') {
+    return { field, value: {} }
+  }
+  const map = (scopeKind === 'workspace' ? section.workspaces : section.sessions) ?? {}
+  const next = { ...map }
+  delete next[scopeKey ?? '']
+  return { field, value: next }
+}

@@ -5,6 +5,7 @@ import {
   fromStoreData,
   normalizeSection,
   overrideFieldFor,
+  resetScopeInSection,
   SETTINGS_NAMESPACE,
   setOverrideInSection,
   setOverridesInSection,
@@ -122,5 +123,28 @@ describe('overrideFieldFor / setOverrideInSection', () => {
     const { field, value } = setOverridesInSection(section, 'workspace', '/ws/a', ['x', 'y'], true)
     assert.equal(field, 'workspaces')
     assert.deepEqual(value, { '/ws/a': { keep: true, x: true, y: true } })
+  })
+})
+
+describe('resetScopeInSection', () => {
+  it('clears the whole global field', () => {
+    const section = { global: { a: false } }
+    const { field, value } = resetScopeInSection(section, 'global', undefined)
+    assert.equal(field, 'global')
+    assert.deepEqual(value, {})
+  })
+
+  it('removes only the named workspace, keeping others', () => {
+    const section = { workspaces: { '/ws/a': { x: false }, '/ws/b': { y: false } } }
+    const { field, value } = resetScopeInSection(section, 'workspace', '/ws/a')
+    assert.equal(field, 'workspaces')
+    assert.deepEqual(value, { '/ws/b': { y: false } })
+  })
+
+  it('removes only the named session, keeping others', () => {
+    const section = { sessions: { s1: { x: false }, s2: { y: false } } }
+    const { field, value } = resetScopeInSection(section, 'session', 's1')
+    assert.equal(field, 'sessions')
+    assert.deepEqual(value, { s2: { y: false } })
   })
 })

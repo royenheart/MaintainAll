@@ -32,7 +32,7 @@ import type {} from '@deepseek-ai/dsh-client-ui-slots'
 
 import { dictionaries, NAMESPACE } from './locales/index.ts'
 import type { SkillManagerKey } from './locales/keys.ts'
-import { normalizeSection, overrideFieldFor, setOverrideInSection, setOverridesInSection, SETTINGS_NAMESPACE, toStoreData, type SkillsManagerSection } from './core/settings-schema.ts'
+import { normalizeSection, resetScopeInSection, setOverrideInSection, setOverridesInSection, SETTINGS_NAMESPACE, toStoreData, type SkillsManagerSection } from './core/settings-schema.ts'
 import { resolveSkillState, type ScopeKind } from './core/scope.ts'
 import { isGlobalSource, isManagedSource } from './core/skill-filter.ts'
 
@@ -73,7 +73,7 @@ interface SkillEntry {
 /** The sessions-service face we read the current session from (global discovery). */
 interface SessionsFace {
   list: {
-    getSnapshot(): { current?: string }
+    getSnapshot(): { current?: string; byId?: Record<string, { cwd?: string }> }
     subscribe(fn: () => void): () => void
   }
 }
@@ -106,8 +106,8 @@ export function apply(ctx: Context): void {
   injectStyles()
 
   registerSettingsSection(slots, t, scope, api, sessions)
-  registerSessionTab(slots, t, scope, api)
-  registerNewSessionControl(slots, t, scope, api)
+  registerSessionTab(slots, t, scope, api, sessions)
+  registerNewSessionControl(slots, t, scope, api, sessions)
   registerWorkspaceEntry(slots, t, scope, api)
 }
 
@@ -138,7 +138,10 @@ function SkillPanel(props: {
   )
   React.useEffect(() => {
     if (!sessions) return
-    return sessions.list.subscribe(() => setCurrentSessionId(sessions.list.getSnapshot().current))
+    return sessions.list.subscribe(() => {
+      setCurrentSessionId(sessions.list.getSnapshot().current)
+      force()
+    })
   }, [sessions])
 
   // The session id used for skill discovery:
@@ -181,7 +184,16 @@ function SkillPanel(props: {
   const section = snapshot.value ?? {}
   const store = toStoreData(section)
 
-  const view = { workspacePath: scopeKind === 'workspace' ? scopeKey : undefined, sessionId: scopeKind === 'session' ? (scopeKey ?? sessionId) : undefined }
+  // The session scope's workspace link is the session's own cwd (a session
+  // belongs to exactly one workspace). Without it the chain is session -> global
+  // and the panel skips the workspace override layer entirely.
+  const sessionWorkspacePath = scopeKind === 'session' && sessionId !== undefined
+    ? sessions?.list.getSnapshot().byId?.[sessionId]?.cwd
+    : undefined
+  const view = {
+    workspacePath: scopeKind === 'workspace' ? scopeKey : sessionWorkspacePath,
+    sessionId: scopeKind === 'session' ? (scopeKey ?? sessionId) : undefined,
+  }
 
   // Union of skill.list names and every name already carrying an override, so a
   // disabled skill stays visible (and re-enableable). Discovered names are
@@ -231,7 +243,8 @@ function SkillPanel(props: {
   }
 
   const resetScope = () => {
-    scope.unset(overrideFieldFor(scopeKind)).catch(() => {})
+    const { field, value } = resetScopeInSection(section, scopeKind, scopeKey ?? sessionId)
+    scope.set(field, value).catch(() => {})
     clearSelection()
   }
 
@@ -342,15 +355,15 @@ function registerSettingsSection(slots: Slots, t: Translate, scope: BoundScope, 
   )
 }
 
-function registerSessionTab(slots: Slots, t: Translate, scope: BoundScope, api?: { skills?: SkillsApiFace }): void {
+function registerSessionTab(slots: Slots, t: Translate, scope: BoundScope, api?: { skills?: SkillsApiFace }, sessions?: SessionsFace): void {
   slots.register({ name: 'conversation.view', id: 'skills', order: 200, label: t('nav.session-tab') }, (inject: { sessionId?: string }) =>
-    React.createElement(SkillPanel, { title: t('page.session-title'), scopeKind: 'session', sessionId: inject.sessionId, t, scope, api }),
+    React.createElement(SkillPanel, { title: t('page.session-title'), scopeKind: 'session', sessionId: inject.sessionId, t, scope, api, sessions }),
   )
 }
 
-function registerNewSessionControl(slots: Slots, t: Translate, scope: BoundScope, api?: { skills?: SkillsApiFace }): void {
+function registerNewSessionControl(slots: Slots, t: Translate, scope: BoundScope, api?: { skills?: SkillsApiFace }, sessions?: SessionsFace): void {
   slots.register({ name: 'conversation.input.right', id: 'skills-manager', order: 100 }, (inject: { sessionId?: string }) =>
-    React.createElement(SkillsTrigger, { t, scope, api, sessionId: inject.sessionId }),
+    React.createElement(SkillsTrigger, { t, scope, api, sessionId: inject.sessionId, sessions }),
   )
 }
 
@@ -364,8 +377,9 @@ function SkillsTrigger(props: {
   scope: BoundScope
   api?: { skills?: SkillsApiFace }
   sessionId?: string
+  sessions?: SessionsFace
 }): React.ReactElement {
-  const { t, scope, api, sessionId } = props
+  const { t, scope, api, sessionId, sessions } = props
   const [open, setOpen] = React.useState(false)
 
   return React.createElement(
@@ -400,7 +414,7 @@ function SkillsTrigger(props: {
         'div',
         { className: 'skills-manager-modal', onClick: (event: { stopPropagation: () => void }) => event.stopPropagation() },
         React.createElement('button', { className: 'skills-manager-close', onClick: () => setOpen(false) }, t('action.close')),
-        React.createElement(SkillPanel, { title: t('page.session-title'), scopeKind: 'session', sessionId, t, scope, api }),
+        React.createElement(SkillPanel, { title: t('page.session-title'), scopeKind: 'session', sessionId, t, scope, api, sessions }),
       ),
     ),
   )
