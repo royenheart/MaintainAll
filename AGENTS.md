@@ -150,30 +150,37 @@ python scripts/modulefiles/manage_modules.py delete cuda 12.2
 
 ---
 
-## dsh 插件集（apps/）
+## dsh 插件（~/projects/dsh-plugins + deploys/ds-harness）
 
-本仓库 `apps/` 下维护一组自用的 **dsh 插件**（DeepSeek Harness 插件集），每个插件是一个独立包（自带 `package.json`、host/client 入口、`dsh.client` 清单），构建出 `lib/` 后用 `dsh plugin add link:...` 装进 profile 的 `node_modules`，在 `maintainall.yml` 里按**裸包名**引用（dsh 的正常加载方式；不发布 npm），统一挂到同一个插件清单 `stow-configs/dsh/maintainall.yml` 下，便于换机器时用 `dsh` 快速迁移。
+dsh 插件不再放在本仓库 `apps/` 下，而是独立维护在 `~/projects/dsh-plugins/`（每个插件一个目录，计划分别开源，如 `dsh-plugin-skills-manager` → <https://github.com/royenheart/dsh-plugin-skills-manager>）。本仓库只保留编排入口 `deploys/ds-harness/`：`deploy.py` 读取 `plugins.yaml` 插件列表，逐个调用各插件目录自带的 `install.py install|uninstall`。
 
-### 目录规范
+- 新增插件：在 `deploys/ds-harness/plugins.yaml` 加一个 `{name, path, git?}` 条目；插件目录自带 `install.py`，负责 build、`dsh plugin add link:<dir>`，并幂等维护 profile 目录下的共享 `maintainall.yml` 与 `cordis.patch.yml` 里的 `cordis:include`。多个插件可独立安装/卸载，不再依赖 stow。
+- 安装/卸载：`python3 deploys/ds-harness/deploy.py install|uninstall [--only <name>] [--profile <name>] [--dry-run]`。
+- `dsh-plugin-skills-manager` 目前需要先给 deepseek-harness 应用其 `patches/` 目录下的两个补丁并重新构建（对应 upstream discussions [#1413](https://github.com/deepseek-ai/deepseek-harness/discussions/1413) 与 [#1427](https://github.com/deepseek-ai/deepseek-harness/discussions/1427)）；讨论落地上游后收缩补丁，最终纯插件侧安装。
 
-每个 dsh 插件放在 `apps/<name>/`，结构如下（以 `apps/dsh-plugin-skills-manager/` 为例）：
+### 插件目录规范
+
+每个 dsh 插件放在 `~/projects/dsh-plugins/<name>/`，结构如下（以 `dsh-plugin-skills-manager/` 为例）：
 
 ```
-apps/<name>/
-├── package.json            # dsh 插件清单: main/./client + dsh.client.inject + peerDeps
+<plugin>/
+├── install.py             # 自动安装/卸载（build + link + profile 清单 + cordis include）
+├── patches/               # 该插件要求先打到 deepseek-harness 的补丁（可选, 无则不放）
+├── package.json           # dsh 插件清单: main/./client + dsh.client.inject + peerDeps
 ├── tsconfig.json
 ├── README.md
 ├── src/
-│   ├── index.ts            # host 入口: 默认导出 Cordis Service/apply
-│   ├── client.ts           # client 入口: 导出 apply (package.json exports[./client])
-│   ├── core/               # 纯逻辑, 不 import 任何 dsh 包 (可独立单测)
-│   └── locales/            # zh.ts / en.ts / keys.ts / index.ts (i18n 字典)
-└── tests/                  # node --test 单测 (*.test.ts)
+│   ├── index.ts           # host 入口: 默认导出 Cordis Service/apply
+│   ├── client.ts          # client 入口: 导出 apply (package.json exports[./client])
+│   ├── core/              # 纯逻辑, 不 import 任何 dsh 包 (可独立单测)
+│   └── locales/           # zh.ts / en.ts / keys.ts / index.ts (i18n 字典)
+└── tests/                 # node --test 单测 (*.test.ts)
 ```
 
 - **host 入口** (`src/index.ts`)：默认导出一个 Cordis `Service`（或 `apply(ctx)` 函数），通过 `super(ctx, '服务名')` 提供 `ctx.<服务名>`；依赖用 `static inject = [...]` 声明，初始化写进 `async *[Service.init]()`。
 - **client 入口** (`src/client.ts`)：`package.json` 的 `exports["./client"]` 指向它，`dsh.client.inject` 声明 client 依赖；UI 用 `React.createElement`（不用 JSX），挂载点用 `ctx.slots.register`。
 - **core/**：作用域解析、技能识别、schema 校验等纯逻辑必须无 dsh 依赖，用 `node --test` 直接单测（Node 24 原生 TS type-stripping，`import './x.ts'` 带 `.ts` 后缀）。
+- **install.py**：接受 `install|uninstall` 与 `--profile`、`--skip-build`、`--dry-run`；入口用 `dsh plugin --profile <name> add link:<plugin_dir>`，manifest/cordis 条目按行幂等编辑（可参考 `dsh-plugin-skills-manager/install.py`）。
 
 ### i18n
 
@@ -196,34 +203,14 @@ apps/<name>/
 
 `.claude/skills`、`.codex/skills`、`.cursor/rules` 等其它 agent 目录以及 `bundled`/`runtime`/`custom` 来源一律不识别。
 
-### stow-configs 联动要求（必做）
-
-新增 / 移除 / 改动一个 dsh 插件时，**必须同步更新** `stow-configs/dsh/maintainall.yml`（插件清单，顶层 loader entry 数组），否则安装结果不会包含该插件。
-
-- `stow-configs/dsh/` **只放 `maintainall.yml`**：stow 把它软链到 **profile 目录**
-  （`stow dsh -t "$DSH_HOME/profiles/<name>"` → `$DSH_HOME/profiles/<name>/maintainall.yml`）；
-  不要把 cordis 配置或安装脚本放进该目录（stow 会一并链接、且覆盖 cordis 配置会导致
-  stow 应用失败）。`maintainall.yml` 必须和 `cordis.yml` 同目录（profile 目录），这样
-  里面的裸包名才会从 profile 的 node_modules 解析。
-- cordis 配置（`$DSH_HOME/cordis.patch.yml`，home 级、对每个 profile 生效）**由用户手动修改**，加一条 `cordis:include` 引用即可；之后新增/移除插件只改 `maintainall.yml`，cordis 配置装一次不用再动：
-
-```yaml
-- insert:
-    - id: maintainall
-      name: cordis:include
-      config:
-        path: ./maintainall.yml
-```
-
-- 完整安装 / 卸载步骤、嵌套配置原理与示例见 `stow-configs/README.md`；写插件时若涉及 cordis 配置，直接沿用上面这条 `cordis:include`，不要在 `maintainall.yml` 之外再引入新的 cordis 文件。
-
 ### 测试
 
 ```bash
-cd apps/<name>
-npm test            # node --test tests/*.test.ts (纯逻辑, 无需 dsh 运行时)
+cd ~/projects/dsh-plugins/<name>
+npm test                              # node --test tests/*.test.ts (纯逻辑, 无需 dsh 运行时)
 node --check src/index.ts src/client.ts   # host/client 语法自检
-npm run build       # tsdown 打包 (需 dsh 仓库构建环境)
+npm run build                         # tsdown 打包
+python3 install.py install --dry-run  # 预览安装动作
 ```
 
 ---

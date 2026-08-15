@@ -169,101 +169,15 @@ PY
     echo "done"
 }
 
-# === dsh 插件集 (apps/) 安装/卸载 ===
-# dsh 插件放在 $MAINTAINALL_REPO/apps/ 下, 用 pnpm 的 link: 协议装进 profile 的
-# node_modules, maintainall.yml 里按裸包名引用 (dsh 的正常加载方式)。
-# 用法: install_dsh_plugins / uninstall_dsh_plugins
-# 环境变量: MAINTAINALL_REPO (可选, 覆盖自动检测),
-#           DSH_PROFILE (默认 web), DSH_HOME (默认 ~/.dsh)
-
+# === dsh 通用 ===
+# dsh 插件现在放在 ~/projects/dsh-plugins/ 下独立维护, 统一用
+# MaintainAll/deploys/ds-harness/deploy.py 按插件列表安装/卸载; 每个插件目录
+# 自带 install.py, 不再通过 stow-configs/dsh 或这里的函数安装。
 # 预览/正式版兼容
 if ! command -v dsh >/dev/null 2>&1; then
     # 如果不存在，则将其 alias 为 npx dsh
     alias dsh='npx @deepseek-ai/dsh'
-fi 
-
-# 用 python3 幂等地增删 cordis.patch.yml 里的 maintainall include 条目。
-# 按行编辑(不经过 YAML 往返), 能保留 !!js 标签与注释。python3 不可用时返回非零。
-function _manage_cordis_patch() {
-    local action="$1"   # add | remove
-    local file="$2"
-
-    if ! command -v python3 >/dev/null 2>&1; then
-        echo "错误: 未找到 python3" >&2
-        return 1
-    fi
-
-    python3 "$_MAINTAINALL_REPO_ROOT/scripts/dsh_manage_cordis.py" "$action" "$file"
-}
-
-function install_dsh_plugins() {
-    local repo="${MAINTAINALL_REPO:-$_MAINTAINALL_REPO_ROOT}"
-    local profile="${DSH_PROFILE:-web}"
-    local dsh_home="${DSH_HOME:-$HOME/.dsh}"
-    local p
-
-    if [[ ! -d "$repo/apps" ]]; then
-        echo "错误: 找不到 $repo/apps" >&2
-        echo "      请先 clone MaintainAll, 或用 MAINTAINALL_REPO 指定仓库路径" >&2
-        return 1
-    fi
-
-    # 1. 构建每个 dsh 插件 (tsdown → lib/)
-    for p in "$repo"/apps/dsh-plugin-*; do
-        [[ -d "$p" && -f "$p/package.json" ]] || continue
-        echo "==> build $(basename "$p")"
-        (cd "$p" && npm install && npm run build) || return 1
-    done
-
-    # 2. 把每个插件 link 进 profile 的 node_modules
-    for p in "$repo"/apps/dsh-plugin-*; do
-        [[ -d "$p" && -f "$p/package.json" ]] || continue
-        echo "==> link $(basename "$p")"
-        dsh plugin --profile "$profile" add "link:$p" || return 1
-    done
-
-    # 3. stow 插件清单到 profile 目录 (maintainall.yml 必须和 cordis.yml 同目录,
-    #    裸包名才能从 profile 的 node_modules 解析)
-    (cd "$repo/stow-configs" && stow dsh -t "$dsh_home/profiles/$profile") || return 1
-
-    # 4. 用 python 自动把 cordis:include 写进 profile 的 cordis.patch.yml
-    local patch_file="$dsh_home/profiles/$profile/cordis.patch.yml"
-    if ! _manage_cordis_patch add "$patch_file"; then
-        echo "==> python3 不可用, 请手动在 $patch_file 里加下面这条:" >&2
-        echo "    - insert:" >&2
-        echo "        - id: maintainall" >&2
-        echo "          name: cordis:include" >&2
-        echo "          config:" >&2
-        echo "            path: ./maintainall.yml" >&2
-    fi
-
-    echo
-    echo "==> done。dsh $profile 重启即可。"
-}
-
-function uninstall_dsh_plugins() {
-    local repo="${MAINTAINALL_REPO:-$_MAINTAINALL_REPO_ROOT}"
-    local profile="${DSH_PROFILE:-web}"
-    local dsh_home="${DSH_HOME:-$HOME/.dsh}"
-    local p name
-
-    for p in "$repo"/apps/dsh-plugin-*; do
-        [[ -d "$p" && -f "$p/package.json" ]] || continue
-        name="$(node -p "require('$p/package.json').name" 2>/dev/null)"
-        [[ -n "$name" ]] || continue
-        echo "==> remove $name"
-        dsh plugin --profile "$profile" remove "$name" 2>/dev/null || true
-    done
-
-    (cd "$repo/stow-configs" && stow -D dsh -t "$dsh_home/profiles/$profile" 2>/dev/null || true)
-
-    # 用 python 自动删掉 profile 的 cordis.patch.yml 里的 cordis:include 条目
-    local patch_file="$dsh_home/profiles/$profile/cordis.patch.yml"
-    if ! _manage_cordis_patch remove "$patch_file"; then
-        echo "==> python3 不可用, 请手动从 $patch_file 删掉 id: maintainall 那条。" >&2
-    fi
-    echo "==> done。"
-}
+fi
 
 # =========== SET WSL VPN ===========
 # Plz use wsl networking mode 'mirrored' if possible, this has greater support for VPN.
