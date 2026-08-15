@@ -1,15 +1,20 @@
 # dsh 插件部署清单。
 #
-# 后续新增插件: 复制一个条目, 改 name/path/git 即可。deploy.py 会逐个调用每个
-# 插件目录里的 install.py install/uninstall; 插件目录本身按
-# dsh-plugin-skills-manager 的 install.py 约定维护 profile 里的共享
-# maintainall.yml 与 cordis:include 条目。
+# 每个插件必须是 dsh profile bundle（package.json 声明 dsh.bundle.patch），
+# 这样 `dsh plugin add <git-url>` 会自动把它 reconcile 进
+# dsh.profile.bundles；不再维护 maintainall.yml / cordis:include。
 #
-# `path` 目录不存在时, deploy.py 会尝试用 `git` 克隆; 仓库尚未推送时保持下面的
-# 占位 URL 不变, 手动 clone/放置目录后再跑 deploy。`git` 只用于 clone 到 path,
-# 不会把 URL 传给 `dsh plugin add`（后者始终收 `link:<本地目录>`）。
+# deploy.py install 的流程:
+#   1. 先 `dsh plugin add <git>` 直装 git-hosted 包（依赖包内 prepare 构建 lib）；
+#   2. 失败则 clone 到 fallback_dir（默认 /tmp/dsh-plugins/<name>），
+#      构建后 `dsh plugin add file:<dir>` 复制进 profile（装完可删掉 checkout）。
+#
+# `package` 用于卸载时的 `dsh plugin remove <package>`。
 plugins:
   - name: dsh-plugin-skills-manager
-    path: ~/projects/dsh-plugins/dsh-plugin-skills-manager
-    # 占位: 尚未推送。推送后 deploy 即可在新机器上自动 clone。
+    package: '@maintainall/dsh-plugin-skills-manager'
+    # 占位: 尚未推送。推送后第 1 步 git 直装即可成功; 推送前本机用下面的
+    # fallback_dir 指向本地 checkout。
     git: https://github.com/royenheart/dsh-plugin-skills-manager.git
+    # 覆盖默认 /tmp/dsh-plugins/dsh-plugin-skills-manager, 指向本地开发目录。
+    fallback_dir: ~/projects/dsh-plugins/dsh-plugin-skills-manager

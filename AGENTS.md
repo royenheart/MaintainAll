@@ -154,7 +154,7 @@ python scripts/modulefiles/manage_modules.py delete cuda 12.2
 
 dsh 插件不再放在本仓库 `apps/` 下，而是独立维护在 `~/projects/dsh-plugins/`（每个插件一个目录，计划分别开源，如 `dsh-plugin-skills-manager` → <https://github.com/royenheart/dsh-plugin-skills-manager>）。本仓库只保留编排入口 `deploys/ds-harness/`：`deploy.py` 读取 `plugins.yaml` 插件列表，逐个调用各插件目录自带的 `install.py install|uninstall`。
 
-- 新增插件：在 `deploys/ds-harness/plugins.yaml` 加一个 `{name, path, git?}` 条目；插件目录自带 `install.py`，负责 build、`dsh plugin add link:<dir>`，并幂等维护 profile 目录下的共享 `maintainall.yml` 与 `cordis.patch.yml` 里的 `cordis:include`。多个插件可独立安装/卸载，不再依赖 stow。
+- 新增插件：在 `deploys/ds-harness/plugins.yaml` 加一个 `{name, package, git, fallback_dir?}` 条目；插件必须声明 `dsh.bundle.patch` 并自带 `install.py`。deploy 先 `dsh plugin add <git-url>` 直装，失败再 clone 到 `fallback_dir`（默认 `/tmp/dsh-plugins/<name>`）构建后 `dsh plugin add file:<dir>` 复制安装。不再维护 `maintainall.yml` / `cordis:include`。
 - 安装/卸载：`python3 deploys/ds-harness/deploy.py install|uninstall [--only <name>] [--profile <name>] [--dry-run]`。
 - `dsh-plugin-skills-manager` 目前需要先给 deepseek-harness 应用其 `patches/` 目录下的两个补丁并重新构建（对应 upstream discussions [#1413](https://github.com/deepseek-ai/deepseek-harness/discussions/1413) 与 [#1427](https://github.com/deepseek-ai/deepseek-harness/discussions/1427)）；讨论落地上游后收缩补丁，最终纯插件侧安装。
 
@@ -164,9 +164,10 @@ dsh 插件不再放在本仓库 `apps/` 下，而是独立维护在 `~/projects/
 
 ```
 <plugin>/
-├── install.py             # 自动安装/卸载（build + link + profile 清单 + cordis include）
+├── install.py             # 自动安装/卸载（默认 dsh add <repo-url>，本地回退用 file:）
+├── cordis.patch.yml       # dsh.bundle.patch 指向它，插入插件自身 host 行
 ├── patches/               # 该插件要求先打到 deepseek-harness 的补丁（可选, 无则不放）
-├── package.json           # dsh 插件清单: main/./client + dsh.client.inject + peerDeps
+├── package.json           # dsh 插件清单: main/./client + dsh.bundle + dsh.client.inject + peerDeps
 ├── tsconfig.json
 ├── README.md
 ├── src/
@@ -180,7 +181,7 @@ dsh 插件不再放在本仓库 `apps/` 下，而是独立维护在 `~/projects/
 - **host 入口** (`src/index.ts`)：默认导出一个 Cordis `Service`（或 `apply(ctx)` 函数），通过 `super(ctx, '服务名')` 提供 `ctx.<服务名>`；依赖用 `static inject = [...]` 声明，初始化写进 `async *[Service.init]()`。
 - **client 入口** (`src/client.ts`)：`package.json` 的 `exports["./client"]` 指向它，`dsh.client.inject` 声明 client 依赖；UI 用 `React.createElement`（不用 JSX），挂载点用 `ctx.slots.register`。
 - **core/**：作用域解析、技能识别、schema 校验等纯逻辑必须无 dsh 依赖，用 `node --test` 直接单测（Node 24 原生 TS type-stripping，`import './x.ts'` 带 `.ts` 后缀）。
-- **install.py**：接受 `install|uninstall` 与 `--profile`、`--skip-build`、`--dry-run`；入口用 `dsh plugin --profile <name> add link:<plugin_dir>`，manifest/cordis 条目按行幂等编辑（可参考 `dsh-plugin-skills-manager/install.py`）。
+- **install.py**：接受 `install|uninstall` 与 `--spec`/`--local-dir`、`--profile`、`--skip-build`、`--dry-run`；默认 `dsh plugin add <package.json repository URL>`，本地回退先构建再 `dsh plugin add file:<dir>`，不维护任何 manifest/cordis 文件（可参考 `dsh-plugin-skills-manager/install.py`）。
 
 ### i18n
 

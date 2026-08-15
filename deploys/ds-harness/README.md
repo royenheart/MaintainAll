@@ -1,23 +1,51 @@
 # ds-harness 插件部署
 
-MaintainAll 的 dsh 插件集现在独立放在 `~/projects/dsh-plugins/` 下，由本目录的
-`deploy.py` 统一安装/卸载。旧的 `stow-configs/dsh/maintainall.yml` 与
-`.bash_my_profile` 里的 `install_dsh_plugins` / `uninstall_dsh_plugins` 已移除。
+MaintainAll 的 dsh 插件集独立放在 `~/projects/dsh-plugins/` 下，由本目录的
+`deploy.py` 统一安装/卸载。插件现在是 **dsh profile bundle**（package.json
+声明 `dsh.bundle.patch`），因此：
+
+- `dsh plugin add <git-url>` 成功后，dsh 会把插件自动 reconcile 进
+  `dsh.profile.bundles`，由插件自带的 `cordis.patch.yml` 插入自身 host 行；
+- **不再使用 / 维护** `~/.dsh/profiles/<name>/maintainall.yml`、
+  `~/.dsh/maintainall.yml` 和 `cordis:include` 条目。
 
 ## 用法
 
 ```bash
 python3 deploy.py install                 # 按 plugins.yaml 安装全部插件
 python3 deploy.py uninstall               # 按 plugins.yaml 卸载全部插件
-python3 deploy.py list                    # 只列出清单与目录是否存在
+python3 deploy.py list                    # 列出 git URL 与 fallback 目录状态
 
 python3 deploy.py install --only dsh-plugin-skills-manager
 python3 deploy.py install --profile web --skip-build
-python3 deploy.py install --dry-run       # 只打印每个插件会执行的命令/写入
+python3 deploy.py install --dry-run       # 只打印将要执行的命令
 ```
 
-环境变量：`DSH_PROFILE`（默认 `web`）；profile / `DSH_HOME` 的解析规则与各插件
-`install.py` 一致。
+环境变量：`DSH_PROFILE`（默认 `web`）。
+
+## 安装流程
+
+每个插件条目（`plugins.yaml`）提供 `git` URL 与可选的 `fallback_dir`：
+
+1. **先直装 git**：`dsh plugin --profile <name> add <git-url>`。插件仓库带
+   `prepare` 脚本，pnpm 安装时构建 `lib/`；第一次遇到 pnpm 的
+   `allowBuilds` 提示时，把 dsh 命令行给出的 key 加进 profile 的
+   `pnpm-workspace.yaml` 后重跑。
+2. **失败再落到本地 checkout**：clone 到 `fallback_dir`（默认
+   `/tmp/dsh-plugins/<name>`），在该目录里跑插件自带的
+   `install.py install --local-dir <dir>`：先 `npm install && npm run build`，
+   再 `dsh plugin add file:<dir>`。`file:` 是**复制**进 profile
+   node_modules，不是 `link:` 软链，所以 checkout 放在 /tmp、装完删掉都
+   不影响 dsh 运行——插件源码不是运行期依赖。
+
+单个插件也可手动安装/卸载：
+
+```bash
+cd ~/projects/dsh-plugins/dsh-plugin-skills-manager
+python3 install.py install                 # 默认 add package.json 的 repository URL
+python3 install.py install --local-dir .   # 本地构建后 file: 安装
+python3 install.py uninstall
+```
 
 ## 插件列表
 
@@ -26,18 +54,16 @@ python3 deploy.py install --dry-run       # 只打印每个插件会执行的命
 ```yaml
 plugins:
   - name: dsh-plugin-skills-manager            # 目录名/标识, --only 用它匹配
-    path: ~/projects/dsh-plugins/dsh-plugin-skills-manager
-    git: https://github.com/royenheart/dsh-plugin-skills-manager.git  # 可选
+    package: '@maintainall/dsh-plugin-skills-manager'  # 卸载时 dsh plugin remove 用
+    git: https://github.com/royenheart/dsh-plugin-skills-manager.git
+    fallback_dir: ~/projects/dsh-plugins/dsh-plugin-skills-manager  # 可选; 默认 /tmp/dsh-plugins/<name>
 ```
 
-- `path` 不存在且配置了 `git` 时，deploy.py 会先 `git clone`。
-- `dsh plugin add` 收到的**始终是本地 `link:<dir>` 路径**，不会是 GitHub URL；
-  `git` 字段只用于把缺失的插件仓库 clone 到 `path`，随后仍走本地 link 安装。
-- 每个插件目录必须自带 `install.py`，接受 `install` / `uninstall` 以及
-  `--profile`、`--skip-build`、`--dry-run` 参数（deploy.py 只负责转发）。
-- `install.py` 负责构建、`dsh plugin add link:<dir>`、维护 profile 目录下的共享
-  `maintainall.yml` 条目与 `cordis.patch.yml` 里的 `cordis:include`；因此多个插件
-  可以各自独立安装/卸载而不互相覆盖清单。
+- `git` 尚未推送时，第 1 步会失败；第 2 步 clone 也会失败。此时把
+  `fallback_dir` 指向本地 checkout（如上），deploy 会跳过 clone 直接构建
+  安装。推送后删除 `fallback_dir` 行即可回到纯 git 直装。
+- 新插件按同一 bundle 约定提供 `cordis.patch.yml` + `dsh.bundle.patch` +
+  `install.py`（参考 `dsh-plugin-skills-manager`）。
 
 ## 注意
 

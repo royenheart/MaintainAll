@@ -23,7 +23,8 @@ stow bash -t $HOME
 
 dsh 插件已从 `apps/` 移出，独立放在 `~/projects/dsh-plugins/` 下维护。安装/卸载
 统一走 `MaintainAll/deploys/ds-harness/deploy.py`（读 `plugins.yaml` 插件列表，
-逐个调用各插件目录里的 `install.py`），不再使用 `stow-configs/dsh`、也不再依赖
+先 `dsh plugin add <git-url>` 直装，失败再 clone 到本地 `file:` 安装），不再使用
+`stow-configs/dsh`、`maintainall.yml`、`cordis:include`，也不再依赖
 `install_dsh_plugins` / `uninstall_dsh_plugins` 两个 bash 函数。
 
 单个插件可独立安装/卸载：
