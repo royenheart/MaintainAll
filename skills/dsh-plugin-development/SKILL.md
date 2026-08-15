@@ -1,6 +1,6 @@
 ---
 name: dsh-plugin-development
-description: "When to use — build, extend, or debug a DeepSeek Harness (dsh) plugin: the host/client entry split, cordis services, client slots/settings/locale, the apiproxy RPC, profiles and presets, packaging, loading, the develop→load→reload loop, or proposing a change to dsh itself."
+description: When to use — build, extend, or debug a DeepSeek Harness (dsh) plugin — the host/client entry split, cordis services, client slots/settings/locale, the apiproxy RPC, profiles and presets, packaging, loading, the develop→load→reload loop, or proposing a change to dsh itself.
 ---
 
 # DSH plugin development
@@ -9,7 +9,7 @@ General reference for writing dsh plugins. It records durable conventions and go
 
 ## Locating the harness
 
-1. If the user or the current session has named a local `deepseek-harness` checkout, read that.
+1. If the user or the current session has named a local `deepseek-harness` checkout, first check that its `master` branch is aligned with upstream; if not, fetch and pull the latest `master` before relying on that checkout. Then read it.
 2. Otherwise, analyze the **published package** — the `@deepseek-ai/dsh-*` packages under `node_modules` (what `npx @deepseek-ai/dsh …` runs) — rather than assuming a local source tree exists.
 
 ## Profile
