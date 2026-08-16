@@ -1,6 +1,6 @@
 ---
 name: dsh-plugin-development
-description: When to use — build, extend, or debug a DeepSeek Harness (dsh) plugin — the host/client entry split, cordis services, client slots/settings/locale, the apiproxy RPC, profiles and presets, packaging, loading, the develop→load→reload loop, or proposing a change to dsh itself.
+description: When to use — build, extend, or debug a DeepSeek Harness (dsh) plugin — plugin naming/scope rules, the host/client entry split, cordis services, client slots/settings/locale, the apiproxy RPC, profiles and presets, self-contained bundle packaging/loading, the develop→load→reload loop, or proposing a change to dsh itself.
 ---
 
 # DSH plugin development
@@ -14,13 +14,13 @@ General reference for writing dsh plugins. It records durable conventions and go
 
 ## Profile
 
-dsh's user config lives under `$DSH_HOME` (default `~/.dsh`). A **profile** is a named configuration, each under `profiles/<name>/`, holding:
+dsh's user config lives under `$DSH_HOME` (default `~/.dsh`). A **profile** is a named composition under `profiles/<name>/`, holding:
 
-- `cordis.yml` — the profile's base plugin composition.
-- `cordis.patch.yml` — a patch layer applied over it (id-targeted overrides, disables, and `insert` lists).
-- `node_modules/` — plugins installed for this profile.
+- `package.json` — out-of-tree plugin `dependencies` plus the `dsh.profile` manifest with its ordered `bundles` list. `dsh plugin` maintains it; never write it by hand.
+- `cordis.patch.yml` — the user's own patch layer (id-targeted whole-`config` overrides, disables, and `insert` lists). It is an override layer, not the mechanism a plugin loads through.
+- `node_modules/` — plugins pnpm installed for this profile.
 
-`$DSH_HOME/cordis.patch.yml` is a **home-level** patch applied over every profile. Pick a profile with `--profile <name>` (the GUI `web` profile is the common one). A profile is unrelated to a workspace/cwd.
+Layers apply over an empty entry list in order: each bundle patch in `dsh.profile.bundles` order, then the profile's `cordis.patch.yml`, then the home-level `$DSH_HOME/cordis.patch.yml`, then each `--patch` overlay. Pick a profile with `--profile <name>` (the GUI `web` profile is the common one). A profile is unrelated to a workspace/cwd.
 
 ## Preset
 
@@ -34,18 +34,32 @@ A **preset** is an agent-plane composition — the tools, prompt sections, and s
 
 ## Package shape
 
-- One plugin = one npm package. `package.json` carries `main`/`exports` (`.`, `./client`), a `dsh` block (host/client `inject`, `platform`), and `peerDependencies` against `@deepseek-ai/*`.
+- One plugin = one npm package, named under a user scope: when no scope is explicitly specified, default to the current user's git config `user.name` — `@<git-user.name>/dsh-plugin-<name>`. **Never use the `@deepseek-ai/*` scope for a third-party plugin** — it is reserved for the harness's own packages. Depending on `@deepseek-ai/*` via `peerDependencies` is expected; the reserved-scope rule is about the plugin's own package name.
+- `package.json` carries `main`/`exports` (`.`, `./client`), a `dsh` block — `dsh.bundle.patch` pointing at the package's own `cordis.patch.yml`, plus optional `dsh.client` (`platform`, `inject`, `immediately`) — a `files` list that ships every built entry and `cordis.patch.yml`, and `peerDependencies` against `@deepseek-ai/*`.
+- The package's `cordis.patch.yml` inserts its own host row by package name (never a relative source path), so Node resolution finds the installed code.
 - Layout: `src/index.ts` (host entry), `src/client.ts` (client entry), `src/core/` (pure logic with no dsh imports → unit-testable with `node --test`), `src/locales/` (i18n dictionaries), `tests/`.
 - Host entry: default-export a Cordis Service — `static inject = [...]`, `super(ctx, 'name')`, init in `async *[Service.init]()` — or a plain `apply(ctx)`.
 - Client entry: `exports["./client"]` → `src/client.ts`, exporting `inject` (service names) + `apply(ctx)`; render with `React.createElement` (no JSX).
+
+## Constraints
+
+- **Naming.** Third-party plugin packages are scoped: when no scope is explicitly specified, default to the current user's git config `user.name` — `@<git-user.name>/dsh-plugin-<name>`. `@deepseek-ai/*` is reserved for the harness and must never be a plugin's own scope.
+- **Self-contained loading.** A plugin must declare `dsh.bundle.patch` pointing at its own `cordis.patch.yml`, whose `insert` lists the package's host row by package name. `dsh plugin add <spec>` automatically appends any installed dependency that declares `dsh.bundle` to the profile's `dsh.profile.bundles` — never hand-edit the profile's `cordis.patch.yml`, `cordis.yml`, or a `cordis:include` manifest just to load a plugin. Profile/home patches remain user override layers.
+- **Bundle-less packages are libraries.** A package without `dsh.bundle` still installs but activates no layer (dsh warns); reserve that shape for libraries plugins import, not for plugins.
+- **Ship runnable artifacts.** `files` must include the built host/client entries and `cordis.patch.yml`. Git installs fetch sources, not build output: ship a self-contained `prepare` script that builds the published entries without dev-only assumptions, or distribute built artifacts (npm / tarball). A user allowlisting a git `prepare` is permitting install-time code, so they should pin a commit.
+- **Whole-row patches.** A later patch replaces a row's entire `config` by id — when overriding, restate every retained key. Users can override your rows in their profile patch without touching your package, so prefer configuration defaults they will keep.
+- **Client manifest matches the built bundle.** `dsh.client.platform` must be `'web'`; `exports["./client"]` must point at the built client bundle; `dsh.client.inject` edges are informational (preflight display / HMR diffing), not activation order — activation waits on service injection only.
+- **Pure core.** `src/core/` imports no dsh package, so `node --test` exercises the logic directly.
+- **No harness forks for one plugin.** When a need crosses the plugin surface, follow the general-purpose proposal path below instead of patching or forking dsh ad hoc.
 
 ## Develop → load → reload loop
 
 1. Edit host/client sources under `src/`.
 2. Build + typecheck + test: `npm run build` (emits the host ESM and the CJS client bundle), `npx tsc --noEmit`, `npm test`.
-3. Install into the active profile: `dsh plugin add link:<path>` (symlinks the package into the profile's `node_modules`).
-4. Enable it: reference the plugin by its **bare package name** in a manifest file placed in the profile dir (same dir as `cordis.yml`), then add a `cordis:include` entry in `cordis.patch.yml` (profile- or home-level) pointing at that manifest.
-5. Reload: restart dsh. (While `dev:web` runs from the same checkout, client bundles hot-reload without a page refresh.)
+3. Install and load: `dsh plugin --profile <name> add link:<path>` (symlinks the package into the profile's `node_modules`). Because the package declares `dsh.bundle`, dsh appends it to the profile's `dsh.profile.bundles` and its own `cordis.patch.yml` inserts the host row — the plugin is self-contained, with no manual profile patch or manifest edit. Remove it with `dsh plugin --profile <name> remove <package>` (dependency and layer together).
+4. Reload: restart dsh. (While `dev:web` runs from the same checkout, client bundles hot-reload without a page refresh.)
+
+`link:` is the dev-loop install; deployment uses `file:` (copies into the profile), so the source checkout is not a runtime dependency.
 
 The client bundle is CJS wrapped in `window.__ModuleLoader__.load({ id, factory })`; `react` and `@deepseek-ai/*` imports are external (resolved from the loader's module table), relative imports are bundled.
 
