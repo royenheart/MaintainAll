@@ -70,6 +70,24 @@ alias killvscode='pkill -u "$USER" -f vscode'
 alias skills='npx skills'
 alias gitlog1='git log --oneline'
 
+function ghlogin() {
+    token=$1
+    if [ -n "$token" ]; then
+        echo "$token" | gh auth login --with-token 
+    else
+        gh auth login --scopes read:org,read:repo_hook,read:discussion,read:project,read:packages
+    fi
+    echo "check gh login status"
+    gh auth status
+}
+
+# === List directory contents with sizes and sort them ===
+
+function duh1() {
+    folder=$1
+    du -h -d 1 $folder | sort -rh
+}
+
 # === my skill list ===
 
 function sync_skills() {
