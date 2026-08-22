@@ -28,19 +28,26 @@
 
 ## 快速开始
 
-克隆后运行引导脚本，按提示完成配置：
+首次部署：
 
 ```bash
 cd deploy/daed
-python3 scripts/setup.py
+
+# 1. （可选）如需固定网卡，编辑 config/global.conf.example 的 lan_interface 模板；
+#    daed-init.py 会自动检测物理网卡 + docker0 + UP 的 br-* 并生成 config/global.conf
+
+# 2. 启动 daed（只启动容器，不做任何同步）
+docker compose up -d daed
+
+# 3. 访问 Web UI http://localhost:2023 创建管理员账号，并添加订阅（导入节点）
+
+# 4. 初始化：把 config/*.conf 和 groups.txt 写入 wing.db（仅此一次）
+python3 daed-init.py
+docker restart daed
 ```
 
-脚本会引导你：
-1. 选择本机网卡（列出所有可用接口及其 IP）
-2. 逐条输入订阅链接和标签（支持多个，空行结束）
-3. 设置 Web 管理面板用户名和密码
-4. 自动安装 gost 和配置 systemd 服务
-5. 启动 daed 和透明代理
+之后所有配置（节点、分组、路由、DNS、网卡）都在 Web UI 里改，面板是唯一事实源。
+`daed-init.py` 只初始化空数据库；已初始化的库不会被它覆盖。
 
 ---
 
@@ -60,19 +67,21 @@ python3 scripts/setup.py
 ```bash
 cd deploy/daed
 
-# 配置订阅：复制示例文件并修改
-cp config/subscriptions.txt.example config/subscriptions.txt
-# 编辑 subscriptions.txt，填入你的订阅链接
-
-# 修改网卡名：编辑 config/global.conf
-# 将 <YOUR_LAN_INTERFACE> 替换为实际网卡名（ip link show 可查）
+# 如需固定网卡，编辑 config/global.conf.example 的 lan_interface 模板；
+# 否则 daed-init.py 会自动检测并生成 config/global.conf（本地文件，不入版本库）
 
 # 启动 daed
-docker compose up -d
+docker compose up -d daed
 
 # 访问 Web UI http://localhost:2023
-# 首次需要创建管理员账号，或已有 wing.db 则重置密码：
-python3 scripts/reset_password.py <新密码>
+# 创建管理员账号，并先添加订阅（导入节点）
+
+# 首次启动后初始化 wing.db（仅此一次，不会覆盖面板已有配置）
+python3 daed-init.py
+docker restart daed
+
+# 忘记密码可用：
+docker exec daed daed resetpass
 ```
 
 ### 3. 安装 gost
@@ -120,65 +129,26 @@ curl --proxy http://<YOUR_HOST_IP>:20171 https://httpbin.org/ip
 
 ## 配置管理
 
-### 导出配置（备份）
+**面板是唯一事实源。** `config/*.conf` 和 `groups.txt` 只是首次初始化模板，`daed-init.py` 只在空库时写入一次；之后所有修改都在 Web UI 完成，重启 / `docker compose` 不会再覆盖面板配置。
+
+### 初始化
 
 ```bash
-python3 scripts/export_config.py
-```
-
-导出文件保存到 `exported/` 目录：
-- `global.conf` — 全局配置
-- `dns.conf` — DNS 配置
-- `routing.conf` — 路由规则
-- `subscriptions.txt` — 订阅信息
-
-### 恢复配置
-
-```bash
-python3 scripts/restore_config.py
+# 空库时执行一次；已初始化会自动跳过
+python3 daed-init.py
 docker restart daed
 ```
 
-### 私有规则（分组 + URL，不入版本库）
+初始化会写入：
 
-私人分组和不想提交进 git 的地址，写进 `config/private.conf`（已在 `.gitignore` 中）。它是一个小 DSL：先定义组，再用简写规则把地址指到组：
+- `config/global.conf` → `configs` 表（全局配置）
+- `config/dns.conf` → `dns` 表（DNS 配置）
+- `config/routing.conf` → `routings` 表（路由规则）
+- `config/groups.txt` → `groups` 表（出站分组种子）
 
-```bash
-cp config/private.conf.example config/private.conf
-```
+### 出站分组
 
-```
-group work = fixed               # random|fixed|fixed(N)|min|min_avg10|min_moving_avg
-group home = min_moving_avg
-
-suffix:internal.example.com, corp.example.org -> work
-keyword:myhost -> home
-ip:203.0.113.10/32 -> work
-domain(suffix: extra.example.com) -> proxy   # 原生 dae 规则也可直接写
-```
-
-- 匹配器：`suffix` / `full` / `keyword` / `regex` / `ip` / `geosite` / `geoip`，多个值用逗号分隔
-- 目标可以是本文件定义的组、`groups.txt` 里的组，或内建 `direct` / `block` / `proxy` 等
-- 空组会自动从 `proxy` 塞 1 个节点，之后在 Web UI 改成员不会被覆盖
-
-生效（组种子 + 路由合并一次完成）：
-
-```bash
-docker compose up -d --build daed-config-sync && docker restart daed
-```
-
-机制：daed 启动前 `daed-config-sync` 展开 DSL —— 组 upsert 进 `wing.db`，规则注入 `routing.conf` 的 `# private-rules` 标记处（默认在 geo CN / fallback 之前，优先级更高）。私有地址只存在于本文件与 `wing.db`（均不入版本库）；`export_config.py` 导出的 `exported/` 也在 `.gitignore` 中。免重建镜像只补组：`python3 scripts/seed_groups.py && docker restart daed`。
-
-### 出站分组（自动种子）
-
-`docker compose up` 时，`daed-config-sync` 会：
-
-1. 同步 `global.conf` / `dns.conf` / `routing.conf` 进 `wing.db`
-2. 按 `config/groups.txt` **创建/更新空 Group**（不挂节点）
-
-你只需在 Web UI → Groups 里把 sticky 组换成目标节点（或保留默认克隆的 proxy 成员）。路由已绑定好，不必再手建组名。
-
-首次种子时若 sticky 组为空，会从 `proxy` **挑 1 个节点**塞进去（`fixed` 策略只允许单节点）。之后在面板改组成员不会被同步脚本覆盖。
+首次初始化时按 `config/groups.txt` 创建分组；若 sticky 组为空，会从 `proxy` 挑 1 个节点塞进去（`fixed` 策略只允许单节点）。之后在 Web UI → Groups 里增删组、改名、换节点，均不会被脚本覆盖。
 
 | Group | 策略 | 典型用途 |
 |---|---|---|
@@ -192,41 +162,45 @@ docker compose up -d --build daed-config-sync && docker restart daed
 | `discord` | `fixed(0)` | Discord |
 | `docker` | `fixed(0)` | Docker Hub / ghcr.io / quay.io / 容器镜像拉取（固定节点防断连） |
 
-手工补种（不重建 sync 镜像时）：
+### 私密规则迁移（export-private / import-private）
+
+不想进版本管理的规则和私有分组，以注释块的形式存在 `wing.db` 的 routing 文本里：
+
+```text
+# ── private-rules:start ──
+# private-group: <name> | <policy> | <param>
+# private-tag: <tag>
+<dae routing rules>
+# ── private-rules:end ──
+```
+
+迁移时：
 
 ```bash
-python3 scripts/seed_groups.py
+# 旧机导出
+python3 daed-init.py export-private --output private.txt
+
+# 新机初始化后导入
+python3 daed-init.py import-private --file private.txt
 docker restart daed
 ```
 
-编辑 `config/groups.txt` 可增删组；改完后 `docker compose up -d --build daed-config-sync` 或跑 `seed_groups.py`，再重启 daed。
+`import-private` 会按 `# private-group:` 创建缺失的私有分组，并把规则块合并进 routing。`--tag` 可按标签部分导出；`--force-groups` 可覆盖已有分组策略。
 
 ### 重置 Web UI 密码
 
 ```bash
-python3 scripts/reset_password.py <新密码>
+docker exec daed daed resetpass
 ```
 
 ### 节点健康 + 出口测速
 
+Web UI → Nodes 可触发节点延迟测试；经 gost 的出口测速可用：
+
 ```bash
-# 健康（GraphQL 列节点 + docker logs ALIVE）+ 经 gost 测 Cloudflare / GitHub
-python3 scripts/bench_nodes.py
-
-# 仅健康 / 仅吞吐
-python3 scripts/bench_nodes.py --health-only
-python3 scripts/bench_nodes.py --throughput-only
-
-# 账号可用环境变量，避免交互输入
-DAED_USER=admin DAED_PASS='***' python3 scripts/bench_nodes.py
+curl -x http://127.0.0.1:20171 -o /dev/null -sS -w '%{http_code} %{speed_download}\n' \
+  https://speed.cloudflare.com/__down?bytes=1048576
 ```
-
-默认经 `http://127.0.0.1:20171`（gost）拉：
-
-- Cloudflare：`speed.cloudflare.com` 1MiB
-- GitHub：`raw.githubusercontent.com/github/gitignore/.../Python.gitignore`
-
-不修改分组策略，测的是当前选中 dialer。
 
 ---
 
@@ -256,8 +230,8 @@ DAED_USER=admin DAED_PASS='***' python3 scripts/bench_nodes.py
 | `config/dns.conf.doh` | 复用宿主机 `127.0.0.1:5353` 的 DoH 模板 |
 | `config/dns.conf` | 生效配置（由模板复制，一般不改） |
 
-- 部署时选择：`python3 scripts/setup.py --dns-mode doh`（默认 `normal`）
-- 部署后切换：`python3 scripts/switch-dns-mode.py doh|normal`（自动重跑 config-sync 并重启 daed）
+- 初始化前：把 `config/dns.conf.doh` 复制为 `config/dns.conf`，并把 `config/global.conf` 的 `fallback_resolver` / `udp_check_dns` 改成 `127.0.0.1:5353`
+- 初始化后：直接在 Web UI → DNS 里改上游，并在 Web UI → Config 里改 `fallbackResolver` / `udpCheckDns`
 
 DoH 模式下 `global.conf` 的 `fallback_resolver` / `udp_check_dns` 也会一并指向 `127.0.0.1:5353`。前提：宿主机已部署并启动 `deploy/doh-dns`；daed 容器为 `network_mode: host`，可直接访问该端口。若 `dnscrypt-proxy` 不可用，可把 `dns.conf.doh` 的上游改为直连 DoH：`localdoh: 'https://223.5.5.5/dns-query'`（走 443，国内可达）。
 
@@ -281,28 +255,20 @@ DoH 模式下 `global.conf` 的 `fallback_resolver` / `udp_check_dns` 也会一�
 
 ```
 deploy/daed/
-├── docker-compose.yml              # daed Docker 容器（先跑 config-sync）
+├── docker-compose.yml              # 只启动 daed 容器
+├── daed-init.py                    # 一次性初始化脚本（空库才写）
 ├── README.md                       # 本文档
 ├── .gitignore
 ├── config/
-│   ├── global.conf                 # 全局配置
-│   ├── dns.conf                    # DNS 配置
-│   ├── routing.conf                # 路由规则（含 sticky outbound）
-│   ├── groups.txt                  # 出站分组种子（compose 自动同步）
+│   ├── global.conf.example         # 全局配置模板（进入版本管理）
+│   ├── global.conf                 # 由 daed-init.py 从模板生成（本地文件，不入版本库）
+│   ├── dns.conf                    # DNS 配置模板
+│   ├── routing.conf                # 路由规则模板（含 sticky outbound）
+│   ├── groups.txt                  # 出站分组种子
 │   ├── subscriptions.txt.example   # 订阅信息模板
 │   ├── subscriptions.txt           # 订阅信息（用户自填，不入版本库）
-│   ├── private.conf.example        # 私有规则 DSL 模板
-│   ├── private.conf                # 私有分组 + 规则（用户自填，不入版本库）
-│   └── wing.db                     # 运行时数据库
-├── gost/
-│   ├── gost.service                # gost 系统级 systemd 服务
-│   └── gost-user.service           # gost 用户级 systemd 服务
-└── scripts/
-    ├── setup.py                     # 引导式一键部署脚本
-    ├── export_config.py            # 配置导出
-    ├── restore_config.py           # 配置恢复
-    ├── reset_password.py           # 密码重置
-    ├── seed_groups.py              # 手工补种出站分组
-    ├── bench_nodes.py              # 节点健康 + 出口测速
-    └── daed-config-sync/           # compose 启动前同步 conf + groups
+│   └── wing.db                     # 运行时数据库（面板唯一事实源）
+└── gost/
+    ├── gost.service                # gost 系统级 systemd 服务
+    └── gost-user.service           # gost 用户级 systemd 服务
 ```

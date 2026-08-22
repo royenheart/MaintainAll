@@ -1,3 +1,7 @@
+# 通用全局配置模板（进入版本管理）。
+# daed-init.py 首次初始化时会用它生成 config/global.conf（本地文件，不入版本库）。
+# 生成规则：lan_interface 自动替换为检测到的物理网卡 + docker0 + 所有 UP 的 br-*；
+# 如需固定其它网卡，生成后直接编辑 config/global.conf。
 tproxy_port: "12345"
 tproxy_port_protect: "true"
 log_level: "info"
@@ -8,7 +12,7 @@ tcp_check_http_method: "HEAD"
 udp_check_dns: "dns.google:53,8.8.8.8"
 check_interval: "60s"
 check_tolerance: "500ms"
-lan_interface: "wlp3s0"
+lan_interface: "<YOUR_LAN_INTERFACE>"
 wan_interface: "auto"
 # domain++: re-route by sniffed SNI so domain() rules still apply to LAN clients
 # that resolve DNS themselves (their DNS does not traverse dae). Costs extra CPU.
