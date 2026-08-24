@@ -75,9 +75,14 @@ python3 deploy.py up --tls                # https://<LAN IP>:3080 -> 127.0.0.1:3
 python3 deploy.py up 8443:3080 --tls      # https://<LAN IP>:8443 -> 127.0.0.1:3080
 ```
 
-`--tls` 会给每个站点生成 `tls internal`，由 Caddy 自建本地 CA 签发证书：
+`--tls` 会给每个站点生成 `tls internal`，由 Caddy 自建本地 CA 签发证书；
+同时生成显式的 HTTP→HTTPS 跳转站点，监听标准 HTTP 端口 80：
 
 ```caddyfile
+{
+    auto_https disable_redirects
+}
+
 https://192.168.31.143:8443 {
     bind 192.168.31.143
     tls internal
@@ -86,7 +91,23 @@ https://192.168.31.143:8443 {
         header_up Origin http://127.0.0.1:3080
     }
 }
+
+http://192.168.31.143:80 {
+    bind 192.168.31.143
+    redir https://{host}:8443{uri} 308
+}
 ```
+
+这样浏览器访问 `http://<LAN IP>/`（80 端口）会自动 308 跳转到
+`https://<LAN IP>:<代理端口>/`。注意：Caddy 不能在**同一个端口**上同时监听
+HTTP 和 HTTPS，因此带端口的 `http://<LAN IP>:<代理端口>` 不会跳转（返回
+400），请直接使用 `https://` 或去掉端口走 80 跳转。
+
+如果同一个监听 IP 上暴露了多个代理端口（例如 `up 3081 3082 --tls`），
+80 端口的 HTTP 请求已经不再携带目标端口，无法区分要跳转到哪个代理端口；
+此时脚本把 80 端口跳转到**第一个映射**的代理端口，其余端口请直接用
+`https://<IP>:<端口>/` 访问。若 `up` 检测到 80 端口已被占用，会跳过
+HTTP→HTTPS 跳转站点（仅 HTTPS）并打印警告。
 
 - 第一次访问浏览器会提示证书不受信任（本地 CA 未加入信任库），点
   “高级/继续访问”即可；页面成为安全上下文后 `crypto.randomUUID` 就正常了。
