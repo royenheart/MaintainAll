@@ -1,73 +1,195 @@
-# ds-harness 插件部署
+# ds-harness 代理服务（Caddy Docker）
 
-MaintainAll 的 dsh 插件集独立放在 `~/projects/dsh-plugins/` 下，由本目录的
-`deploy.py` 统一安装/卸载。插件现在是 **dsh profile bundle**（package.json
-声明 `dsh.bundle.patch`），因此：
+本目录不再做插件管理。`deploy.py` 现在是一个简单的 dsh 反向代理部署脚本：
+用 Caddy（Docker 容器，host 网络）把宿主机上的 dsh web 实例（默认只监听
+`127.0.0.1`）暴露给非本机访问，代替手写 nginx 或 `ssh -L`。
 
-- `dsh plugin add <git-url>` 成功后，dsh 会把插件自动 reconcile 进
-  `dsh.profile.bundles`，由插件自带的 `cordis.patch.yml` 插入自身 host 行；
-- **不再使用 / 维护** `~/.dsh/profiles/<name>/maintainall.yml`、
-  `~/.dsh/maintainall.yml` 和 `cordis:include` 条目。
+## 为什么用 Caddy Docker
+
+- dsh web 的 CLI 只允许 `--host 127.0.0.1`（`--host 0.0.0.0` 会被拒绝），
+  默认端口 `3080`（`dsh web --port N` 可改）。
+- Caddy 的 `reverse_proxy` 自动处理 WebSocket 升级，dsh 的
+  `/api/events.host`、`/api/events.mux` 走 WebSocket，普通 `/api` 走
+  HTTP/SSE，Caddy 都能转发。
+- Docker 容器用 `--network host`，既能绑定任意代理端口，也能直接访问宿主
+  机的 `127.0.0.1:<dsh-port>`；不需要为每个端口写 `-p` 映射。
+- Caddyfile 由脚本生成，不需要本机安装/配置 nginx。
 
 ## 用法
 
 ```bash
-python3 deploy.py install                 # 按 plugins.yaml 安装全部插件
-python3 deploy.py uninstall               # 按 plugins.yaml 卸载全部插件
-python3 deploy.py list                    # 列出 git URL 与 fallback 目录状态
+cd deploy/ds-harness
 
-python3 deploy.py install --only dsh-plugin-skills-manager
-python3 deploy.py install --profile web --skip-build
-python3 deploy.py install --dry-run       # 只打印将要执行的命令
+python3 deploy.py up                 # 自动绑定本机 LAN IP:3080 -> 127.0.0.1:3080
+python3 deploy.py up 8080:3080       # 把 dsh 3080 暴露到代理端口 8080
+python3 deploy.py up 3080 3081       # 两个 dsh 实例，分别暴露在 3080 和 3081
+python3 deploy.py up 8080:3080 8081:3081  # 两个实例，代理端口与 dsh 端口不同
+python3 deploy.py up --auto          # 自动扫描本机 dsh web 服务并全部暴露
+python3 deploy.py up 3080 --auto     # 显式端口 + 扫描发现的端口
+
+python3 deploy.py reload 8080:3080   # 重新生成 Caddyfile 并热加载
+python3 deploy.py status             # 容器状态、最近日志、Caddyfile 站点
+python3 deploy.py down               # 停止并删除 dsh-proxy 容器
+python3 deploy.py scan               # 只扫描，不部署
 ```
 
-环境变量：`DSH_PROFILE`（默认 `web`）。
+端口写法：`PORT` 表示代理端口与 dsh 端口相同；`PROXY:DSH` 表示代理端口与
+dsh 端口不同。所以 `up 3080 8081:3081` 的意思是：
 
-## 安装流程
+- 第一个 dsh 实例在 `127.0.0.1:3080`，代理也监听 `3080`；
+- 第二个 dsh 实例在 `127.0.0.1:3081`，代理监听 `8081`（`8081:3081` 冒号前
+  是代理端口，冒号后是 dsh 端口）。
 
-每个插件条目（`plugins.yaml`）提供 `git` URL 与可选的 `fallback_dir`：
+如果两个实例的代理端口和 dsh 端口相同，直接写 `up 3080 3081` 即可。
+`--dry-run` 只打印将要执行的 docker 命令和生成的 Caddyfile。
 
-1. **先直装 git**：`dsh plugin --profile <name> add <git-url>`。插件仓库带
-   `prepare` 脚本，pnpm 安装时构建 `lib/`；第一次遇到 pnpm 的
-   `allowBuilds` 提示时，把 dsh 命令行给出的 key 加进 profile 的
-   `pnpm-workspace.yaml` 后重跑。
-2. **失败再落到本地 checkout**：clone 到 `fallback_dir`（默认
-   `/tmp/dsh-plugins/<name>`），在该目录里跑插件自带的
-   `install.py install --local-dir <dir>`：先 `npm install && npm run build`，
-   再 `dsh plugin add file:<dir>`。`file:` 是**复制**进 profile
-   node_modules，不是 `link:` 软链，所以 checkout 放在 /tmp、装完删掉都
-   不影响 dsh 运行——插件源码不是运行期依赖。
+### 监听地址与同端口冲突
 
-单个插件也可手动安装/卸载：
+Caddy 的站点地址（`http://:3080`）默认绑定通配地址 `0.0.0.0`，这会和
+`127.0.0.1:3080` 上已运行的 dsh 冲突。因此脚本默认 `--listen` 取本机
+**默认路由出口的第一个非回环 IPv4**（如 `192.168.31.143`），并给每个站点
+生成 `bind <该IP>`：这样 caddy 只绑 LAN IP，和 dsh 的回环监听可以共用同一
+端口，`up` 不加参数也能直接工作。
 
 ```bash
-cd ~/projects/dsh-plugins/dsh-plugin-skills-manager
-python3 install.py install                 # 默认 add package.json 的 repository URL
-python3 install.py install --local-dir .   # 本地构建后 file: 安装
-python3 install.py uninstall
+python3 deploy.py up --listen 127.0.0.1   # 只允许本机访问代理
+python3 deploy.py up --listen 0.0.0.0     # 所有网卡；若与 dsh 回环端口相同会报错
+python3 deploy.py up --listen 192.168.31.143 --listen 100.73.239.52  # 同时绑定多个 IP
 ```
 
-## 插件列表
+`--listen` 可以重复传入，绑定多个 IP：HTTP 模式下每个站点生成一个
+`bind IP1 IP2`；TLS 模式下为每个 IP 生成一个站点块，各自签发对应 IP 的证书，
+代理端口相同。默认（不传 `--listen`）仍取第一个非回环 IPv4。
 
-编辑 `plugins.yaml` 即可增删插件，每个条目：
+`--listen 0.0.0.0` 且代理端口与 dsh 回环端口相同时，脚本会在启动前检测并
+报错，提示你改用 `--listen <本机IP>` 或换代理端口（如 `up 8080:3080`）。
 
-```yaml
-plugins:
-  - name: dsh-plugin-skills-manager            # 目录名/标识, --only 用它匹配
-    package: '@maintainall/dsh-plugin-skills-manager'  # 卸载时 dsh plugin remove 用
-    git: https://github.com/royenheart/dsh-plugin-skills-manager.git
-    fallback_dir: ~/projects/dsh-plugins/dsh-plugin-skills-manager  # 可选; 默认 /tmp/dsh-plugins/<name>
+## HTTPS 与 crypto.randomUUID
+
+通过 `http://<LAN IP>:<端口>` 访问时，浏览器把页面视为**非安全上下文**，
+`crypto.randomUUID` 不可用，dsh 前端就会报
+`crypto.randomUUID is not a function`。解决方式是走 HTTPS：
+
+```bash
+python3 deploy.py up --tls                # https://<LAN IP>:3080 -> 127.0.0.1:3080
+python3 deploy.py up 8443:3080 --tls      # https://<LAN IP>:8443 -> 127.0.0.1:3080
 ```
 
-- `git` 尚未推送时，第 1 步会失败；第 2 步 clone 也会失败。此时把
-  `fallback_dir` 指向本地 checkout（如上），deploy 会跳过 clone 直接构建
-  安装。推送后删除 `fallback_dir` 行即可回到纯 git 直装。
-- 新插件按同一 bundle 约定提供 `cordis.patch.yml` + `dsh.bundle.patch` +
-  `install.py`（参考 `dsh-plugin-skills-manager`）。
+`--tls` 会给每个站点生成 `tls internal`，由 Caddy 自建本地 CA 签发证书：
 
-## 注意
+```caddyfile
+https://192.168.31.143:8443 {
+    bind 192.168.31.143
+    tls internal
+    reverse_proxy 127.0.0.1:3080 {
+        header_up Host 127.0.0.1:3080
+        header_up Origin http://127.0.0.1:3080
+    }
+}
+```
 
-`dsh-plugin-skills-manager` 需要先给 deepseek-harness 应用插件目录 `patches/` 下的
-两个补丁并重新构建，否则安装成功也无法正常工作（详见插件 README 与
-[#1413](https://github.com/deepseek-ai/deepseek-harness/discussions/1413)、
-[#1427](https://github.com/deepseek-ai/deepseek-harness/discussions/1427)）。
+- 第一次访问浏览器会提示证书不受信任（本地 CA 未加入信任库），点
+  “高级/继续访问”即可；页面成为安全上下文后 `crypto.randomUUID` 就正常了。
+- 想消除警告，把 Caddy 本地根证书加入系统/浏览器信任库。证书和 CA 持久化在
+  `deploy/ds-harness/data/`（容器内 `/data`），导出根证书：
+
+  ```bash
+  docker cp dsh-proxy:/data/caddy/pki/authorities/local/root.crt dsh-local-ca.crt
+  ```
+
+  然后把 `dsh-local-ca.crt` 安装到客户端机器的“受信任的根证书颁发机构”。
+- 或者使用你有域名时的 Caddy 自动 HTTPS（需要自己改 Caddyfile 用域名 +
+  Let's Encrypt）。
+- `--tls` 需要具体的 `--listen <IP>`（默认自动探测的 LAN IP 即可），
+  `--listen 0.0.0.0` 与 `tls internal` 不兼容，脚本会直接报错。
+
+常用参数：
+
+| 参数 | 默认 | 说明 |
+| --- | --- | --- |
+| `--auto` | 关 | 扫描 `127.0.0.1`/通配地址上监听的服务，命中 dsh web 标记（`__DSH_BOOT__`）则自动加入映射 |
+| `--listen HOST` | 第一个非回环 IPv4（无则 `0.0.0.0`） | 代理监听地址，可重复传多个；只允许本机用 `--listen 127.0.0.1` |
+| `--preserve-host` | 关 | 不重写 `Host`/`Origin` 头（见下） |
+| `--tls` | 关 | 代理端口走 HTTPS（Caddy 本地 CA，修复 `crypto.randomUUID`） |
+| `--container` | `dsh-proxy` | Caddy 容器名 |
+| `--image` | `caddy:2` | Caddy 镜像 |
+
+## Host/Origin 重写与 dsh 的信任栅栏
+
+dsh 的 `/api` 有浏览器信任栅栏（DNS-rebinding / 跨站防御）：
+
+- 非 loopback 的 `Host` 头默认一律 403；
+- `settings`、`credentials`、`host.openPath` 等特权方法**即使在 dsh 启动时
+  加了 `--trusted-host` 也仍然只允许 loopback**；
+- `Origin`（浏览器携带时）必须与 `Host` 完全同源。
+
+因此脚本默认给每个站点生成（`--listen` 为具体 IP 时多一行 `bind`）：
+
+```caddyfile
+http://:8080 {
+    bind 192.168.31.143
+    reverse_proxy 127.0.0.1:3080 {
+        header_up Host 127.0.0.1:3080
+        header_up Origin http://127.0.0.1:3080
+    }
+}
+```
+
+即让 Caddy 把外部请求“担保”成 loopback 请求，这样 dsh web 的全部功能
+（包括设置、凭据、打开文件等特权方法）都能通过代理使用。
+
+**dsh 侧不需要做任何改动**：只要 dsh web 照常用
+`dsh web --port <端口> --no-open` 跑在 `127.0.0.1` 上即可（这也是它的默认
+行为），不需要 `--trusted-host`，不需要改 profile，也不需要绑 `0.0.0.0`。
+
+**代价与边界**：重写后，dsh 看到的每个请求都是 loopback，代理本身成为信任
+边界。dsh 没有认证层，任何能访问代理端口的人都能控制 agent/宿主机。因此：
+
+- 只把代理绑定到可信网络：`--listen <内网IP>`，并用防火墙限制来源；
+- 或只暴露给本机（`--listen 127.0.0.1`）配合 `ssh -L` 使用；
+- 需要认证时在生成的 Caddyfile 里给站点加 `basic_auth`（见 Caddy 文档），
+  然后 `deploy.py reload` 前把它加进本目录的 Caddyfile 模板/生成逻辑。
+
+如果你更想保留 dsh 自己的信任栅栏，可用 `--preserve-host` 生成不重写头的
+Caddyfile；此时 dsh 必须以
+`dsh web --port N --trusted-host <外部host或IP>:<代理端口> --no-open` 启动，
+且特权方法仍然只对 loopback 放行（通过代理访问设置/凭据会 403）。
+
+## 自动扫描
+
+`--auto` / `scan` 通过 `ss -ltnH` 枚举本机 loopback/通配地址上的 TCP 监听
+端口，对每个端口做一次短超时的 `GET /` 探测，响应体包含 dsh web 的
+`__DSH_BOOT__` 标记即认定为 dsh 服务。探测会跳过响应头 `Server: Caddy` 的
+端口，避免把本代理自己扫进去。dsh web 默认端口 `3080`、`--port 0` 由系统
+分配端口等场景都能覆盖，因为扫描看的是实际监听端口而不是命令行参数。
+
+## 容器与文件
+
+- 脚本在 `deploy/ds-harness/Caddyfile` 生成 Caddyfile，并以目录只读挂载进
+  容器的 `/etc/caddy`；`data/` 目录挂载到容器 `/data`，用于持久化 TLS 证书
+  与本地 CA（已 gitignore）。
+- 容器以 `--restart unless-stopped`、`--network host` 运行。
+- `up` 会先删除同名旧容器再启动；`reload` 则保留容器，只执行
+  `caddy reload`。
+
+## dsh web 实例启动参考
+
+默认代理模式下，dsh 侧保持原样即可：
+
+```bash
+dsh web --port 3080 --no-open
+dsh web --port 3081 --no-open
+```
+
+多个 dsh web 实例建议各用独立的 `DSH_HOME`（例如
+`DSH_HOME=~/.dsh-3080 dsh web --port 3080 --no-open`），否则它们会共享同一
+份 sessions/settings/storages，管理上容易互相干扰；代理脚本本身不依赖
+`DSH_HOME`，只按端口转发。
+
+仅当你使用 `--preserve-host` 代理模式时，dsh 才需要额外参数：
+
+```bash
+dsh web --port 3080 --no-open --trusted-host 192.168.1.10:8080
+```
+
+且该模式下 `settings`/`credentials` 等特权方法仍只对 loopback 放行。

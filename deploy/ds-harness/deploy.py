@@ -1,197 +1,487 @@
 #!/usr/bin/env python3
-"""Deploy the MaintainAll dsh plugin set from `plugins.yaml`.
+"""Deploy a simple dsh reverse-proxy service with Caddy (Docker).
 
-Each entry declares the git URL `dsh plugin add` should receive. The happy
-path is a direct git-hosted install; if that fails the repository is cloned
-to `fallback_dir` (default `/tmp/dsh-plugins/<name>`) and installed with
-`dsh plugin add file:<dir>` — the local checkout is only an install input,
-not a runtime reference, so it can stay in /tmp and be removed later.
+This replaces the former plugin-management script: it does not install or
+remove dsh plugins. It takes one or more port mappings and turns them into a
+Caddyfile that forwards public proxy ports to loopback dsh web instances.
 
-No maintainall.yml or cordis:include entry is maintained: every plugin in the
-list is a dsh profile bundle (`dsh.bundle.patch`) and `dsh plugin add`
-reconciles it into `dsh.profile.bundles` automatically.
+Port mappings
+  PORT          proxy listens on PORT and forwards to 127.0.0.1:PORT
+  PROXY:DSH     proxy listens on PROXY and forwards to 127.0.0.1:DSH
+
+By default the generated Caddyfile rewrites Host and Origin to the loopback
+upstream authority. dsh's /api browser-trust fence rejects non-loopback Hosts,
+and privileged methods (settings, credentials, path openers) are loopback-only
+even with --trusted-host. Rewriting makes the full dsh web UI work through the
+proxy, which means the proxy itself becomes the trust boundary: dsh has no
+authentication layer, so bind the proxy to a trusted network only (see
+--listen and the README).
+
+The default listen host is the machine's first non-loopback IPv4 (the
+default-route source address). That lets `up` with no arguments share dsh's
+port: caddy binds only <LAN-IP>:3080, which does not conflict with dsh
+listening on 127.0.0.1:3080. A wildcard `--listen 0.0.0.0` cannot share the
+port with a loopback listener and is rejected when that conflict exists.
 
 Usage:
-  python3 deploy.py install    [--profile web] [--only NAME] [--skip-build] [--dry-run]
-  python3 deploy.py uninstall  [--profile web] [--only NAME] [--dry-run]
-  python3 deploy.py list
+  python3 deploy.py up [PORTS...] [--auto] [--listen HOST ...] [--dry-run]
+  python3 deploy.py down
+  python3 deploy.py status
+  python3 deploy.py scan
+  python3 deploy.py reload [PORTS...] [--auto] [--listen HOST ...] [--dry-run]
+
+Examples:
+  python3 deploy.py up                      # bind LAN-IP:3080 -> 127.0.0.1:3080
+  python3 deploy.py up 8080:3080            # bind LAN-IP:8080 -> 127.0.0.1:3080
+  python3 deploy.py up 3080 3081            # two dsh instances on their own ports
+  python3 deploy.py up 8080:3080 8081:3081  # two dsh instances, distinct proxy ports
+  python3 deploy.py up --tls                # HTTPS on LAN-IP:3080 (Caddy internal CA)
+  python3 deploy.py up 8443:3080 --tls      # HTTPS on LAN-IP:8443 -> 127.0.0.1:3080
+  python3 deploy.py up --auto               # auto-discover running dsh web services
+  python3 deploy.py up 3080 --auto          # explicit ports plus discovered ones
+  python3 deploy.py up --listen 192.168.1.10 --listen 10.0.0.5   # bind two IPs
 """
 
 from __future__ import annotations
 
 import argparse
-import os
+import concurrent.futures
+import re
 import shutil
 import subprocess
 import sys
+import urllib.error
+import urllib.request
 from pathlib import Path
-from typing import Any
 
-try:
-    import yaml
-except ImportError:  # pragma: no cover - depends on the operator's Python env
-    print('error: PyYAML is required (`pip install pyyaml`)', file=sys.stderr)
-    raise SystemExit(1)
+DEFAULT_DSH_PORT = 3080
+DEFAULT_CONTAINER = 'dsh-proxy'
+DEFAULT_IMAGE = 'caddy:2'
+WILDCARD_LISTEN_HOST = '0.0.0.0'
+DSH_MARKER = '__DSH_BOOT__'
+SCAN_TIMEOUT_SECONDS = 0.8
+SCAN_WORKERS = 8
 
-DEFAULT_PLUGINS_FILE = Path(__file__).resolve().parent / 'plugins.yaml'
-DEFAULT_FALLBACK_ROOT = Path('/tmp/dsh-plugins')
+WILDCARD_HOSTS = {'*', '0.0.0.0', '[::]'}
 
+CADDYFILE_PATH = Path(__file__).resolve().parent / 'Caddyfile'
 
-def load_plugins(path: Path) -> list[dict[str, Any]]:
-    data = yaml.safe_load(path.read_text(encoding='utf-8')) or {}
-    entries = data.get('plugins')
-    if not isinstance(entries, list):
-        raise SystemExit(f'{path}: missing top-level `plugins` list')
-    plugins: list[dict[str, Any]] = []
-    for index, entry in enumerate(entries):
-        if not isinstance(entry, dict) or not isinstance(entry.get('name'), str) or not entry['name']:
-            raise SystemExit(f'{path}: plugins[{index}] needs a non-empty `name`')
-        if not isinstance(entry.get('git'), str) or not entry['git']:
-            raise SystemExit(f'{path}: plugins[{index}] ({entry.get("name")}) needs a `git` URL')
-        plugins.append(entry)
-    return plugins
+PORT_SPEC_RE = re.compile(r'^(\d{1,5})(?::(\d{1,5}))?$')
 
 
-def entry_field(entry: dict[str, Any], key: str, default: Any) -> Any:
-    value = entry.get(key)
-    return default if value is None else value
+def parse_port_spec(spec: str) -> tuple[int, int]:
+    """Parse PORT or PROXY:DSH into (proxy_port, dsh_port)."""
+    match = PORT_SPEC_RE.match(spec.strip())
+    if match is None:
+        raise ValueError(f'invalid port spec {spec!r}: expected PORT or PROXY:DSH (e.g. 3080 or 8080:3080)')
+    if match.group(2) is not None:
+        proxy_port = int(match.group(1))
+        dsh_port = int(match.group(2))
+    else:
+        proxy_port = dsh_port = int(match.group(1))
+    for label, value in (('proxy port', proxy_port), ('dsh port', dsh_port)):
+        if not 1 <= value <= 65535:
+            raise ValueError(f'invalid {label} {value} in {spec!r}: must be 1-65535')
+    return proxy_port, dsh_port
 
 
-def fallback_dir(entry: dict[str, Any]) -> Path:
-    configured = entry_field(entry, 'fallback_dir', None)
-    if configured is not None:
-        return Path(os.path.expanduser(str(configured))).expanduser()
-    return DEFAULT_FALLBACK_ROOT / entry['name']
+def print_command(command: list[str]) -> None:
+    print(f'$ {" ".join(command)}')
 
 
-def dsh_command() -> list[str]:
-    if shutil.which('dsh') is not None:
-        return ['dsh']
-    if shutil.which('npx') is not None:
-        return ['npx', '@deepseek-ai/dsh']
-    raise SystemExit('neither `dsh` nor `npx` found on PATH')
-
-
-def print_command(command: list[str], cwd: Path | None = None) -> None:
-    prefix = f'(cd {cwd} &&) ' if cwd is not None else ''
-    print(f'$ {prefix}{" ".join(command)}')
-
-
-def run(command: list[str], *, dry_run: bool, cwd: Path | None = None) -> int:
-    print_command(command, cwd)
+def run(command: list[str], *, dry_run: bool) -> int:
+    print_command(command)
     if dry_run:
         return 0
-    completed = subprocess.run(command, cwd=cwd)
-    return completed.returncode
+    return subprocess.run(command).returncode
 
 
-def dsh_add(spec: str, args: argparse.Namespace) -> int:
-    return run([*dsh_command(), 'plugin', '--profile', args.profile, 'add', spec], dry_run=args.dry_run)
+def docker_available() -> bool:
+    return shutil.which('docker') is not None
 
 
-def dsh_remove(package: str, args: argparse.Namespace) -> int:
-    return run([*dsh_command(), 'plugin', '--profile', args.profile, 'remove', package], dry_run=args.dry_run)
+def container_state(name: str) -> str | None:
+    completed = subprocess.run(
+        ['docker', 'ps', '-a', '--filter', f'name=^{name}$', '--format', '{{.State}}'],
+        capture_output=True,
+        text=True,
+    )
+    lines = completed.stdout.strip().splitlines()
+    return lines[0] if lines else None
 
 
-def ensure_fallback_checkout(entry: dict[str, Any], args: argparse.Namespace) -> Path | None:
-    target = fallback_dir(entry)
-    if target.is_dir() and (target / 'package.json').is_file():
-        return target
-    if args.dry_run:
-        print(f'$ git clone -- {entry["git"]} {target}')
-        return target
-    if shutil.which('git') is None:
-        print(f'error: {entry["name"]}: {target} missing and `git` is not on PATH', file=sys.stderr)
-        return None
-    print(f'==> {entry["name"]}: cloning {entry["git"]} -> {target}')
-    target.parent.mkdir(parents=True, exist_ok=True)
-    completed = subprocess.run(['git', 'clone', '--', entry['git'], str(target)])
+def ss_available() -> bool:
+    return shutil.which('ss') is not None
+
+
+def listening_tcp_rows() -> list[str]:
+    if not ss_available():
+        raise SystemExit('`ss` is required for port checks and auto-scan; install iproute2')
+    completed = subprocess.run(['ss', '-ltnH'], capture_output=True, text=True)
     if completed.returncode != 0:
-        print(
-            f'error: {entry["name"]}: git clone failed ({completed.returncode}); '
-            f'if the repository is not published yet, clone/prepare it manually at {target}',
-            file=sys.stderr,
-        )
+        raise SystemExit(f'ss -ltnH failed: {completed.stderr.strip()}')
+    return completed.stdout.splitlines()
+
+
+def local_port_of(row: str) -> tuple[str, int] | None:
+    """Return (host, port) for one `ss -ltnH` row's local address, when any."""
+    parts = row.split()
+    if len(parts) < 4:
         return None
-    return target
+    local = parts[3]
+    # ss prints IPv6 as [::1]:3080; IPv4/wildcard as 127.0.0.1:3080, *:3080, 0.0.0.0:3080.
+    match = re.match(r'^(?P<host>\[[0-9a-fA-F:.]+\]|[0-9a-fA-F.*:]+):(?P<port>\d+)$', local)
+    if match is None:
+        return None
+    return match.group('host'), int(match.group('port'))
 
 
-def install_plugin(entry: dict[str, Any], args: argparse.Namespace) -> int:
-    name = entry['name']
-    print(f'\n==== {name} (install) ====')
-    print(f'==> try direct git install: {entry["git"]}')
-    if dsh_add(entry['git'], args) == 0:
-        print(f'==> {name} installed from git')
-        return 0
+def bind_conflicts(listen_hosts: list[str], port: int) -> bool:
+    """Whether caddy binding every `listen_hosts:port` would hit a listener.
 
-    print(f'==> direct git install failed; fall back to a local checkout')
-    checkout = ensure_fallback_checkout(entry, args)
-    if checkout is None:
-        return 1
-    install_py = checkout / 'install.py'
-    if not install_py.is_file():
-        print(f'error: {name}: {install_py} not found; the plugin must ship its own install.py', file=sys.stderr)
-        return 1
-    command = [
-        sys.executable, str(install_py), 'install',
-        '--local-dir', str(checkout),
-        '--profile', args.profile,
+    Binding 0.0.0.0:port conflicts with any listener on that port. Binding a
+    specific IP only conflicts with wildcard listeners or the same IP — a dsh
+    instance on 127.0.0.1:3080 does NOT block binding 192.168.x.x:3080.
+    """
+    if WILDCARD_LISTEN_HOST in listen_hosts:
+        return any(found is not None and found[1] == port for found in map(local_port_of, listening_tcp_rows()))
+    for row in listening_tcp_rows():
+        found = local_port_of(row)
+        if found is None or found[1] != port:
+            continue
+        row_host = found[0]
+        if row_host in WILDCARD_HOSTS or row_host in listen_hosts:
+            return True
+    return False
+
+
+def default_listen_host() -> str:
+    """Best-effort LAN IP so `up` with no args can share dsh's port safely.
+
+    A dsh instance listening on 127.0.0.1:3080 does not conflict with caddy
+    binding 192.168.x.x:3080, but it DOES conflict with a wildcard
+    0.0.0.0:3080 bind. Prefer the default-route source IPv4; fall back to the
+    first global IPv4, then to the wildcard bind.
+    """
+    try:
+        completed = subprocess.run(['ip', '-4', 'route', 'get', '8.8.8.8'], capture_output=True, text=True)
+        match = re.search(r'\bsrc\s+(\d+\.\d+\.\d+\.\d+)', completed.stdout)
+        if match is not None:
+            return match.group(1)
+    except (OSError, ValueError):
+        pass
+    try:
+        completed = subprocess.run(['ip', '-4', '-o', 'addr', 'show', 'scope', 'global'], capture_output=True, text=True)
+        for line in completed.stdout.splitlines():
+            match = re.search(r'inet\s+(\d+\.\d+\.\d+\.\d+)', line)
+            if match is not None and match.group(1) != '127.0.0.1':
+                return match.group(1)
+    except (OSError, ValueError):
+        pass
+    return WILDCARD_LISTEN_HOST
+
+
+def scan_candidate_ports() -> list[int]:
+    """Listening TCP ports on loopback/wildcard addresses, for dsh probing."""
+    ports: set[int] = set()
+    wildcard_hosts = {'*', '0.0.0.0', '[::]'}
+    loopback_hosts = {'127.0.0.1', '[::1]'}
+    for row in listening_tcp_rows():
+        found = local_port_of(row)
+        if found is None:
+            continue
+        host, port = found
+        if host in wildcard_hosts or host in loopback_hosts:
+            ports.add(port)
+    return sorted(ports)
+
+
+def probe_dsh_port(port: int) -> int | None:
+    """Return the port when 127.0.0.1:port answers like a dsh web instance."""
+    url = f'http://127.0.0.1:{port}/'
+    request = urllib.request.Request(
+        url,
+        headers={'Host': f'127.0.0.1:{port}', 'User-Agent': 'dsh-proxy-scan/1'},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=SCAN_TIMEOUT_SECONDS) as response:
+            server = (response.headers.get('Server') or '').lower()
+            if 'caddy' in server:
+                return None
+            body = response.read(131072).decode('utf-8', 'replace')
+            return port if DSH_MARKER in body else None
+    except Exception:
+        # The scan only needs to recognize dsh web services; every other local
+        # listener (SSH, gRPC, plain TCP) legitimately fails an HTTP probe.
+        return None
+
+
+def scan_dsh_ports() -> list[int]:
+    candidates = scan_candidate_ports()
+    if not candidates:
+        return []
+    with concurrent.futures.ThreadPoolExecutor(max_workers=SCAN_WORKERS) as executor:
+        results = executor.map(probe_dsh_port, candidates)
+    return sorted(port for port in results if port is not None)
+
+
+def dedupe_mappings(mappings: list[tuple[int, int]]) -> list[tuple[int, int]]:
+    deduped: list[tuple[int, int]] = []
+    seen: set[tuple[int, int]] = set()
+    proxy_owners: dict[int, int] = {}
+    for proxy_port, dsh_port in mappings:
+        if (proxy_port, dsh_port) in seen:
+            continue
+        seen.add((proxy_port, dsh_port))
+        existing = proxy_owners.get(proxy_port)
+        if existing is not None and existing != dsh_port:
+            raise SystemExit(
+                f'proxy port {proxy_port} is mapped to both dsh ports {existing} and {dsh_port}; '
+                f'one proxy port can only forward to one dsh instance',
+            )
+        proxy_owners[proxy_port] = dsh_port
+        deduped.append((proxy_port, dsh_port))
+    return deduped
+
+
+def render_caddyfile(mappings: list[tuple[int, int]], listen_hosts: list[str], preserve_host: bool, tls: bool) -> str:
+    lines = [
+        '# Generated by deploy/ds-harness/deploy.py — run `python3 deploy.py up` again to regenerate.',
+        '#',
     ]
-    if args.skip_build:
-        command.append('--skip-build')
-    if args.dry_run:
-        command.append('--dry-run')
-    completed = subprocess.run(command)
-    if completed.returncode == 0:
-        print(f'==> {name} installed from {checkout} (file:, safe to delete the checkout afterwards)')
-    return completed.returncode
+    for proxy_port, dsh_port in mappings:
+        if tls:
+            # One site per listen IP: the site address carries the subject
+            # name, so each IP gets its own tls internal certificate.
+            for listen_host in listen_hosts:
+                lines.append(f'https://{listen_host}:{proxy_port} {{')
+                lines.append(f'\tbind {listen_host}')
+                lines.append('\ttls internal')
+                lines.append(f'\treverse_proxy 127.0.0.1:{dsh_port} {{')
+                if not preserve_host:
+                    lines.append(f'\t\theader_up Host 127.0.0.1:{dsh_port}')
+                    lines.append(f'\t\theader_up Origin http://127.0.0.1:{dsh_port}')
+                lines.append('\t}')
+                lines.append('}')
+                lines.append('')
+            continue
+        lines.append(f'http://:{proxy_port} {{')
+        if WILDCARD_LISTEN_HOST not in listen_hosts:
+            # Site addresses do not constrain the socket in Caddy; `bind`
+            # does. A specific bind also lets the proxy share a port with a
+            # dsh instance that listens on 127.0.0.1:same-port.
+            lines.append(f'\tbind {" ".join(listen_hosts)}')
+        lines.append(f'\treverse_proxy 127.0.0.1:{dsh_port} {{')
+        if not preserve_host:
+            # dsh's /api trust fence accepts loopback Hosts; rewriting both
+            # Host and Origin keeps browser requests same-origin from dsh's
+            # point of view, including the loopback-only privileged methods.
+            lines.append(f'\t\theader_up Host 127.0.0.1:{dsh_port}')
+            lines.append(f'\t\theader_up Origin http://127.0.0.1:{dsh_port}')
+        lines.append('\t}')
+        lines.append('}')
+        lines.append('')
+    return '\n'.join(lines)
 
 
-def uninstall_plugin(entry: dict[str, Any], args: argparse.Namespace) -> int:
-    name = entry['name']
-    package = entry_field(entry, 'package', None)
-    print(f'\n==== {name} (uninstall) ====')
-    if package is None:
-        print(f'error: {name}: plugins.yaml entry needs `package` for uninstall', file=sys.stderr)
-        return 1
-    if dsh_remove(package, args) != 0:
-        return 1
-    print(f'==> {name} removed')
+def print_mapping_table(mappings: list[tuple[int, int]], listen_hosts: list[str], tls: bool) -> None:
+    scheme = 'https' if tls else 'http'
+    print(f'proxy port -> dsh port ({scheme}, loopback upstream)')
+    for proxy_port, dsh_port in mappings:
+        for listen_host in listen_hosts:
+            bind = 'all interfaces' if listen_host == WILDCARD_LISTEN_HOST else listen_host
+            print(f'  {scheme}://{bind}:{proxy_port} -> 127.0.0.1:{dsh_port}')
+
+
+def print_security_warning() -> None:
+    print('warning: dsh has no authentication layer; the proxy is the trust boundary.')
+    print('         bind it to a trusted network only (use --listen, a firewall, or Caddy basic_auth).')
+
+
+def write_caddyfile(content: str, dry_run: bool) -> None:
+    if dry_run:
+        print('\n[Caddyfile]')
+        print(content, end='')
+        return
+    CADDYFILE_PATH.write_text(content, encoding='utf-8')
+    print(f'wrote {CADDYFILE_PATH}')
+
+
+def collect_mappings(args: argparse.Namespace) -> list[tuple[int, int]]:
+    specs: list[str] = args.ports
+    if not specs and not args.auto:
+        specs = [str(DEFAULT_DSH_PORT)]
+    mappings: list[tuple[int, int]] = []
+    for spec in specs:
+        try:
+            mappings.append(parse_port_spec(spec))
+        except ValueError as error:
+            raise SystemExit(f'error: {error}') from error
+
+    if args.auto:
+        discovered = scan_dsh_ports()
+        if discovered:
+            print(f'auto-scan: discovered dsh web services on ports: {", ".join(map(str, discovered))}')
+        else:
+            print('auto-scan: no dsh web services found')
+        mappings.extend((port, port) for port in discovered)
+
+    mappings = dedupe_mappings(mappings)
+    if not mappings:
+        raise SystemExit('nothing to proxy: pass PORTS, or run --auto while at least one dsh web service is listening')
+    return mappings
+
+
+def docker_run_proxy(args: argparse.Namespace) -> int:
+    command = [
+        'docker', 'run', '-d',
+        '--name', args.container,
+        '--network', 'host',
+        '--restart', 'unless-stopped',
+        '-v', f'{CADDYFILE_PATH.parent}:/etc/caddy:ro',
+        '-v', f'{CADDYFILE_PATH.parent / "data"}:/data',
+        args.image,
+    ]
+    return run(command, dry_run=args.dry_run)
+
+
+def cmd_up(args: argparse.Namespace) -> int:
+    if not docker_available():
+        raise SystemExit('`docker` is required but not found on PATH')
+    mappings = collect_mappings(args)
+    if args.tls and WILDCARD_LISTEN_HOST in args.listen:
+        raise SystemExit('--tls needs concrete --listen IP(s) (the default LAN IP works); 0.0.0.0 cannot be used with tls internal')
+    print_mapping_table(mappings, args.listen, args.tls)
+    print_security_warning()
+
+    state = container_state(args.container)
+    if state is not None:
+        print(f'==> removing existing container {args.container} ({state})')
+        if run(['docker', 'rm', '-f', args.container], dry_run=args.dry_run) != 0 and not args.dry_run:
+            raise SystemExit(1)
+
+    if not args.dry_run:
+        for proxy_port, _dsh_port in mappings:
+            if bind_conflicts(args.listen, proxy_port):
+                if WILDCARD_LISTEN_HOST in args.listen:
+                    raise SystemExit(
+                        f'proxy port {proxy_port} is already in use; if the listener is dsh itself on '
+                        f'127.0.0.1:{proxy_port}, caddy cannot also bind 0.0.0.0:{proxy_port}. '
+                        f'Use specific --listen <本机IP> (caddy will bind only those IPs) or a different '
+                        f'proxy port, e.g. `up 8080:{proxy_port}`',
+                    )
+                raise SystemExit(f'proxy port {proxy_port} is already in use on one of {", ".join(args.listen)}')
+
+    content = render_caddyfile(mappings, args.listen, args.preserve_host, args.tls)
+    write_caddyfile(content, args.dry_run)
+    if not args.dry_run:
+        (CADDYFILE_PATH.parent / 'data').mkdir(parents=True, exist_ok=True)
+
+    if docker_run_proxy(args) != 0:
+        raise SystemExit(f'docker run failed; check `docker logs {args.container}`')
+    if not args.dry_run:
+        print(f'started {args.container} ({args.image}, host network)')
+        scheme = 'https' if args.tls else 'http'
+        for listen_host in args.listen:
+            host = '<host>' if listen_host == WILDCARD_LISTEN_HOST else listen_host
+            for proxy_port, _dsh_port in mappings:
+                print(f'  {scheme}://{host}:{proxy_port}/')
     return 0
 
 
+def cmd_down(args: argparse.Namespace) -> int:
+    if not docker_available():
+        raise SystemExit('`docker` is required but not found on PATH')
+    state = container_state(args.container)
+    if state is None:
+        print(f'{args.container} does not exist')
+        return 0
+    print(f'==> removing {args.container} ({state})')
+    return run(['docker', 'rm', '-f', args.container], dry_run=args.dry_run)
+
+
+def cmd_status(args: argparse.Namespace) -> int:
+    state = container_state(args.container)
+    print(f'{args.container}: {state or "does not exist"}')
+    if state == 'running':
+        completed = subprocess.run(
+            ['docker', 'logs', '--tail', '10', args.container],
+            capture_output=True,
+            text=True,
+        )
+        print('--- recent logs ---')
+        print(completed.stdout.strip())
+    if CADDYFILE_PATH.is_file():
+        print('--- Caddyfile sites ---')
+        for line in CADDYFILE_PATH.read_text(encoding='utf-8').splitlines():
+            if re.match(r'^https?://', line):
+                print(line)
+    return 0
+
+
+def cmd_scan(_args: argparse.Namespace) -> int:
+    discovered = scan_dsh_ports()
+    if discovered:
+        print('discovered dsh web services on ports: ' + ', '.join(map(str, discovered)))
+    else:
+        print('no dsh web services found')
+    return 0
+
+
+def cmd_reload(args: argparse.Namespace) -> int:
+    if not docker_available():
+        raise SystemExit('`docker` is required but not found on PATH')
+    mappings = collect_mappings(args)
+    if args.tls and WILDCARD_LISTEN_HOST in args.listen:
+        raise SystemExit('--tls needs concrete --listen IP(s) (the default LAN IP works); 0.0.0.0 cannot be used with tls internal')
+    print_mapping_table(mappings, args.listen, args.tls)
+    content = render_caddyfile(mappings, args.listen, args.preserve_host, args.tls)
+    write_caddyfile(content, args.dry_run)
+
+    state = container_state(args.container)
+    if state != 'running':
+        raise SystemExit(f'{args.container} is not running ({state or "missing"}); run `python3 deploy.py up` first')
+    command = [
+        'docker', 'exec', args.container,
+        'caddy', 'reload',
+        '--config', '/etc/caddy/Caddyfile',
+        '--adapter', 'caddyfile',
+    ]
+    return run(command, dry_run=args.dry_run)
+
+
+def build_parser() -> argparse.ArgumentParser:
+    parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
+    parser.add_argument('action', nargs='?', choices=['up', 'down', 'status', 'scan', 'reload'], default='up')
+    parser.add_argument('ports', nargs='*', help='port mappings: PORT or PROXY:DSH (default: 3080)')
+    parser.add_argument('--auto', action='store_true', help='scan 127.0.0.1 listening ports for dsh web services and add them')
+    parser.add_argument('--listen', action='append', default=None, help='proxy bind host; repeat for multiple IPs (default: first non-loopback IPv4, fallback 0.0.0.0; use 127.0.0.1 for local-only)')
+    parser.add_argument('--preserve-host', action='store_true', help='do not rewrite Host/Origin to loopback (dsh then needs --trusted-host; privileged methods stay loopback-only)')
+    parser.add_argument('--tls', action='store_true', help='serve HTTPS on the proxy ports with Caddy internal CA (needs a concrete --listen IP; fixes browser crypto.randomUUID on LAN access)')
+    parser.add_argument('--container', default=DEFAULT_CONTAINER, help=f'caddy container name (default: {DEFAULT_CONTAINER})')
+    parser.add_argument('--image', default=DEFAULT_IMAGE, help=f'caddy docker image (default: {DEFAULT_IMAGE})')
+    parser.add_argument('--dry-run', action='store_true', help='print commands and generated Caddyfile without executing')
+    return parser
+
+
 def main() -> None:
-    parser = argparse.ArgumentParser(description=__doc__)
-    parser.add_argument('action', nargs='?', choices=['install', 'uninstall', 'list'])
-    parser.add_argument('--plugins', type=Path, default=DEFAULT_PLUGINS_FILE, help='plugin list file')
-    parser.add_argument('--profile', default=os.environ.get('DSH_PROFILE', 'web'))
-    parser.add_argument('--only', metavar='NAME', help='operate on one named plugin')
-    parser.add_argument('--skip-build', action='store_true', help='forward to fallback install.py')
-    parser.add_argument('--dry-run', action='store_true', help='print commands without executing')
+    parser = build_parser()
     args = parser.parse_args()
-
-    plugins = load_plugins(args.plugins)
-    if args.action == 'list':
-        for entry in plugins:
-            target = fallback_dir(entry)
-            exists = target.is_dir() and (target / 'package.json').is_file()
-            print(f'{entry["name"]}: git={entry["git"]} fallback={target}{"" if exists else " (missing)"}')
-        return
-
-    action = args.action or 'install'
-    selected = [entry for entry in plugins if args.only is None or entry['name'] == args.only]
-    if not selected:
-        if args.only is not None:
-            raise SystemExit(f'no plugin named "{args.only}" in {args.plugins}')
-        print('no plugins configured')
-        return
-
-    failures = 0
-    for entry in selected:
-        failures += install_plugin(entry, args) if action == 'install' else uninstall_plugin(entry, args)
-    if failures:
-        raise SystemExit(f'{failures} plugin(s) failed')
-    print(f'\ndone: {len(selected)} plugin(s) {action}ed')
+    if args.listen is None:
+        args.listen = [default_listen_host()]
+    if args.action in ('up', 'reload'):
+        for listen_host in args.listen:
+            if listen_host != WILDCARD_LISTEN_HOST and re.match(r'^[0-9a-fA-F:.]+$', listen_host) is None:
+                raise SystemExit(f'error: --listen {listen_host!r} does not look like an IP address')
+    action = args.action or 'up'
+    commands = {
+        'up': cmd_up,
+        'down': cmd_down,
+        'status': cmd_status,
+        'scan': cmd_scan,
+        'reload': cmd_reload,
+    }
+    raise SystemExit(commands[action](args))
 
 
 if __name__ == '__main__':
