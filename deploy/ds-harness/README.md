@@ -7,6 +7,13 @@
 [`plugins.yml`](plugins.yml) 插件列表，通过 `dsh plugin` 安装/更新 dsh 插件。
 两种动作互不混合，一次运行只做其中一种。
 
+`up` 启动代理时还会在回环端口 `9097` 拉起一个独立的 Python 管理后端
+（`manage.py`），Caddy 把每个代理站点的 `/manage/` 路径反代给它。管理界面
+用于监控每个 dsh 实例的可达性 / sessions / 进程 / 请求量，并在 dsh 被
+外部插件写坏、无法启动时，**不依赖 dsh** 地停用/启用
+`dsh.profile.bundles` 里的外部插件或切到安全模式（只加载内置 bundle），
+从而远程恢复 dsh。
+
 ## 为什么用 Caddy Docker
 
 - dsh web 的 CLI 只允许 `--host 127.0.0.1`（`--host 0.0.0.0` 会被拒绝），
@@ -85,6 +92,60 @@ python3 deploy.py install --profile web --dry-run     # 只看将执行的 dsh/p
 （默认 `$DSH_HOME` 或 `~/.dsh`）、`--dsh`（默认 PATH 里的 `dsh`）和
 `--dry-run`；部署参数（`--auto`/`--listen`/`--preserve-host`/`--tls`）与
 插件管理互斥，反之亦然。
+
+## /manage 管理界面（监控与恢复）
+
+`up` / `reload` 会把每个代理站点的 `/manage/` 路由到本目录 `manage.py`
+启动的回环管理后端（默认 `127.0.0.1:9097`，可用 `--manage-port` 修改）。
+访问方式：
+
+```text
+http://<代理IP>:<代理端口>/manage/       # 例如 http://192.168.31.143:3080/manage/
+https://<代理IP>:<代理端口>/manage/      # --tls 模式
+```
+
+`manage.py` 不依赖 dsh 运行：dsh 起不来时，管理界面照常工作。每个实例
+一张卡片，监控项独立采集，单项失败只降级该项卡片：
+
+| 监控项 | 来源 | 失败时 |
+| --- | --- | --- |
+| dsh web 可达性 | `GET 127.0.0.1:<port>/` + `__DSH_BOOT__` 标记 | 显示不可达与原因 |
+| sessions | 统计 `$DSH_HOME/sessions/` 下的会话目录数 | 显示不可用与原因 |
+| 进程 | `ss -ltnp` 找监听 PID，`ps` 取 CPU/内存/运行时长 | 显示无进程或原因 |
+| 流量 | Caddy 写入 `data/logs/access-<端口>*.json` 的 JSON 访问日志 | 显示尚无日志 |
+
+外部加载控制（每次修改都写入 profile，**重启对应 dsh 后生效**）：
+
+- **单个插件启用/停用**：修改 `$DSH_HOME/profiles/<profile>/package.json`
+  的 `dsh.profile.bundles`。停用不删依赖、不跑 pnpm，因此插件自身
+  `cordis.patch.yml` 损坏或包目录不可读时也能恢复；启用前会校验该依赖
+  确实声明了 `dsh.bundle`，避免把普通库塞进 bundles。
+- **实例安全模式**：一键把 `dsh.profile.bundles` 收窄为内置 bundle
+  （`@deepseek-ai/dsh-base` + 对应 surface 的 bundle），并记住之前的列表；
+  关闭安全模式时恢复。
+
+恢复流程示例：插件装坏 → dsh 无法启动 → 浏览器打开 `/manage/` →
+在对应实例卡片里停用该插件（或开安全模式）→ 按卡片上的启动参数重启 dsh
+→ 点「进入 dsh」。多个 dsh 实例各用独立 `DSH_HOME` 时，请编辑
+[`instances.yml`](instances.yml) 声明每个实例的 `port` / `profile` / `home`；
+留空则回退为默认实例（3080 / web / ~/.dsh）并尝试从生成的 Caddyfile
+读取端口映射。
+
+## 代理层加载优化
+
+不改 dsh、不改插件，生成 Caddyfile 时在代理层做了三件事：
+
+1. **压缩**：`encode zstd gzip` 作用于除 `/api/events.host`、`/api/events.mux`
+   以外的所有响应。dsh 自身不压缩，session 列表这类大 JSON 和前端 bundle
+   在代理层会被压缩后再发出，实测 760KB 的 JSON 可压到约 94KB（gzip）。
+2. **静态资源长缓存**：`/plugins/*`、`/assets/*`、`/favicon.svg` 响应头加
+   `Cache-Control: public, max-age=31536000, immutable`。dsh 的前端资源都带
+   `?rev=<hash>`，内容变了 URL 就变，长缓存安全，二次进入不用重新下载。
+3. **HTML/API 强制新鲜**：`/` 和 `/api/*` 响应头加 `Cache-Control: no-cache`，
+   保证每次进入拿到最新会话状态，同时仍可被压缩（事件流除外）。
+
+这些只影响 Caddyfile 生成结果，`reload` 即可热加载；TLS 模式下 Caddy 本身
+已启用 HTTP/2，多路复用对大量静态资源请求也有帮助。
 
 ### 监听地址与同端口冲突
 
@@ -177,6 +238,7 @@ HTTP→HTTPS 跳转站点（仅 HTTPS）并打印警告。
 | `--tls` | 关 | 代理端口走 HTTPS（Caddy 本地 CA，修复 `crypto.randomUUID`） |
 | `--container` | `dsh-proxy` | Caddy 容器名 |
 | `--image` | `caddy:2` | Caddy 镜像 |
+| `--manage-port` | `9097` | `/manage` 管理后端回环监听端口 |
 
 ## Host/Origin 重写与 dsh 的信任栅栏
 
@@ -231,10 +293,17 @@ Caddyfile；此时 dsh 必须以
 
 - 脚本在 `deploy/ds-harness/Caddyfile` 生成 Caddyfile，并以目录只读挂载进
   容器的 `/etc/caddy`；`data/` 目录挂载到容器 `/data`，用于持久化 TLS 证书
-  与本地 CA（已 gitignore）。
-- 容器以 `--restart unless-stopped`、`--network host` 运行。
-- `up` 会先删除同名旧容器再启动；`reload` 则保留容器，只执行
-  `caddy reload`。
+  与本地 CA、Caddy JSON 访问日志（`data/logs/access-*.json`）、manage 后端
+  日志与 pid（`data/manage.log`、`data/manage.pid`）、manage 状态
+  （`data/manage-state.json`）（均已 gitignore）。
+- 容器以 `--restart unless-stopped`、`--network host`、`--user <当前用户>`
+  和 `--cap-add NET_BIND_SERVICE` 运行：Caddy 写出的日志和 TLS 存储属于当前
+  用户，manage 才能直接读取。从旧版（root 运行 Caddy）升级时，请重跑一次
+  `up`（不是 `reload`）：脚本会把旧的 `data/caddy` 改名保留并生成新的内部
+  CA，客户端需要重新信任一次新的根证书。
+- `up` 会先删除同名旧容器再启动，并拉起 `manage.py`；`reload` 保留容器，
+  执行 `caddy reload` 并确保 manage 后端在运行；`down` 删除容器并停止
+  manage 后端。
 
 ## dsh web 实例启动参考
 

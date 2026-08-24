@@ -2,6 +2,9 @@
 Caddyfile
 data/
 
+# Machine-specific dsh instance definitions for /manage; edit locally.
+instances.yml
+
 # Exported Caddy local CA for client trust (README instructions).
 dsh-local-ca.crt
 

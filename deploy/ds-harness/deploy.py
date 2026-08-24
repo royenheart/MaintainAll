@@ -39,11 +39,11 @@ deleting the temporary directory. `update` defaults to every plugin in the
 list; pass plugin names to update a subset.
 
 Usage:
-  python3 deploy.py up [PORTS...] [--auto] [--listen HOST ...] [--dry-run]
+  python3 deploy.py up [PORTS...] [--auto] [--listen HOST ...] [--manage-port PORT] [--dry-run]
   python3 deploy.py down
   python3 deploy.py status
   python3 deploy.py scan
-  python3 deploy.py reload [PORTS...] [--auto] [--listen HOST ...] [--dry-run]
+  python3 deploy.py reload [PORTS...] [--auto] [--listen HOST ...] [--manage-port PORT] [--dry-run]
   python3 deploy.py install [--profile web] [--home ~/.dsh] [--dry-run]
   python3 deploy.py update [PLUGIN...] [--profile web] [--home ~/.dsh] [--dry-run]
 
@@ -60,6 +60,7 @@ Examples:
   python3 deploy.py install                 # install every plugin listed in plugins.yml
   python3 deploy.py update                  # update every plugin listed in plugins.yml
   python3 deploy.py update @royenheart/dsh-plugin-foo   # update one listed plugin
+  https://<LAN-IP>:<proxy-port>/manage/     # dsh manage UI, served by the deployment
 """
 
 from __future__ import annotations
@@ -73,6 +74,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import time
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -89,6 +91,11 @@ WILDCARD_HOSTS = {'*', '0.0.0.0', '[::]'}
 
 CADDYFILE_PATH = Path(__file__).resolve().parent / 'Caddyfile'
 PLUGINS_YML_PATH = Path(__file__).resolve().parent / 'plugins.yml'
+MANAGE_SCRIPT_PATH = Path(__file__).resolve().parent / 'manage.py'
+MANAGE_DATA_DIR = Path(__file__).resolve().parent / 'data'
+MANAGE_LOG_PATH = MANAGE_DATA_DIR / 'manage.log'
+MANAGE_PID_PATH = MANAGE_DATA_DIR / 'manage.pid'
+DEFAULT_MANAGE_PORT = 9097
 
 PORT_SPEC_RE = re.compile(r'^(\d{1,5})(?::(\d{1,5}))?$')
 GIT_SHORTHAND_RE = re.compile(r'^(?:github|gitlab|bitbucket):')
@@ -564,6 +571,7 @@ def render_caddyfile(
     listen_hosts: list[str],
     preserve_host: bool,
     tls: bool,
+    manage_port: int,
     http_redirect: bool = True,
 ) -> str:
     lines = [
@@ -579,38 +587,64 @@ def render_caddyfile(
         lines.append('\tauto_https disable_redirects')
         lines.append('}')
         lines.append('')
+
+    def render_site(site_address: str, bind_hosts: list[str], proxy_port: int, dsh_port: int, extra: list[str]) -> None:
+        lines.append(f'{site_address} {{')
+        if WILDCARD_LISTEN_HOST not in bind_hosts:
+            lines.append(f'\tbind {" ".join(bind_hosts)}')
+        for extra_line in extra:
+            lines.append(f'\t{extra_line}')
+        # JSON access logs per site: /manage traffic reads them best-effort and
+        # the log files live on the host through the mounted data/ directory.
+        lines.append('\tlog {')
+        lines.append(f'\t\toutput file /data/logs/access-{proxy_port}-{bind_hosts[0]}.json {{')
+        lines.append('\t\t\troll_size 10MiB')
+        lines.append('\t\t\troll_keep 2')
+        lines.append('\t\t}')
+        lines.append('\t\tformat json')
+        lines.append('\t}')
+        # Proxy-side loading optimizations (dsh is left untouched):
+        # - compress everything except the event streams (large session lists
+        #   and static bundles shrink substantially over the wire)
+        # - cache hashed static assets in the browser
+        # - force revalidation for the shell document and API responses
+        lines.append('\t@stream path /api/events.host /api/events.mux')
+        lines.append('\t@not-stream not path /api/events.host /api/events.mux')
+        lines.append('\t@static path /plugins/* /assets/* /favicon.svg')
+        lines.append('\t@dynamic path / /api/*')
+        lines.append('\tencode @not-stream zstd gzip')
+        lines.append('\theader @static Cache-Control "public, max-age=31536000, immutable"')
+        lines.append('\theader @dynamic Cache-Control "no-cache"')
+        # /manage is served by the Python management backend, not by dsh, so
+        # it stays available while dsh itself cannot boot.
+        lines.append('\thandle /manage {')
+        lines.append('\t\tredir * /manage/ 308')
+        lines.append('\t}')
+        lines.append('\thandle_path /manage/* {')
+        lines.append(f'\t\treverse_proxy 127.0.0.1:{manage_port}')
+        lines.append('\t}')
+        lines.append('\thandle {')
+        lines.append(f'\t\treverse_proxy 127.0.0.1:{dsh_port} {{')
+        if not preserve_host:
+            # dsh's /api trust fence accepts loopback Hosts; rewriting both
+            # Host and Origin keeps browser requests same-origin from dsh's
+            # point of view, including the loopback-only privileged methods.
+            lines.append(f'\t\t\theader_up Host 127.0.0.1:{dsh_port}')
+            lines.append(f'\t\t\theader_up Origin http://127.0.0.1:{dsh_port}')
+        lines.append('\t\t}')
+        lines.append('\t}')
+        lines.append('}')
+        lines.append('')
+
     for proxy_port, dsh_port in mappings:
         if tls:
             # One site per listen IP: the site address carries the subject
             # name, so each IP gets its own tls internal certificate.
             for listen_host in listen_hosts:
-                lines.append(f'https://{listen_host}:{proxy_port} {{')
-                lines.append(f'\tbind {listen_host}')
-                lines.append('\ttls internal')
-                lines.append(f'\treverse_proxy 127.0.0.1:{dsh_port} {{')
-                if not preserve_host:
-                    lines.append(f'\t\theader_up Host 127.0.0.1:{dsh_port}')
-                    lines.append(f'\t\theader_up Origin http://127.0.0.1:{dsh_port}')
-                lines.append('\t}')
-                lines.append('}')
-                lines.append('')
+                render_site(f'https://{listen_host}:{proxy_port}', [listen_host], proxy_port, dsh_port, ['tls internal'])
             continue
-        lines.append(f'http://:{proxy_port} {{')
-        if WILDCARD_LISTEN_HOST not in listen_hosts:
-            # Site addresses do not constrain the socket in Caddy; `bind`
-            # does. A specific bind also lets the proxy share a port with a
-            # dsh instance that listens on 127.0.0.1:same-port.
-            lines.append(f'\tbind {" ".join(listen_hosts)}')
-        lines.append(f'\treverse_proxy 127.0.0.1:{dsh_port} {{')
-        if not preserve_host:
-            # dsh's /api trust fence accepts loopback Hosts; rewriting both
-            # Host and Origin keeps browser requests same-origin from dsh's
-            # point of view, including the loopback-only privileged methods.
-            lines.append(f'\t\theader_up Host 127.0.0.1:{dsh_port}')
-            lines.append(f'\t\theader_up Origin http://127.0.0.1:{dsh_port}')
-        lines.append('\t}')
-        lines.append('}')
-        lines.append('')
+        render_site(f'http://:{proxy_port}', listen_hosts, proxy_port, dsh_port, [])
+
     if tls and http_redirect:
         # HTTP (port 80) redirects to the first proxy port on each listen IP.
         # A port-80 request no longer carries the original destination port, so
@@ -674,17 +708,138 @@ def collect_mappings(args: argparse.Namespace) -> list[tuple[int, int]]:
     return mappings
 
 
+def prepare_data_dirs(args: argparse.Namespace) -> None:
+    """Ensure /data subdirs exist and are owned by the host user.
+
+    Caddy runs as the host user (--user), so TLS storage and JSON access logs
+    are readable by manage.py. A data/caddy directory left by an older
+    root-run Caddy belongs to another uid; it is renamed aside so the new
+    container starts with a fresh, user-owned storage.
+    """
+    data = CADDYFILE_PATH.parent / 'data'
+    logs = data / 'logs'
+    caddy = data / 'caddy'
+    if args.dry_run:
+        print(f'dry-run: would ensure {data} and {logs} exist')
+        if caddy.exists():
+            stat = caddy.stat()
+            if stat.st_uid != os.getuid() or stat.st_gid != os.getgid():
+                print(f'dry-run: would rename {caddy} (owned by {stat.st_uid}:{stat.st_gid}) aside and create a fresh one')
+        for log_file in logs.glob('access-*.json'):
+            stat = log_file.stat()
+            if stat.st_uid != os.getuid() or stat.st_gid != os.getgid():
+                print(f'dry-run: would remove old unreadable access log {log_file}')
+        return
+    data.mkdir(parents=True, exist_ok=True)
+    logs.mkdir(parents=True, exist_ok=True)
+    if caddy.exists():
+        stat = caddy.stat()
+        if stat.st_uid != os.getuid() or stat.st_gid != os.getgid():
+            backup = data / f'caddy.bak-{time.strftime("%Y%m%d-%H%M%S")}'
+            caddy.rename(backup)
+            print(f'renamed {caddy} -> {backup} (old owner {stat.st_uid}:{stat.st_gid}); new TLS CA will be generated')
+    caddy.mkdir(parents=True, exist_ok=True)
+    for log_file in logs.glob('access-*.json'):
+        try:
+            stat = log_file.stat()
+        except OSError:
+            continue
+        if stat.st_uid != os.getuid() or stat.st_gid != os.getgid():
+            log_file.unlink()
+            print(f'removed old unreadable access log {log_file} (owned by {stat.st_uid}:{stat.st_gid})')
+
+
 def docker_run_proxy(args: argparse.Namespace) -> int:
     command = [
         'docker', 'run', '-d',
         '--name', args.container,
         '--network', 'host',
         '--restart', 'unless-stopped',
+        # Run as the host user so data/ logs and TLS storage are readable by
+        # deploy.py and manage.py; NET_BIND_SERVICE keeps the port-80 redirect
+        # bindable for --tls mode.
+        '--user', f'{os.getuid()}:{os.getgid()}',
+        '--cap-add', 'NET_BIND_SERVICE',
         '-v', f'{CADDYFILE_PATH.parent}:/etc/caddy:ro',
         '-v', f'{CADDYFILE_PATH.parent / "data"}:/data',
         args.image,
     ]
     return run(command, dry_run=args.dry_run)
+
+
+def manage_pid() -> int | None:
+    try:
+        return int(MANAGE_PID_PATH.read_text(encoding='utf-8').strip())
+    except (OSError, ValueError):
+        return None
+
+
+def manage_running() -> bool:
+    pid = manage_pid()
+    if pid is None:
+        return False
+    try:
+        os.kill(pid, 0)
+        return True
+    except ProcessLookupError:
+        return False
+    except PermissionError:
+        return True
+    except OSError:
+        return False
+
+
+def start_manage(args: argparse.Namespace) -> int:
+    if manage_running():
+        print(f'manage server already running (pid {manage_pid()}) on 127.0.0.1:{args.manage_port}')
+        return 0
+    MANAGE_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    (MANAGE_DATA_DIR / 'logs').mkdir(parents=True, exist_ok=True)
+    command = [
+        sys.executable, str(MANAGE_SCRIPT_PATH),
+        '--port', str(args.manage_port),
+        '--container', args.container,
+    ]
+    print_command(command)
+    if args.dry_run:
+        return 0
+    log_file = open(MANAGE_LOG_PATH, 'a', encoding='utf-8')
+    process = subprocess.Popen(
+        command,
+        cwd=str(MANAGE_SCRIPT_PATH.parent),
+        stdout=log_file,
+        stderr=subprocess.STDOUT,
+        start_new_session=True,
+    )
+    MANAGE_PID_PATH.write_text(str(process.pid), encoding='utf-8')
+    time.sleep(0.4)
+    if process.poll() is not None:
+        MANAGE_PID_PATH.unlink(missing_ok=True)
+        raise SystemExit(
+            f'manage server exited immediately (code {process.returncode}); '
+            f'check {MANAGE_LOG_PATH} — the manage port {args.manage_port} may already be in use',
+        )
+    print(f'started manage server (pid {process.pid}) on http://127.0.0.1:{args.manage_port}')
+    print(f'manage UI: <proxy-url>/manage/')
+    return 0
+
+
+def stop_manage(args: argparse.Namespace) -> int:
+    pid = manage_pid()
+    if pid is None:
+        print('manage server is not running')
+        return 0
+    print(f'==> stopping manage server (pid {pid})')
+    if args.dry_run:
+        return 0
+    try:
+        os.kill(pid, 15)
+    except ProcessLookupError:
+        pass
+    except OSError as error:
+        print(f'warning: failed to stop manage server: {error}')
+    MANAGE_PID_PATH.unlink(missing_ok=True)
+    return 0
 
 
 def cmd_up(args: argparse.Namespace) -> int:
@@ -720,13 +875,14 @@ def cmd_up(args: argparse.Namespace) -> int:
                     )
                 raise SystemExit(f'proxy port {proxy_port} is already in use on one of {", ".join(args.listen)}')
 
-    content = render_caddyfile(mappings, args.listen, args.preserve_host, args.tls, http_redirect)
+    content = render_caddyfile(mappings, args.listen, args.preserve_host, args.tls, args.manage_port, http_redirect)
     write_caddyfile(content, args.dry_run)
-    if not args.dry_run:
-        (CADDYFILE_PATH.parent / 'data').mkdir(parents=True, exist_ok=True)
+    prepare_data_dirs(args)
 
     if docker_run_proxy(args) != 0:
         raise SystemExit(f'docker run failed; check `docker logs {args.container}`')
+    if start_manage(args) != 0:
+        raise SystemExit('failed to start manage server')
     if not args.dry_run:
         print(f'started {args.container} ({args.image}, host network)')
         scheme = 'https' if args.tls else 'http'
@@ -734,6 +890,7 @@ def cmd_up(args: argparse.Namespace) -> int:
             host = '<host>' if listen_host == WILDCARD_LISTEN_HOST else listen_host
             for proxy_port, _dsh_port in mappings:
                 print(f'  {scheme}://{host}:{proxy_port}/')
+                print(f'  {scheme}://{host}:{proxy_port}/manage/  (dsh manage)')
         if args.tls and http_redirect:
             redirect_port = mappings[0][0]
             for listen_host in args.listen:
@@ -748,9 +905,11 @@ def cmd_down(args: argparse.Namespace) -> int:
     state = container_state(args.container)
     if state is None:
         print(f'{args.container} does not exist')
-        return 0
-    print(f'==> removing {args.container} ({state})')
-    return run(['docker', 'rm', '-f', args.container], dry_run=args.dry_run)
+    else:
+        print(f'==> removing {args.container} ({state})')
+        if run(['docker', 'rm', '-f', args.container], dry_run=args.dry_run) != 0:
+            raise SystemExit(1)
+    return stop_manage(args)
 
 
 def cmd_status(args: argparse.Namespace) -> int:
@@ -762,8 +921,9 @@ def cmd_status(args: argparse.Namespace) -> int:
             capture_output=True,
             text=True,
         )
-        print('--- recent logs ---')
+        print('--- recent caddy logs ---')
         print(completed.stdout.strip())
+    print(f'manage server: {"running (pid " + str(manage_pid()) + ")" if manage_running() else "not running"}')
     if CADDYFILE_PATH.is_file():
         print('--- Caddyfile sites ---')
         for line in CADDYFILE_PATH.read_text(encoding='utf-8').splitlines():
@@ -788,8 +948,10 @@ def cmd_reload(args: argparse.Namespace) -> int:
     if args.tls and WILDCARD_LISTEN_HOST in args.listen:
         raise SystemExit('--tls needs concrete --listen IP(s) (the default LAN IP works); 0.0.0.0 cannot be used with tls internal')
     print_mapping_table(mappings, args.listen, args.tls)
-    content = render_caddyfile(mappings, args.listen, args.preserve_host, args.tls)
+    content = render_caddyfile(mappings, args.listen, args.preserve_host, args.tls, args.manage_port)
     write_caddyfile(content, args.dry_run)
+    if not args.dry_run:
+        (CADDYFILE_PATH.parent / 'data' / 'logs').mkdir(parents=True, exist_ok=True)
 
     state = container_state(args.container)
     if state != 'running':
@@ -800,7 +962,10 @@ def cmd_reload(args: argparse.Namespace) -> int:
         '--config', '/etc/caddy/Caddyfile',
         '--adapter', 'caddyfile',
     ]
-    return run(command, dry_run=args.dry_run)
+    code = run(command, dry_run=args.dry_run)
+    if code != 0:
+        raise SystemExit(code)
+    return start_manage(args)
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -822,6 +987,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--tls', action='store_true', help='deploy: serve HTTPS on the proxy ports with Caddy internal CA (needs a concrete --listen IP; fixes browser crypto.randomUUID on LAN access)')
     parser.add_argument('--container', default=DEFAULT_CONTAINER, help=f'deploy: caddy container name (default: {DEFAULT_CONTAINER})')
     parser.add_argument('--image', default=DEFAULT_IMAGE, help=f'deploy: caddy docker image (default: {DEFAULT_IMAGE})')
+    parser.add_argument('--manage-port', type=int, default=DEFAULT_MANAGE_PORT, help=f'deploy: loopback port for the /manage backend (default: {DEFAULT_MANAGE_PORT})')
     parser.add_argument('--profile', default=None, help='plugin: dsh profile name (default: $DSH_PROFILE or web)')
     parser.add_argument('--home', default=None, help='plugin: dsh home directory (default: $DSH_HOME or ~/.dsh)')
     parser.add_argument('--dsh', default=None, help='plugin: dsh executable (default: dsh from PATH)')
