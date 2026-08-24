@@ -1,9 +1,13 @@
 #!/usr/bin/env python3
-"""Deploy a simple dsh reverse-proxy service with Caddy (Docker).
+"""Deploy the ds-harness reverse proxy (Caddy, Docker) and manage dsh plugins.
 
-This replaces the former plugin-management script: it does not install or
-remove dsh plugins. It takes one or more port mappings and turns them into a
-Caddyfile that forwards public proxy ports to loopback dsh web instances.
+One invocation does exactly one thing — either a deployment action or a
+plugin-management action. Deployment and plugin management never mix.
+
+Deployment (Caddy reverse proxy)
+--------------------------------
+Takes one or more port mappings and turns them into a Caddyfile that forwards
+public proxy ports to loopback dsh web instances.
 
 Port mappings
   PORT          proxy listens on PORT and forwards to 127.0.0.1:PORT
@@ -23,12 +27,25 @@ port: caddy binds only <LAN-IP>:3080, which does not conflict with dsh
 listening on 127.0.0.1:3080. A wildcard `--listen 0.0.0.0` cannot share the
 port with a loopback listener and is rejected when that conflict exists.
 
+Plugin management (plugins.yml)
+-------------------------------
+Reads `plugins.yml` (a list of npm package specs or git/github URLs) and
+installs or updates each plugin into a dsh profile through
+`dsh plugin --profile <name>`. Every entry is first installed remotely
+(`dsh plugin add <spec>`). Only when remote install fails does the script
+fall back to pulling the plugin into a temporary directory (git clone for a
+repo spec, `npm pack` for an npm spec), installing it via `file:`, and then
+deleting the temporary directory. `update` defaults to every plugin in the
+list; pass plugin names to update a subset.
+
 Usage:
   python3 deploy.py up [PORTS...] [--auto] [--listen HOST ...] [--dry-run]
   python3 deploy.py down
   python3 deploy.py status
   python3 deploy.py scan
   python3 deploy.py reload [PORTS...] [--auto] [--listen HOST ...] [--dry-run]
+  python3 deploy.py install [--profile web] [--home ~/.dsh] [--dry-run]
+  python3 deploy.py update [PLUGIN...] [--profile web] [--home ~/.dsh] [--dry-run]
 
 Examples:
   python3 deploy.py up                      # bind LAN-IP:3080 -> 127.0.0.1:3080
@@ -40,16 +57,22 @@ Examples:
   python3 deploy.py up --auto               # auto-discover running dsh web services
   python3 deploy.py up 3080 --auto          # explicit ports plus discovered ones
   python3 deploy.py up --listen 192.168.1.10 --listen 10.0.0.5   # bind two IPs
+  python3 deploy.py install                 # install every plugin listed in plugins.yml
+  python3 deploy.py update                  # update every plugin listed in plugins.yml
+  python3 deploy.py update @royenheart/dsh-plugin-foo   # update one listed plugin
 """
 
 from __future__ import annotations
 
 import argparse
 import concurrent.futures
+import json
+import os
 import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import urllib.error
 import urllib.request
 from pathlib import Path
@@ -65,8 +88,11 @@ SCAN_WORKERS = 8
 WILDCARD_HOSTS = {'*', '0.0.0.0', '[::]'}
 
 CADDYFILE_PATH = Path(__file__).resolve().parent / 'Caddyfile'
+PLUGINS_YML_PATH = Path(__file__).resolve().parent / 'plugins.yml'
 
 PORT_SPEC_RE = re.compile(r'^(\d{1,5})(?::(\d{1,5}))?$')
+GIT_SHORTHAND_RE = re.compile(r'^(?:github|gitlab|bitbucket):')
+GIT_SHORTHAND_HOSTS = {'github': 'github.com', 'gitlab': 'gitlab.com', 'bitbucket': 'bitbucket.org'}
 
 
 def parse_port_spec(spec: str) -> tuple[int, int]:
@@ -94,6 +120,295 @@ def run(command: list[str], *, dry_run: bool) -> int:
     if dry_run:
         return 0
     return subprocess.run(command).returncode
+
+
+# ---------------------------------------------------------------- plugin management
+
+def plugin_profile(args: argparse.Namespace) -> str:
+    return args.profile or os.environ.get('DSH_PROFILE', 'web')
+
+
+def plugin_home(args: argparse.Namespace) -> str:
+    return args.home or os.environ.get('DSH_HOME', '~/.dsh')
+
+
+def plugin_dsh(args: argparse.Namespace) -> str:
+    return args.dsh or 'dsh'
+
+
+def profile_dir(args: argparse.Namespace) -> Path:
+    return Path(plugin_home(args)).expanduser() / 'profiles' / plugin_profile(args)
+
+
+def load_plugin_specs() -> list[str]:
+    """Read `plugins.yml` and return the non-empty string entries under `plugins:`."""
+    if not PLUGINS_YML_PATH.is_file():
+        raise SystemExit(f'{PLUGINS_YML_PATH} not found - create it with a `plugins:` list first')
+    try:
+        import yaml
+    except ImportError as error:
+        raise SystemExit('plugin management needs PyYAML - install it with `pip install pyyaml`') from error
+    try:
+        data = yaml.safe_load(PLUGINS_YML_PATH.read_text(encoding='utf-8'))
+    except Exception as error:
+        raise SystemExit(f'failed to parse {PLUGINS_YML_PATH}: {error}') from error
+    if data is None:
+        return []
+    if isinstance(data, dict):
+        specs = data.get('plugins') or []
+    elif isinstance(data, list):
+        specs = data
+    else:
+        raise SystemExit(f'{PLUGINS_YML_PATH}: expected a top-level `plugins:` list of strings')
+    if not isinstance(specs, list):
+        raise SystemExit(f'{PLUGINS_YML_PATH}: expected a top-level `plugins:` list of strings')
+    result: list[str] = []
+    for item in specs:
+        if not isinstance(item, str) or not item.strip():
+            raise SystemExit(f'{PLUGINS_YML_PATH}: every plugin entry must be a non-empty string, got {item!r}')
+        result.append(item.strip())
+    return result
+
+
+def is_git_spec(spec: str) -> bool:
+    """Whether a remote spec points at a git repository rather than an npm artifact."""
+    if spec.startswith(('git+', 'git@')) or spec.endswith('.git'):
+        return True
+    if GIT_SHORTHAND_RE.match(spec):
+        return True
+    if '://' in spec:
+        # An https tarball URL is an npm artifact, not a git repo.
+        if re.search(r'\.(?:tgz|tar\.gz)(?:[?#].*)?$', spec):
+            return False
+        # Git repos over https are overwhelmingly github/gitlab/bitbucket
+        # URLs; anything else (npm registry, package pages, tarballs) is an
+        # npm artifact and must not be sent to `git clone` in the fallback.
+        return bool(re.search(r'(?:^|[/.@])(?:github|gitlab|bitbucket)\.(?:com|org|cn|io)', spec))
+    return False
+
+
+def bare_npm_name(spec: str) -> str | None:
+    """Return the package name for a bare npm spec (`pkg` or `@scope/pkg@^1`), else None."""
+    if spec.startswith(('file:', 'link:', 'npm:', 'git+', 'git@')) or '://' in spec:
+        return None
+    if GIT_SHORTHAND_RE.match(spec):
+        return None
+    if spec.startswith('@'):
+        rest = spec[1:]
+        if '/' not in rest:
+            return None
+        scope, tail = rest.split('/', 1)
+        name = tail.split('@', 1)[0]
+        if not scope or not name:
+            return None
+        return f'@{scope}/{name}'
+    name = spec.split('@', 1)[0]
+    return name or None
+
+
+def to_clone_url(spec: str) -> str:
+    """Normalize a git spec into a URL `git clone` accepts."""
+    match = GIT_SHORTHAND_RE.match(spec)
+    if match is not None:
+        host, repo = spec.split(':', 1)
+        return f'https://{GIT_SHORTHAND_HOSTS.get(host, host)}/{repo}.git'
+    if spec.startswith('git+'):
+        return spec[4:]
+    return spec
+
+
+def run_dsh_plugin(args: argparse.Namespace, pnpm_args: list[str]) -> int:
+    """Run `dsh plugin --profile <profile> <pnpm_args...>` and return its exit code."""
+    command = [plugin_dsh(args), 'plugin', '--profile', plugin_profile(args), *pnpm_args]
+    print_command(command)
+    if args.dry_run:
+        return 0
+    env = os.environ.copy()
+    env['DSH_HOME'] = str(Path(plugin_home(args)).expanduser())
+    try:
+        return subprocess.run(command, env=env).returncode
+    except FileNotFoundError as error:
+        raise SystemExit(f'{plugin_dsh(args)!r} not found - install dsh or pass --dsh <path>') from error
+
+
+def profile_has_dependency(args: argparse.Namespace, package_name: str) -> bool:
+    """Whether the profile manifest already lists `package_name` as a dependency."""
+    manifest = profile_dir(args) / 'package.json'
+    if not manifest.is_file():
+        return False
+    try:
+        data = json.loads(manifest.read_text(encoding='utf-8'))
+    except (OSError, json.JSONDecodeError):
+        return False
+    return package_name in data.get('dependencies', {})
+
+
+def download_tarball(url: str, dest: Path) -> None:
+    request = urllib.request.Request(url, headers={'User-Agent': 'dsh-deploy-plugin/1'})
+    with urllib.request.urlopen(request, timeout=60) as response, dest.open('wb') as out:
+        shutil.copyfileobj(response, out)
+
+
+def prepare_local_spec(spec: str, tmpdir: Path, args: argparse.Namespace) -> str | None:
+    """Pull `spec` into `tmpdir` and return a `file:` spec for it, or None on failure."""
+    if is_git_spec(spec):
+        repo_dir = tmpdir / 'repo'
+        clone_url = to_clone_url(spec)
+        print_command(['git', 'clone', '--depth', '1', clone_url, str(repo_dir)])
+        if not args.dry_run:
+            try:
+                completed = subprocess.run(['git', 'clone', '--depth', '1', clone_url, str(repo_dir)])
+            except FileNotFoundError:
+                print('fallback failed: git not found on PATH')
+                return None
+            if completed.returncode != 0:
+                print(f'fallback failed: git clone exited {completed.returncode}')
+                return None
+        return 'file:' + str(repo_dir)
+
+    if '://' in spec:
+        tarball = tmpdir / 'plugin.tgz'
+        if not args.dry_run:
+            print_command(['download', spec, '->', str(tarball)])
+            try:
+                download_tarball(spec, tarball)
+            except Exception as error:
+                print(f'fallback failed: could not download {spec}: {error}')
+                return None
+        return 'file:' + str(tarball)
+
+    # Bare npm spec: download the publish tarball through npm pack.
+    print_command(['npm', 'pack', spec, '--pack-destination', str(tmpdir)])
+    if args.dry_run:
+        return 'file:' + str(tmpdir / 'plugin.tgz')
+    try:
+        completed = subprocess.run(
+            ['npm', 'pack', spec, '--pack-destination', str(tmpdir)],
+            capture_output=True,
+            text=True,
+        )
+    except FileNotFoundError:
+        print('fallback failed: npm not found on PATH')
+        return None
+    if completed.returncode != 0:
+        print(f'fallback failed: npm pack exited {completed.returncode}')
+        if completed.stderr.strip():
+            print(completed.stderr.strip())
+        return None
+    tarballs = sorted(tmpdir.glob('*.tgz'))
+    if not tarballs:
+        print('fallback failed: npm pack produced no tarball')
+        return None
+    return 'file:' + str(tarballs[0])
+
+
+def install_local_fallback(spec: str, args: argparse.Namespace) -> bool:
+    """Pull `spec` into a temporary dir, install from there, then delete it."""
+    tmpdir = Path(tempfile.mkdtemp(prefix='dsh-plugin-'))
+    try:
+        local_spec = prepare_local_spec(spec, tmpdir, args)
+        if local_spec is None:
+            return False
+        return run_dsh_plugin(args, ['add', local_spec]) == 0
+    finally:
+        shutil.rmtree(tmpdir, ignore_errors=True)
+
+
+def install_one(spec: str, args: argparse.Namespace) -> bool:
+    """Install one plugin spec: remote add first, then the local-tmp fallback."""
+    if run_dsh_plugin(args, ['add', spec]) == 0:
+        return True
+    print(f'remote add failed for {spec!r}; falling back to local tmp install')
+    return install_local_fallback(spec, args)
+
+
+def update_one(spec: str, args: argparse.Namespace) -> bool:
+    """Update one plugin spec.
+
+    Bare npm specs update through `pnpm update --latest` by package name.
+    Git specs and tarball URLs have no range semantics, so they re-resolve by
+    running the same remote-add flow as `install`.
+    """
+    if is_git_spec(spec) or '://' in spec:
+        return install_one(spec, args)
+    name = bare_npm_name(spec)
+    if name is None:
+        return install_one(spec, args)
+    if not profile_has_dependency(args, name):
+        print(f'{name} is not installed in profile {plugin_profile(args)!r}; installing instead')
+        return install_one(spec, args)
+    if run_dsh_plugin(args, ['update', '--latest', name]) == 0:
+        return True
+    print(f'update failed for {name!r}; retrying with add {spec!r}')
+    return install_one(spec, args)
+
+
+def select_plugin_specs(specs: list[str], selectors: list[str]) -> list[str]:
+    """Filter `specs` by selector; each selector may be a spec or a bare npm name."""
+    if not selectors:
+        return specs
+    selected: list[str] = []
+    for spec in specs:
+        candidates = {spec}
+        name = bare_npm_name(spec)
+        if name is not None:
+            candidates.add(name)
+        if any(selector in candidates for selector in selectors):
+            selected.append(spec)
+    unmatched = [
+        selector for selector in selectors
+        if not any(selector == spec or selector == bare_npm_name(spec) for spec in specs)
+    ]
+    if unmatched:
+        available = ', '.join(specs) or '(empty)'
+        raise SystemExit(
+            f'no plugin in {PLUGINS_YML_PATH.name} matches: {", ".join(unmatched)}; '
+            f'available: {available}',
+        )
+    return selected
+
+
+def cmd_install(args: argparse.Namespace) -> int:
+    if args.ports:
+        raise SystemExit('install takes no plugin names - it installs every plugin listed in plugins.yml; use `update <name...>` to target a subset')
+    specs = load_plugin_specs()
+    if not specs:
+        print(f'{PLUGINS_YML_PATH.name} is empty - nothing to install')
+        return 0
+    print(f'installing {len(specs)} plugin(s) from {PLUGINS_YML_PATH.name} into profile {plugin_profile(args)!r}')
+    failed: list[str] = []
+    for spec in specs:
+        print(f'\n==> plugin: {spec}')
+        if install_one(spec, args):
+            print(f'ok: {spec}')
+        else:
+            print(f'FAILED: {spec}')
+            failed.append(spec)
+    if failed:
+        raise SystemExit(f'{len(failed)} plugin(s) failed: {", ".join(failed)}')
+    print(f'\ninstalled {len(specs)} plugin(s)')
+    return 0
+
+
+def cmd_update(args: argparse.Namespace) -> int:
+    specs = load_plugin_specs()
+    if not specs:
+        print(f'{PLUGINS_YML_PATH.name} is empty - nothing to update')
+        return 0
+    selected = select_plugin_specs(specs, args.ports)
+    print(f'updating {len(selected)} plugin(s) from {PLUGINS_YML_PATH.name} into profile {plugin_profile(args)!r}')
+    failed: list[str] = []
+    for spec in selected:
+        print(f'\n==> plugin: {spec}')
+        if update_one(spec, args):
+            print(f'ok: {spec}')
+        else:
+            print(f'FAILED: {spec}')
+            failed.append(spec)
+    if failed:
+        raise SystemExit(f'{len(failed)} plugin(s) failed: {", ".join(failed)}')
+    print(f'\nupdated {len(selected)} plugin(s)')
+    return 0
 
 
 def docker_available() -> bool:
@@ -490,14 +805,26 @@ def cmd_reload(args: argparse.Namespace) -> int:
 
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    parser.add_argument('action', nargs='?', choices=['up', 'down', 'status', 'scan', 'reload'], default='up')
-    parser.add_argument('ports', nargs='*', help='port mappings: PORT or PROXY:DSH (default: 3080)')
-    parser.add_argument('--auto', action='store_true', help='scan 127.0.0.1 listening ports for dsh web services and add them')
-    parser.add_argument('--listen', action='append', default=None, help='proxy bind host; repeat for multiple IPs (default: first non-loopback IPv4, fallback 0.0.0.0; use 127.0.0.1 for local-only)')
-    parser.add_argument('--preserve-host', action='store_true', help='do not rewrite Host/Origin to loopback (dsh then needs --trusted-host; privileged methods stay loopback-only)')
-    parser.add_argument('--tls', action='store_true', help='serve HTTPS on the proxy ports with Caddy internal CA (needs a concrete --listen IP; fixes browser crypto.randomUUID on LAN access)')
-    parser.add_argument('--container', default=DEFAULT_CONTAINER, help=f'caddy container name (default: {DEFAULT_CONTAINER})')
-    parser.add_argument('--image', default=DEFAULT_IMAGE, help=f'caddy docker image (default: {DEFAULT_IMAGE})')
+    parser.add_argument(
+        'action',
+        nargs='?',
+        choices=['up', 'down', 'status', 'scan', 'reload', 'install', 'update'],
+        default='up',
+    )
+    parser.add_argument(
+        'ports',
+        nargs='*',
+        help='deploy: port mappings PORT or PROXY:DSH (default: 3080); update: plugin names to update (default: all in plugins.yml)',
+    )
+    parser.add_argument('--auto', action='store_true', help='deploy: scan 127.0.0.1 listening ports for dsh web services and add them')
+    parser.add_argument('--listen', action='append', default=None, help='deploy: proxy bind host; repeat for multiple IPs (default: first non-loopback IPv4, fallback 0.0.0.0; use 127.0.0.1 for local-only)')
+    parser.add_argument('--preserve-host', action='store_true', help='deploy: do not rewrite Host/Origin to loopback (dsh then needs --trusted-host; privileged methods stay loopback-only)')
+    parser.add_argument('--tls', action='store_true', help='deploy: serve HTTPS on the proxy ports with Caddy internal CA (needs a concrete --listen IP; fixes browser crypto.randomUUID on LAN access)')
+    parser.add_argument('--container', default=DEFAULT_CONTAINER, help=f'deploy: caddy container name (default: {DEFAULT_CONTAINER})')
+    parser.add_argument('--image', default=DEFAULT_IMAGE, help=f'deploy: caddy docker image (default: {DEFAULT_IMAGE})')
+    parser.add_argument('--profile', default=None, help='plugin: dsh profile name (default: $DSH_PROFILE or web)')
+    parser.add_argument('--home', default=None, help='plugin: dsh home directory (default: $DSH_HOME or ~/.dsh)')
+    parser.add_argument('--dsh', default=None, help='plugin: dsh executable (default: dsh from PATH)')
     parser.add_argument('--dry-run', action='store_true', help='print commands and generated Caddyfile without executing')
     return parser
 
@@ -505,13 +832,25 @@ def build_parser() -> argparse.ArgumentParser:
 def main() -> None:
     parser = build_parser()
     args = parser.parse_args()
+    action = args.action or 'up'
+
+    if action in ('install', 'update'):
+        if args.auto or args.listen is not None or args.preserve_host or args.tls:
+            raise SystemExit('error: --auto/--listen/--preserve-host/--tls are deployment-only options; install/update only take --profile/--home/--dsh/--dry-run')
+        args.profile = plugin_profile(args)
+        args.home = plugin_home(args)
+        args.dsh = plugin_dsh(args)
+        return cmd_install(args) if action == 'install' else cmd_update(args)
+
+    if args.profile is not None or args.home is not None or args.dsh is not None:
+        raise SystemExit('error: --profile/--home/--dsh are plugin-management-only options; use them with install/update')
     if args.listen is None:
         args.listen = [default_listen_host()]
-    if args.action in ('up', 'reload'):
+    if action in ('up', 'reload'):
         for listen_host in args.listen:
             if listen_host != WILDCARD_LISTEN_HOST and re.match(r'^[0-9a-fA-F:.]+$', listen_host) is None:
                 raise SystemExit(f'error: --listen {listen_host!r} does not look like an IP address')
-    action = args.action or 'up'
+
     commands = {
         'up': cmd_up,
         'down': cmd_down,

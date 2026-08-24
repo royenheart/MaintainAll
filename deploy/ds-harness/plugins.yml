@@ -1,0 +1,14 @@
+# dsh 插件列表（deploy.py install / update 读取本文件）。
+#
+# 每个条目是一个远程安装 spec，二选一：
+#   - npm 包：@scope/name、name，或带版本/tag 的 @scope/name@1.2.3、name@latest
+#   - Git/GitHub 仓库：https://github.com/owner/repo(.git)、
+#     git@github.com:owner/repo(.git)、或 github:owner/repo 简写
+#
+# 安装顺序：先 `dsh plugin add <spec>` 远程直装；只有远程安装失败时才回退到
+# 拉取本机临时目录（git 仓库 clone / npm 包 npm pack），`file:` 安装后立即删除
+# 临时目录。
+#
+# update 默认更新本文件列出的全部插件；也可指定插件名更新一部分：
+#   python3 deploy.py update @royenheart/dsh-plugin-foo
+plugins: []

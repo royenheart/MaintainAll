@@ -1,8 +1,11 @@
-# ds-harness 代理服务（Caddy Docker）
+# ds-harness 代理服务（Caddy Docker）与 dsh 插件管理
 
-本目录不再做插件管理。`deploy.py` 现在是一个简单的 dsh 反向代理部署脚本：
-用 Caddy（Docker 容器，host 网络）把宿主机上的 dsh web 实例（默认只监听
-`127.0.0.1`）暴露给非本机访问，代替手写 nginx 或 `ssh -L`。
+`deploy.py` 一个命令只做一件事：**部署动作**（`up` / `down` / `status` /
+`scan` / `reload`）用 Caddy（Docker 容器，host 网络）把宿主机上的 dsh web
+实例（默认只监听 `127.0.0.1`）暴露给非本机访问，代替手写 nginx 或
+`ssh -L`；**插件管理动作**（`install` / `update`）读本目录的
+[`plugins.yml`](plugins.yml) 插件列表，通过 `dsh plugin` 安装/更新 dsh 插件。
+两种动作互不混合，一次运行只做其中一种。
 
 ## 为什么用 Caddy Docker
 
@@ -42,6 +45,46 @@ dsh 端口不同。所以 `up 3080 8081:3081` 的意思是：
 
 如果两个实例的代理端口和 dsh 端口相同，直接写 `up 3080 3081` 即可。
 `--dry-run` 只打印将要执行的 docker 命令和生成的 Caddyfile。
+
+## dsh 插件管理（plugins.yml）
+
+`plugins.yml` 是插件列表，每行一个远程安装 spec：npm 包名（可带版本/tag）
+或 Git/GitHub 仓库地址：
+
+```yaml
+plugins:
+  - "@royenheart/dsh-plugin-foo"                 # npm：装最新版
+  - "@royenheart/dsh-plugin-bar@^1.2.0"          # npm：装指定范围
+  - "https://github.com/royenheart/dsh-plugin-baz"   # GitHub：HTTPS 直装
+  - "github:royenheart/dsh-plugin-qux"           # GitHub：简写
+```
+
+```bash
+python3 deploy.py install                    # 安装 plugins.yml 里的全部插件
+python3 deploy.py update                     # 更新 plugins.yml 里的全部插件
+python3 deploy.py update @royenheart/dsh-plugin-foo   # 只更新指定插件
+python3 deploy.py install --profile web --dry-run     # 只看将执行的 dsh/pnpm 命令
+```
+
+安装策略：
+
+1. **远程直装**：`dsh plugin --profile <profile> add <spec>`，npm 包和
+   Git/GitHub 地址都先走这一步。
+2. **本地兜底**：只有远程直装失败时，才把插件拉取到临时目录——Git 仓库用
+   `git clone`，npm 包用 `npm pack`——然后 `dsh plugin add file:<临时目录>`
+   安装，装完立即删除临时目录。
+
+更新策略：
+
+- npm 包：先检查 profile 里已安装，再 `dsh plugin update --latest <包名>`
+  （更新到最新版）；未安装或更新失败时回退到上面的安装流程。
+- Git/GitHub 仓库：直接重跑远程直装流程（`pnpm add` 会重新解析到最新
+  commit），失败同样走本地兜底。
+
+插件管理动作只识别 `--profile`（默认 `$DSH_PROFILE` 或 `web`）、`--home`
+（默认 `$DSH_HOME` 或 `~/.dsh`）、`--dsh`（默认 PATH 里的 `dsh`）和
+`--dry-run`；部署参数（`--auto`/`--listen`/`--preserve-host`/`--tls`）与
+插件管理互斥，反之亦然。
 
 ### 监听地址与同端口冲突
 
