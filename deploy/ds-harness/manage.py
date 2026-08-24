@@ -523,6 +523,61 @@ def ps_info_for_pid(pid: int) -> dict:
     return {'ok': True, **parsed}
 
 
+def proc_cpu_ticks(pid: int) -> int | None:
+    """Sum of utime+stime from /proc/<pid>/stat, in clock ticks."""
+    try:
+        stat = Path(f'/proc/{pid}/stat').read_text(encoding='utf-8')
+    except OSError:
+        return None
+    # The comm field may contain spaces; everything after the last ')' is the
+    # numeric field list starting at field 3 (state).
+    rest = stat[stat.rfind(')') + 2:].split()
+    if len(rest) < 13:
+        return None
+    try:
+        # rest[11] = utime (field 14), rest[12] = stime (field 15)
+        return int(rest[11]) + int(rest[12])
+    except (ValueError, IndexError):
+        return None
+
+
+def instant_cpu_percent(pid: int, interval: float = 0.6) -> float | None:
+    """Short-interval CPU% like top/ps would show right now.
+
+    `ps %cpu` is a lifetime average, which reads 0.0 for a long-running but
+    mostly idle dsh process. Two /proc/<pid>/stat samples over a short
+    interval give an instantaneous value instead.
+    """
+    try:
+        hz = os.sysconf('SC_CLK_TCK')
+    except (ValueError, OSError):
+        hz = 100
+    first = proc_cpu_ticks(pid)
+    if first is None:
+        return None
+    time.sleep(interval)
+    second = proc_cpu_ticks(pid)
+    if second is None:
+        return None
+    if hz <= 0:
+        return None
+    return round((second - first) / (interval * hz) * 100, 1)
+
+
+def with_instant_cpu(info: dict) -> dict:
+    """Attach an instantaneous CPU reading when the process is readable."""
+    if not info.get('ok'):
+        return info
+    try:
+        cpu = instant_cpu_percent(int(info['pid']))
+    except (ValueError, TypeError):
+        return info
+    if cpu is not None:
+        info['cpu_percent'] = cpu
+        info['cpu_source'] = 'instant'
+    return info
+
+
 def dsh_web_processes() -> list[dict]:
     """Best-effort list of running `dsh web` processes from ps."""
     if shutil.which('ps') is None:
@@ -554,7 +609,7 @@ def process_info(port: int) -> dict:
         info = ps_info_for_pid(pid)
         if info.get('ok'):
             info['source'] = 'port'
-        return info
+        return with_instant_cpu(info)
     # Some dsh launchers make the listening socket unreadable through
     # /proc/<pid>/fd (non-dumpable), so ss and the /proc fallback cannot map
     # the port back to a pid. If exactly one `dsh web` process exists, show
@@ -563,8 +618,8 @@ def process_info(port: int) -> dict:
     fallback = dsh_web_processes()
     if len(fallback) == 1:
         info = {'ok': True, **fallback[0], 'source': 'cmdline'}
-        info['note'] = f'按 dsh web 命令行匹配（无法关联到端口 {port}）'
-        return info
+        info['note'] = f'端口→PID 关联不可用，按 dsh web 命令行匹配'
+        return with_instant_cpu(info)
     if len(fallback) > 1:
         return {
             'ok': False,
@@ -833,16 +888,6 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .plugin-row .state.on { color: var(--green); }
 .plugin-row .state.off { color: var(--text-3); }
 .section-title { font-size: 13px; color: var(--text-2); margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
-.switch {
-  position: relative; width: 40px; height: 22px; flex: 0 0 auto; appearance: none;
-  background: var(--border); border-radius: 999px; border: 0; cursor: pointer; transition: background .15s ease; padding: 0;
-}
-.switch::after {
-  content: ''; position: absolute; top: 2px; left: 2px; width: 18px; height: 18px; border-radius: 50%;
-  background: #fff; transition: transform .15s ease; box-shadow: 0 1px 2px rgba(0,0,0,.3);
-}
-.switch[aria-checked="true"] { background: var(--accent); }
-.switch[aria-checked="true"]::after { transform: translateX(18px); }
 .enter-link { text-decoration: none; }
 .note { color: var(--text-3); font-size: 12px; margin-top: 8px; }
 @media (max-width: 560px) {
@@ -929,8 +974,10 @@ function instanceCard(inst) {
   const plugins = (inst.plugins || []);
   const manifestError = inst.manifest_error
     ? '<div class="banner">profile 读取异常：' + esc(inst.manifest_error) + '</div>' : '';
-  const safeToggle = '<button class="switch" role="switch" aria-checked="' + (safe ? 'true' : 'false') + '" '
-    + 'data-action="safe" data-port="' + inst.port + '" data-enabled="' + (!safe) + '" title="安全模式：只加载内置 bundle"></button>';
+  const safeButton = '<button class="' + (safe ? 'danger' : 'primary') + '" '
+    + 'data-action="safe" data-port="' + inst.port + '" data-enabled="' + (!safe) + '" '
+    + 'title="安全模式：只加载内置 bundle，重启 dsh 后生效">'
+    + (safe ? '退出安全模式' : '进入安全模式') + '</button>';
   const pluginHtml = plugins.length
     ? plugins.map(p => pluginRow(inst, p)).join('')
     : '<div class="plugin-row"><div class="pname">没有检测到外部插件</div></div>';
@@ -954,7 +1001,7 @@ function instanceCard(inst) {
     + '</div>'
     + '<div class="actions">'
     + '<a class="enter-link" href="' + entryUrl(inst) + '"><button class="primary">进入 dsh</button></a>'
-    + '<span class="section-title">安全模式（禁用全部外部插件）</span>' + safeToggle
+    + safeButton
     + '</div>'
     + '<div class="section-title">外部插件加载</div>'
     + '<div class="plugins">' + pluginHtml + '</div>'
