@@ -1,8 +1,14 @@
 # docker 加速配置
 
-Docker daemon 的 registry 镜像加速配置，含
-[DaoCloud public-image-mirror](https://github.com/DaoCloud/public-image-mirror)
-（`https://docker.m.daocloud.io`）。
+Docker daemon 的 registry 镜像加速配置。列表只保留实测可用的镜像，按
+blob 下载速度排序：
+
+1. `https://2a6bf1988cb6428c877f723ec7530dbc.mirror.swr.myhuaweicloud.com`
+   （华为云 SWR 镜像，实测 ~6.5 MB/s）
+2. `https://hub1.nat.tf`（实测 ~0.5 MB/s）
+3. `https://docker.m.daocloud.io`
+   （[DaoCloud public-image-mirror](https://github.com/DaoCloud/public-image-mirror)，
+   可用但 blob 层当前较慢，作为兜底）
 
 ## 一键配置（新机器）
 
@@ -17,7 +23,7 @@ sudo python3 install.py --data-root /mnt/data1/docker
 `install.py` 会：
 
 1. 与已有的 `/etc/docker/daemon.json` 做 JSON 合并（`registry-mirrors`
-   取并集、本配置优先，其余字段保留原值）；
+   以本配置覆盖，其余字段保留原值）；
 2. 原文件备份为 `daemon.json.bak-<时间戳>`；
 3. 原子写入后 `systemctl restart docker`，并用 `docker info` 打印生效的 mirrors。
 
@@ -41,4 +47,5 @@ Docker **只支持一个** `data-root`，因此合并规则是**已有的优先�
   quay.io 等需要用前缀替换的方式拉取，例如
   `docker pull m.daocloud.io/docker.io/library/nginx`，各 registry 的替换
   域名见上游 README。
-- mirror 列表按顺序尝试，不可用的会被自动跳过。
+- mirror 列表按顺序尝试，不可用的会被自动跳过；但 Docker 只按错误跳过，
+  **不会因为某个 mirror 慢而切换**，所以第一位必须放实测最快的镜像。

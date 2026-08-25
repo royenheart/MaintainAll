@@ -7,7 +7,7 @@
     python3 install.py --dst /tmp/x.json # 指定目标路径（测试用）
 
 行为：
-    1. 与已有的 daemon.json 做 JSON 合并：registry-mirrors 取并集（本配置优先），
+    1. 与已有的 daemon.json 做 JSON 合并：registry-mirrors 以本配置覆盖，
        其余字段（如 data-root）保留原值；
     2. 原文件备份为 daemon.json.bak-<时间戳>；
     3. 原子写入后重启 docker.service，并用 docker info 打印生效的 mirrors。
@@ -37,15 +37,10 @@ def merge(src: Path, dst: Path) -> dict:
         except json.JSONDecodeError:
             sys.exit(f"ERROR: 现有 {dst} 不是合法 JSON，请先人工处理")
 
-    # registry-mirrors：新配置优先，与已有列表取并集去重
-    mirrors = list(
-        dict.fromkeys(new.get("registry-mirrors", []) + merged.get("registry-mirrors", []))
-    )
-
-    # 新配置覆盖同名字段，其余字段保留现有值（如 data-root）
+    # 新配置覆盖同名字段，其余字段保留现有值（如 data-root）。
+    # registry-mirrors 也直接覆盖：旧列表常含已失效镜像，取并集会让
+    # Docker 在回退时逐个尝试无效域名，拖慢失败路径。
     merged.update(new)
-    if mirrors:
-        merged["registry-mirrors"] = mirrors
     return merged
 
 
