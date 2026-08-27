@@ -261,8 +261,42 @@ http://:8080 {
 }
 ```
 
-即让 Caddy 把外部请求“担保”成 loopback 请求，这样 dsh web 的全部功能
-（包括设置、凭据、打开文件等特权方法）都能通过代理使用。
+即让 Caddy 把外部请求“担保”成 loopback 请求，这样 dsh web 的 API——包括
+`settings.describe` / `settings.mutate` / `credentials.describe` 这些特权
+方法——在服务端都能通过代理使用。
+
+**但设置页面在远程浏览器里仍然不可用**：dsh 客户端在启动时用
+`location.hostname` 判断是否 loopback。通过
+`http(s)://<LAN IP>:<代理端口>` 访问时它不是 loopback，`ui-settings` 会进入
+memory 模式，主动不发起 `settings.describe`。因此“设置 → 模型设置”会显示
+`settings are unavailable in this browser`，凭据、设置编辑等页面同样被禁用。
+这是 dsh 客户端的刻意行为（远程浏览器无认证，不允许读/写设置），不是
+Caddy 漏代理；重写 Host/Origin 只影响服务端信任栅栏，改不了浏览器的
+`location.hostname`。
+
+`deploy.py up` / `reload` 会探测 dsh 实际服务的
+`dsh-client-ui-settings` bundle：如果其中仍包含这个 loopback 门禁，就打印
+上述提示；如果 dsh 未启动导致无法探测，会打印“无法确认”的提示；如果未来
+dsh 移除了门禁（设置页可经反代使用），则不打印设置可用性提示。
+
+**要使用完整设置页面的访问方式**：
+
+- 本机访问：直接访问 dsh 本来的回环 URL（如 `http://127.0.0.1:3080/`），
+  不要走 LAN 代理。
+- 远程访问：代理用 `--listen 127.0.0.1` 并配合 SSH 本地端口转发，让浏览器
+  的 URL 仍是回环地址：
+
+  ```bash
+  # 服务器：只把代理绑在回环
+  python3 deploy.py up --listen 127.0.0.1
+  # 客户端：把服务器回环端口转发到本机
+  ssh -L 3080:127.0.0.1:3080 <服务器>
+  # 客户端浏览器访问 http://127.0.0.1:3080/ —— 设置页可用
+  ```
+
+- 或者在本机/SSH 会话里用 curl 等回环客户端直接请求
+  `http://127.0.0.1:<dsh-port>/api/...`；设置 API 本身经 Host 重写代理也能
+  工作，只是浏览器页面会主动禁用设置 UI。
 
 **dsh 侧不需要做任何改动**：只要 dsh web 照常用
 `dsh web --port <端口> --no-open` 跑在 `127.0.0.1` 上即可（这也是它的默认
@@ -272,7 +306,8 @@ http://:8080 {
 边界。dsh 没有认证层，任何能访问代理端口的人都能控制 agent/宿主机。因此：
 
 - 只把代理绑定到可信网络：`--listen <内网IP>`，并用防火墙限制来源；
-- 或只暴露给本机（`--listen 127.0.0.1`）配合 `ssh -L` 使用；
+- 或只暴露给本机（`--listen 127.0.0.1`）配合 `ssh -L` 使用（完整设置页也
+  需要这种方式，见上）；
 - 需要认证时在生成的 Caddyfile 里给站点加 `basic_auth`（见 Caddy 文档），
   然后 `deploy.py reload` 前把它加进本目录的 Caddyfile 模板/生成逻辑。
 

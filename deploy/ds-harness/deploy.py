@@ -16,10 +16,17 @@ Port mappings
 By default the generated Caddyfile rewrites Host and Origin to the loopback
 upstream authority. dsh's /api browser-trust fence rejects non-loopback Hosts,
 and privileged methods (settings, credentials, path openers) are loopback-only
-even with --trusted-host. Rewriting makes the full dsh web UI work through the
+even with --trusted-host. Rewriting makes the dsh web API work through the
 proxy, which means the proxy itself becomes the trust boundary: dsh has no
 authentication layer, so bind the proxy to a trusted network only (see
 --listen and the README).
+
+One dsh-client-side fence remains even after Host/Origin rewriting: the
+settings domain disables itself in any browser whose page URL is not loopback
+(the models settings page then reports "settings are unavailable in this
+browser"). For settings through a remote browser, keep the proxy on loopback
+(`--listen 127.0.0.1`) and access it through an SSH local forward; see the
+README.
 
 The default listen host is the machine's first non-loopback IPv4 (the
 default-route source address). That lets `up` with no arguments share dsh's
@@ -86,6 +93,12 @@ WILDCARD_LISTEN_HOST = '0.0.0.0'
 DSH_MARKER = '__DSH_BOOT__'
 SCAN_TIMEOUT_SECONDS = 0.8
 SCAN_WORKERS = 8
+SETTINGS_PROBE_TIMEOUT_SECONDS = 3.0
+SETTINGS_PROBE_USER_AGENT = 'dsh-proxy-settings-probe/1'
+SETTINGS_BUNDLE_SUFFIX = 'dsh-client-ui-settings'
+SETTINGS_GATE_PATTERN = re.compile(
+    r'isLoopback\s*\?\s*["\']host["\']\s*:\s*["\']memory["\']',
+)
 
 WILDCARD_HOSTS = {'*', '0.0.0.0', '[::]'}
 
@@ -538,6 +551,88 @@ def probe_dsh_port(port: int) -> int | None:
         return None
 
 
+def read_loopback_http_text(dsh_port: int, path: str) -> str | None:
+    """GET a text resource from 127.0.0.1:dsh_port and return it as UTF-8 text."""
+    url = f'http://127.0.0.1:{dsh_port}{path}'
+    request = urllib.request.Request(
+        url,
+        headers={'Host': f'127.0.0.1:{dsh_port}', 'User-Agent': SETTINGS_PROBE_USER_AGENT},
+    )
+    try:
+        with urllib.request.urlopen(request, timeout=SETTINGS_PROBE_TIMEOUT_SECONDS) as response:
+            return response.read().decode('utf-8', 'replace')
+    except Exception:
+        # The probe is best-effort: dsh may be down, or the path may 404 on an
+        # older/newer dsh. Callers treat a failed read as "unknown".
+        return None
+
+
+def dsh_boot_entries(html: str) -> list[dict] | None:
+    """Parse `window.__DSH_BOOT__` from a dsh web index document, when present."""
+    match = re.search(r'window\.__DSH_BOOT__\s*=\s*(\{.*?\})\s*</script>', html, re.S)
+    if match is None:
+        return None
+    try:
+        data = json.loads(match.group(1))
+        entries = data.get('entries')
+        return entries if isinstance(entries, list) else None
+    except (json.JSONDecodeError, TypeError):
+        return None
+
+
+def settings_bundle_path(entries: list[dict]) -> str | None:
+    """Return the served URL path of the `dsh-client-ui-settings` client bundle."""
+    for entry in entries:
+        if not isinstance(entry, dict):
+            continue
+        entry_id = entry.get('id')
+        entry_url = entry.get('url')
+        if isinstance(entry_id, str) and isinstance(entry_url, str) and entry_id.endswith(SETTINGS_BUNDLE_SUFFIX):
+            return entry_url if entry_url.startswith('/') else f'/{entry_url}'
+    return None
+
+
+def settings_gate_blocks_remote(dsh_port: int) -> bool | None:
+    """Whether the served dsh client still disables settings for non-loopback pages.
+
+    The current dsh client builds its settings mirror with
+    `connection.isLoopback ? "host" : "memory"`, so any browser whose page URL
+    is not loopback never reads or writes settings. Host/Origin rewriting by
+    the proxy cannot change that, but a future dsh can. Returning `True` means
+    "the gate is present, remote settings pages will be unavailable"; `False`
+    means "the gate pattern is gone, assume dsh updated"; `None` means the dsh
+    instance could not be probed.
+    """
+    html = read_loopback_http_text(dsh_port, '/')
+    if html is None or DSH_MARKER not in html:
+        return None
+    entries = dsh_boot_entries(html)
+    if entries is None:
+        return None
+    bundle_path = settings_bundle_path(entries)
+    if bundle_path is None:
+        return None
+    bundle = read_loopback_http_text(dsh_port, bundle_path)
+    if bundle is None:
+        return None
+    return SETTINGS_GATE_PATTERN.search(bundle) is not None
+
+
+def probe_settings_availability(
+    mappings: list[tuple[int, int]],
+) -> tuple[list[int], list[int]]:
+    """Return `(blocked_ports, unknown_ports)` for model settings through the proxy."""
+    blocked: list[int] = []
+    unknown: list[int] = []
+    for dsh_port in sorted({dsh_port for _proxy_port, dsh_port in mappings}):
+        result = settings_gate_blocks_remote(dsh_port)
+        if result is True:
+            blocked.append(dsh_port)
+        elif result is None:
+            unknown.append(dsh_port)
+    return blocked, unknown
+
+
 def scan_dsh_ports() -> list[int]:
     candidates = scan_candidate_ports()
     if not candidates:
@@ -672,6 +767,33 @@ def print_mapping_table(mappings: list[tuple[int, int]], listen_hosts: list[str]
 def print_security_warning() -> None:
     print('warning: dsh has no authentication layer; the proxy is the trust boundary.')
     print('         bind it to a trusted network only (use --listen, a firewall, or Caddy basic_auth).')
+
+
+def print_settings_availability_warning(listen_hosts: list[str], mappings: list[tuple[int, int]]) -> None:
+    """Warn when the proxied dsh client still disables settings on non-loopback page URLs.
+
+    The proxy can rewrite Host/Origin so the settings RPCs pass dsh's
+    server-side trust fence, but the current dsh client additionally gates the
+    settings domain on `location.hostname`. The only reliable deploy-time signal
+    is the served client bundle itself: probe it, and stay silent when the gate
+    is gone (dsh updated) or when the proxy only binds loopback.
+    """
+    if all(host in ('127.0.0.1', '[::1]') for host in listen_hosts):
+        return
+    blocked, unknown = probe_settings_availability(mappings)
+    if not blocked and not unknown:
+        return
+    if blocked:
+        ports = ', '.join(map(str, blocked))
+        print(f'note: dsh client on port(s) {ports} still gates settings pages to loopback browsers;')
+        print('      through this proxy the models settings page will show "settings are unavailable in this browser".')
+    if unknown:
+        ports = ', '.join(map(str, unknown))
+        print(f'note: could not probe dsh settings availability on port(s) {ports} (dsh web not reachable?);')
+        print('      if the models settings page reports "settings are unavailable in this browser", use the workaround below.')
+    if blocked or unknown:
+        print('      Full settings access: run `up --listen 127.0.0.1` and browse through an SSH local forward')
+        print('      (e.g. ssh -L <port>:127.0.0.1:<dsh-port> <server>, then visit http://127.0.0.1:<port>/).')
 
 
 def write_caddyfile(content: str, dry_run: bool) -> None:
@@ -850,6 +972,7 @@ def cmd_up(args: argparse.Namespace) -> int:
         raise SystemExit('--tls needs concrete --listen IP(s) (the default LAN IP works); 0.0.0.0 cannot be used with tls internal')
     print_mapping_table(mappings, args.listen, args.tls)
     print_security_warning()
+    print_settings_availability_warning(args.listen, mappings)
 
     state = container_state(args.container)
     if state is not None:
@@ -948,6 +1071,7 @@ def cmd_reload(args: argparse.Namespace) -> int:
     if args.tls and WILDCARD_LISTEN_HOST in args.listen:
         raise SystemExit('--tls needs concrete --listen IP(s) (the default LAN IP works); 0.0.0.0 cannot be used with tls internal')
     print_mapping_table(mappings, args.listen, args.tls)
+    print_settings_availability_warning(args.listen, mappings)
     content = render_caddyfile(mappings, args.listen, args.preserve_host, args.tls, args.manage_port)
     write_caddyfile(content, args.dry_run)
     if not args.dry_run:
