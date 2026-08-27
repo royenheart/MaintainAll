@@ -57,6 +57,7 @@ function loop_cmd_until_success() {
 # For intel oneapi
 # . /opt/intel/oneapi/setvars.sh
 
+alias sudo='sudo '
 alias ssh-keygen-ed25519="ssh-keygen -t ed25519 -C \"you@email.domain\""
 alias ll='ls -alF'
 alias la='ls -A'
@@ -69,6 +70,7 @@ alias npmginstall="npm i -g --verbose --timing"
 alias killvscode='pkill -u "$USER" -f vscode'
 alias skills='npx skills'
 alias gitlog1='git log --oneline'
+alias dnf='dnf --setopt=retries=20 --setopt=timeout=60 --setopt=minrate=100'
 
 function ghlogin() {
     token=$1
