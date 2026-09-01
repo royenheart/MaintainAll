@@ -24,6 +24,8 @@
 - Docker 容器用 `--network host`，既能绑定任意代理端口，也能直接访问宿主
   机的 `127.0.0.1:<dsh-port>`；不需要为每个端口写 `-p` 映射。
 - Caddyfile 由脚本生成，不需要本机安装/配置 nginx。
+- 新版 dsh web 启动时会打印一个带 `?token=...` 的登录 URL；代理把首次
+  token 登录和之后的 Cookie 都原样转发，无需额外 Caddy 配置（见下）。
 
 ## 用法
 
@@ -52,6 +54,106 @@ dsh 端口不同。所以 `up 3080 8081:3081` 的意思是：
 
 如果两个实例的代理端口和 dsh 端口相同，直接写 `up 3080 3081` 即可。
 `--dry-run` 只打印将要执行的 docker 命令和生成的 Caddyfile。
+
+## dsh web 启动 token 与首次登录
+
+新版 dsh web 启动时不再打印裸 URL，而是打印带一次性启动 token 的登录 URL：
+
+```text
+dsh web: http://127.0.0.1:3080/?token=xxxxx (LAN: http://192.168.31.143:3080/?token=xxxxx)
+```
+
+没有 token 或 Cookie 的请求会被 dsh 拒绝：
+
+```text
+401 dsh web authentication required; reopen the URL printed by dsh web.
+```
+
+Caddy 反代的基础转发**不需要为此改动**：`header_up Host/Origin` 仍然把请求
+担保成 loopback，`?token=...` 查询串和随后 `Set-Cookie` 都被 Caddy 原样
+转发。不想让内网设备碰 token 的话，见下面“代理免 token（方案 B）”。
+首次通过代理访问时，把 dsh web 启动行里的 token 填到代理地址上：
+
+```text
+https://<代理IP>:<代理端口>/?token=<TOKEN>
+# 例如 https://192.168.31.143:3081/?token=xxxxx
+```
+
+dsh 校验 token 后 303 跳回 `/` 并种下一个 HttpOnly + SameSite=Strict 的
+会话 Cookie（默认 30 天），之后直接访问 `https://<代理IP>:<代理端口>/`
+即可。注意：
+
+- token 是**每个 dsh web 进程**随机生成的，重启 dsh web 会换新 token；但
+  已种下的 Cookie 由 `DSH_HOME` 里的持久密钥签名，dsh web 重启后仍然有效，
+  只有 Cookie 过期或浏览器清掉后才需要重新用 token 登录。
+- 代理端口与 dsh 端口一致且走 HTTP 时，启动行里的 LAN URL 可以直接点开；
+  端口不同或走 `--tls` 时，按上面的格式替换 scheme/端口即可。
+- `/manage/` 由 manage 后端提供，不受 dsh web token 影响；管理界面会显示
+  “在线 · 需 token”，启用下面的代理免 token 后则显示“在线 · 代理免token”。
+
+### 能否按网段/CIDR 免 token？
+
+dsh web 原生的新认证**没有 IP/CIDR 信任区**：即使从 `127.0.0.1` 访问，
+`/` 和 `/api/*` 也必须有 token 或会话 Cookie。`--trusted-host` 只放宽
+`/api` 的 Host/Origin 浏览器信任栅栏（防 DNS rebinding/跨站），**不豁免
+认证**。原生可调的是会话 Cookie 有效期 `cookieMaxAgeDays`（默认 30 天）。
+
+本目录实现了**方案 B：Caddy 注入会话 Cookie**，把“内网免 token”这件事放
+在代理层。`deploy.py up` / `reload` 会读取每个 dsh 实例的
+`$DSH_HOME/.credentials.yaml` 里的 browser-session 签名密钥，按 dsh 的
+Cookie 格式生成一个会话 Cookie，并用 `header_up Cookie` 注入到上游。这样
+所有能访问代理地址的设备**直接打开 `<proxy-url>/` 即可，完全不需要接触
+token**；直连 `127.0.0.1:<dsh-port>` 仍按 dsh 原生要求 token。
+
+启用方式（默认即启用，前提是每个 dsh 实例已启动过一次、生成了
+`.credentials.yaml`）：
+
+```bash
+python3 deploy.py up 8081:3080 8082:3081 --auth-cookie-days 3650
+# 或对已有部署热更新：
+python3 deploy.py reload 8081:3080 8082:3081 --auth-cookie-days 3650
+```
+
+`--auth-cookie-days` 是注入 Cookie 的有效天数（默认 30）。**必须同时保证
+dsh 端 `cookieMaxAgeDays >= --auth-cookie-days`**，否则 dsh 会以“有效期超
+过上限”拒绝注入的 Cookie。调大 dsh 端上限：编辑
+`$DSH_HOME/profiles/<profile>/cordis.patch.yml`：
+
+```yaml
+- id: connection
+  config:
+    # patch 会替换整行 config，所以要把 web-app 里这一行已有的
+    # trustedHosts 表达式原样带上，再追加 cookieMaxAgeDays。
+    trustedHosts: !!js ctx.webRuntime.trustedHosts
+    cookieMaxAgeDays: 3650
+```
+
+保存后重启对应 dsh web 生效。
+
+多实例/多 `DSH_HOME` 解析：部署脚本只按端口生成 Caddy 转发；**每个 dsh
+端口对应哪个 `DSH_HOME` 由 [`instances.yml`](instances.yml) 声明**（本文件
+已 gitignore，机器本地维护）。例如：
+
+```yaml
+instances:
+  - name: dsh-a
+    port: 3080
+    profile: web
+    home: /home/royenheart/.dsh
+  - name: dsh-b
+    port: 3081
+    profile: web
+    home: /home/royenheart/.dsh-3081
+```
+
+`up` / `reload` 会按 `instances.yml` 找到每个端口的 `DSH_HOME`，读取对应
+`.credentials.yaml` 生成**各自**的注入 Cookie；未在 `instances.yml` 中声明
+的端口回退为 `~/.dsh` 并打印警告。多个实例各用独立 `DSH_HOME` 时，请一定
+先填好该文件再 `up` / `reload`，否则 Cookie 会读错凭据、dsh 拒绝。
+
+注意：生成的 `Caddyfile` 因此携带可用于访问 dsh 的会话 Cookie，脚本会把它
+写成 `0600`。`--preserve-host` 模式不注入 Cookie（该模式下 dsh 看到的
+Host 不是 loopback，Cookie authority 需要按外部地址另签，脚本选择跳过）。
 
 ## dsh 插件管理（plugins.yml）
 
@@ -234,7 +336,8 @@ HTTP→HTTPS 跳转站点（仅 HTTPS）并打印警告。
 | --- | --- | --- |
 | `--auto` | 关 | 扫描 `127.0.0.1`/通配地址上监听的服务，命中 dsh web 标记（`__DSH_BOOT__`）则自动加入映射 |
 | `--listen HOST` | 第一个非回环 IPv4（无则 `0.0.0.0`） | 代理监听地址，可重复传多个；只允许本机用 `--listen 127.0.0.1` |
-| `--preserve-host` | 关 | 不重写 `Host`/`Origin` 头（见下） |
+| `--preserve-host` | 关 | 不重写 `Host`/`Origin` 头（见下；该模式不注入会话 Cookie） |
+| `--auth-cookie-days` | `30` | Caddy 注入的 dsh web 会话 Cookie 有效天数；需 dsh 端 `cookieMaxAgeDays >=` 该值 |
 | `--tls` | 关 | 代理端口走 HTTPS（Caddy 本地 CA，修复 `crypto.randomUUID`） |
 | `--container` | `dsh-proxy` | Caddy 容器名 |
 | `--image` | `caddy:2` | Caddy 镜像 |
@@ -303,13 +406,16 @@ dsh 移除了门禁（设置页可经反代使用），则不打印设置可用�
 行为），不需要 `--trusted-host`，不需要改 profile，也不需要绑 `0.0.0.0`。
 
 **代价与边界**：重写后，dsh 看到的每个请求都是 loopback，代理本身成为信任
-边界。dsh 没有认证层，任何能访问代理端口的人都能控制 agent/宿主机。因此：
+边界。新版 dsh web 已经用启动 token + 会话 Cookie 提供了应用层认证（见
+“dsh web 启动 token 与首次登录”），任何能访问代理端口但拿不到 token 的人
+无法登录；**拿到 token 的人**仍能控制 agent/宿主机。因此：
 
 - 只把代理绑定到可信网络：`--listen <内网IP>`，并用防火墙限制来源；
 - 或只暴露给本机（`--listen 127.0.0.1`）配合 `ssh -L` 使用（完整设置页也
   需要这种方式，见上）；
-- 需要认证时在生成的 Caddyfile 里给站点加 `basic_auth`（见 Caddy 文档），
-  然后 `deploy.py reload` 前把它加进本目录的 Caddyfile 模板/生成逻辑。
+- 如需叠加额外认证，可在生成的 Caddyfile 里给站点加 `basic_auth`（见
+  Caddy 文档），然后把它加进本目录的 Caddyfile 模板/生成逻辑再
+  `deploy.py reload`。
 
 如果你更想保留 dsh 自己的信任栅栏，可用 `--preserve-host` 生成不重写头的
 Caddyfile；此时 dsh 必须以
@@ -320,9 +426,11 @@ Caddyfile；此时 dsh 必须以
 
 `--auto` / `scan` 通过 `ss -ltnH` 枚举本机 loopback/通配地址上的 TCP 监听
 端口，对每个端口做一次短超时的 `GET /` 探测，响应体包含 dsh web 的
-`__DSH_BOOT__` 标记即认定为 dsh 服务。探测会跳过响应头 `Server: Caddy` 的
-端口，避免把本代理自己扫进去。dsh web 默认端口 `3080`、`--port 0` 由系统
-分配端口等场景都能覆盖，因为扫描看的是实际监听端口而不是命令行参数。
+`__DSH_BOOT__` 标记即认定为 dsh 服务；新版 dsh web 未带 token 时返回的
+`401 dsh web authentication required` 认证挑战同样被识别为 dsh 服务。
+探测会跳过响应头 `Server: Caddy` 的端口，避免把本代理自己扫进去。dsh web
+默认端口 `3080`、`--port 0` 由系统分配端口等场景都能覆盖，因为扫描看的是
+实际监听端口而不是命令行参数。
 
 ## 容器与文件
 

@@ -17,9 +17,14 @@ By default the generated Caddyfile rewrites Host and Origin to the loopback
 upstream authority. dsh's /api browser-trust fence rejects non-loopback Hosts,
 and privileged methods (settings, credentials, path openers) are loopback-only
 even with --trusted-host. Rewriting makes the dsh web API work through the
-proxy, which means the proxy itself becomes the trust boundary: dsh has no
-authentication layer, so bind the proxy to a trusted network only (see
---listen and the README).
+proxy.
+
+Newer dsh web also mints a browser session from the startup token printed by
+`dsh web` (the `?token=...` URL). The proxy forwards that exchange unchanged,
+so the first visit through the proxy must be `<proxy-url>/?token=<token>`;
+afterwards dsh's HttpOnly cookie authenticates the browser. The proxy remains
+the trust boundary for everyone who holds the token, so bind it to a trusted
+network only (see --listen and the README).
 
 One dsh-client-side fence remains even after Host/Origin rewriting: the
 settings domain disables itself in any browser whose page URL is not loopback
@@ -46,11 +51,11 @@ deleting the temporary directory. `update` defaults to every plugin in the
 list; pass plugin names to update a subset.
 
 Usage:
-  python3 deploy.py up [PORTS...] [--auto] [--listen HOST ...] [--manage-port PORT] [--dry-run]
+  python3 deploy.py up [PORTS...] [--auto] [--listen HOST ...] [--manage-port PORT] [--auth-cookie-days DAYS] [--dry-run]
   python3 deploy.py down
   python3 deploy.py status
   python3 deploy.py scan
-  python3 deploy.py reload [PORTS...] [--auto] [--listen HOST ...] [--manage-port PORT] [--dry-run]
+  python3 deploy.py reload [PORTS...] [--auto] [--listen HOST ...] [--manage-port PORT] [--auth-cookie-days DAYS] [--dry-run]
   python3 deploy.py install [--profile web] [--home ~/.dsh] [--dry-run]
   python3 deploy.py update [PLUGIN...] [--profile web] [--home ~/.dsh] [--dry-run]
 
@@ -64,6 +69,7 @@ Examples:
   python3 deploy.py up --auto               # auto-discover running dsh web services
   python3 deploy.py up 3080 --auto          # explicit ports plus discovered ones
   python3 deploy.py up --listen 192.168.1.10 --listen 10.0.0.5   # bind two IPs
+  python3 deploy.py up --auth-cookie-days 3650  # inject a 10-year dsh web session cookie (see README)
   python3 deploy.py install                 # install every plugin listed in plugins.yml
   python3 deploy.py update                  # update every plugin listed in plugins.yml
   python3 deploy.py update @royenheart/dsh-plugin-foo   # update one listed plugin
@@ -73,7 +79,10 @@ Examples:
 from __future__ import annotations
 
 import argparse
+import base64
 import concurrent.futures
+import hashlib
+import hmac
 import json
 import os
 import re
@@ -91,6 +100,10 @@ DEFAULT_CONTAINER = 'dsh-proxy'
 DEFAULT_IMAGE = 'caddy:2'
 WILDCARD_LISTEN_HOST = '0.0.0.0'
 DSH_MARKER = '__DSH_BOOT__'
+DSH_AUTH_CHALLENGE = 'dsh web authentication required'
+DEFAULT_AUTH_COOKIE_DAYS = 30
+AUTH_RECORD_KEY = 'client-connection/browser-session'
+AUTH_SECRET_BYTES = 32
 SCAN_TIMEOUT_SECONDS = 0.8
 SCAN_WORKERS = 8
 SETTINGS_PROBE_TIMEOUT_SECONDS = 3.0
@@ -104,6 +117,7 @@ WILDCARD_HOSTS = {'*', '0.0.0.0', '[::]'}
 
 CADDYFILE_PATH = Path(__file__).resolve().parent / 'Caddyfile'
 PLUGINS_YML_PATH = Path(__file__).resolve().parent / 'plugins.yml'
+INSTANCES_YML_PATH = Path(__file__).resolve().parent / 'instances.yml'
 MANAGE_SCRIPT_PATH = Path(__file__).resolve().parent / 'manage.py'
 MANAGE_DATA_DIR = Path(__file__).resolve().parent / 'data'
 MANAGE_LOG_PATH = MANAGE_DATA_DIR / 'manage.log'
@@ -545,6 +559,14 @@ def probe_dsh_port(port: int) -> int | None:
                 return None
             body = response.read(131072).decode('utf-8', 'replace')
             return port if DSH_MARKER in body else None
+    except urllib.error.HTTPError as error:
+        # Newer dsh web guards `/` with the process launch token, so an
+        # unauthenticated probe gets the 401 auth challenge instead of the
+        # index document. The challenge body is still a reliable dsh marker.
+        if error.code != 401:
+            return None
+        body = error.read(131072).decode('utf-8', 'replace')
+        return port if DSH_AUTH_CHALLENGE in body else None
     except Exception:
         # The scan only needs to recognize dsh web services; every other local
         # listener (SSH, gRPC, plain TCP) legitimately fails an HTTP probe.
@@ -661,6 +683,162 @@ def dedupe_mappings(mappings: list[tuple[int, int]]) -> list[tuple[int, int]]:
     return deduped
 
 
+# ---------------------------------------------------------------- dsh web auth injection (plan B)
+
+def parse_instances_yml() -> list[dict]:
+    """Best-effort instance definitions from instances.yml, mirroring manage.py.
+
+    Each entry may declare `port`, `profile`, `home`, and `name`. deploy.py only
+    consumes `port` and `home`; the rest stays available for manage.py.
+    """
+    if not INSTANCES_YML_PATH.is_file():
+        return []
+    try:
+        import yaml
+    except ImportError:
+        return []
+    try:
+        data = yaml.safe_load(INSTANCES_YML_PATH.read_text(encoding='utf-8')) or {}
+    except Exception:
+        return []
+    if not isinstance(data, dict):
+        return []
+    items = data.get('instances') or []
+    if not isinstance(items, list):
+        return []
+    result: list[dict] = []
+    for item in items:
+        if not isinstance(item, dict):
+            continue
+        port = item.get('port')
+        if not isinstance(port, int) or not 1 <= port <= 65535:
+            continue
+        result.append({
+            'name': str(item.get('name') or f'dsh-{port}'),
+            'port': port,
+            'profile': str(item.get('profile') or 'web'),
+            'home': str(item.get('home') or '~/.dsh'),
+        })
+    return result
+
+
+def instance_homes_for_mappings(mappings: list[tuple[int, int]]) -> tuple[dict[int, str], list[str]]:
+    """Resolve `DSH_HOME` per proxied dsh port from instances.yml.
+
+    Returns `({dsh_port: home}, warnings)`. Ports missing from instances.yml
+    fall back to `~/.dsh`; the warning stays quiet for the single-default case
+    and only names ports when several dsh instances are being proxied.
+    """
+    defined = {item['port']: item for item in parse_instances_yml()}
+    homes: dict[int, str] = {}
+    warnings: list[str] = []
+    dsh_ports = sorted({dsh_port for _proxy_port, dsh_port in mappings})
+    for dsh_port in dsh_ports:
+        item = defined.get(dsh_port)
+        home = item.get('home', '~/.dsh') if item is not None else '~/.dsh'
+        homes[dsh_port] = home
+        if item is None and len(dsh_ports) > 1:
+            warnings.append(
+                f'instances.yml 未定义端口 {dsh_port}；使用默认 DSH_HOME=~/.dsh。'
+                f'若该实例使用独立 DSH_HOME，请在 instances.yml 中声明，否则注入的 Cookie 会读错凭据。',
+            )
+    return homes, warnings
+
+
+def b64url(data: bytes) -> str:
+    return base64.urlsafe_b64encode(data).rstrip(b'=').decode('ascii')
+
+
+def decode_b64url(value: str) -> bytes | None:
+    try:
+        padding = '=' * (-len(value) % 4)
+        return base64.urlsafe_b64decode(value + padding)
+    except Exception:
+        return None
+
+
+def load_browser_session_secret(home: str) -> bytes | None:
+    """Read the persistent browser-session signing secret from a DSH_HOME.
+
+    The record is written by dsh's connection plugin on first `dsh web` boot
+    and lives at `<DSH_HOME>/.credentials.yaml` under the `records` section.
+    """
+    credentials_path = Path(home).expanduser() / '.credentials.yaml'
+    if not credentials_path.is_file():
+        return None
+    try:
+        import yaml
+    except ImportError as error:
+        raise RuntimeError('reading dsh credentials needs PyYAML - install it with `pip install pyyaml`') from error
+    try:
+        data = yaml.safe_load(credentials_path.read_text(encoding='utf-8')) or {}
+    except Exception as error:
+        raise RuntimeError(f'{credentials_path}: {error}') from error
+    if not isinstance(data, dict):
+        raise RuntimeError(f'{credentials_path}: expected a mapping')
+    record = (data.get('records') or {}).get(AUTH_RECORD_KEY)
+    if not isinstance(record, dict) or record.get('kind') != 'grant':
+        return None
+    payload = record.get('payload')
+    if not isinstance(payload, dict) or payload.get('version') != 1:
+        return None
+    secret = payload.get('secret')
+    if not isinstance(secret, str):
+        return None
+    decoded = decode_b64url(secret)
+    if decoded is None or len(decoded) != AUTH_SECRET_BYTES:
+        raise RuntimeError(f'{credentials_path}: browser-session secret is not {AUTH_SECRET_BYTES} base64url bytes')
+    return decoded
+
+
+def mint_browser_cookie(secret: bytes, authority: str, max_age_days: int) -> str:
+    """Mint the dsh web session cookie value for one upstream authority.
+
+    The format is the same `v1.<payload>.<hmac>` signed cookie dsh's
+    BrowserAuth accepts; the injected cookie removes the per-browser token
+    exchange for every request that arrives through the proxy.
+    """
+    issued_at = int(time.time() * 1000)
+    expires_at = issued_at + max_age_days * 24 * 60 * 60 * 1000
+    payload = {'version': 1, 'authority': authority, 'issuedAt': issued_at, 'expiresAt': expires_at}
+    body = b64url(json.dumps(payload, separators=(',', ':')).encode('utf-8'))
+    cookie_name = 'dsh-auth-' + b64url(hashlib.sha256(authority.encode('utf-8')).digest())
+    signature = b64url(hmac.new(secret, body.encode('ascii'), hashlib.sha256).digest())
+    return f'{cookie_name}=v1.{body}.{signature}'
+
+
+def build_upstream_auth_cookies(
+    mappings: list[tuple[int, int]],
+    auth_cookie_days: int,
+) -> tuple[dict[int, str], list[str]]:
+    """Mint one upstream Cookie header per proxied dsh port, keyed by dsh port.
+
+    The cookie is bound to `127.0.0.1:<dsh-port>` because the generated
+    Caddyfile rewrites Host to that authority. Ports whose DSH_HOME has no
+    browser-session record yet are skipped with a warning; the proxy then
+    keeps the ordinary token login for that port.
+    """
+    cookies: dict[int, str] = {}
+    warnings: list[str] = []
+    homes, home_warnings = instance_homes_for_mappings(mappings)
+    warnings.extend(home_warnings)
+    for dsh_port in sorted({dsh_port for _proxy_port, dsh_port in mappings}):
+        home = homes[dsh_port]
+        try:
+            secret = load_browser_session_secret(home)
+        except RuntimeError as error:
+            warnings.append(f'端口 {dsh_port} (DSH_HOME={home}) 无法读取 browser-session 凭据: {error}')
+            continue
+        if secret is None:
+            warnings.append(
+                f'端口 {dsh_port} (DSH_HOME={home}) 尚无 browser-session 凭据；'
+                f'先启动一次 `dsh web --port {dsh_port}` 生成 .credentials.yaml，再重新 deploy.py reload 以注入 Cookie。',
+            )
+            continue
+        cookies[dsh_port] = mint_browser_cookie(secret, f'127.0.0.1:{dsh_port}', auth_cookie_days)
+    return cookies, warnings
+
+
 def render_caddyfile(
     mappings: list[tuple[int, int]],
     listen_hosts: list[str],
@@ -668,6 +846,7 @@ def render_caddyfile(
     tls: bool,
     manage_port: int,
     http_redirect: bool = True,
+    upstream_cookies: dict[int, str] | None = None,
 ) -> str:
     lines = [
         '# Generated by deploy/ds-harness/deploy.py — run `python3 deploy.py up` again to regenerate.',
@@ -726,6 +905,13 @@ def render_caddyfile(
             # point of view, including the loopback-only privileged methods.
             lines.append(f'\t\t\theader_up Host 127.0.0.1:{dsh_port}')
             lines.append(f'\t\t\theader_up Origin http://127.0.0.1:{dsh_port}')
+            injected_cookie = (upstream_cookies or {}).get(dsh_port)
+            if injected_cookie is not None:
+                # Plan B: Caddy presents a signed dsh web session cookie, so
+                # devices that can reach the proxy never see dsh's token gate.
+                # The cookie is minted for 127.0.0.1:<dsh_port>, matching the
+                # rewritten Host above.
+                lines.append(f'\t\t\theader_up Cookie "{injected_cookie}"')
         lines.append('\t\t}')
         lines.append('\t}')
         lines.append('}')
@@ -755,18 +941,33 @@ def render_caddyfile(
     return '\n'.join(lines)
 
 
-def print_mapping_table(mappings: list[tuple[int, int]], listen_hosts: list[str], tls: bool) -> None:
+def print_mapping_table(
+    mappings: list[tuple[int, int]],
+    listen_hosts: list[str],
+    tls: bool,
+    homes: dict[int, str] | None = None,
+) -> None:
     scheme = 'https' if tls else 'http'
     print(f'proxy port -> dsh port ({scheme}, loopback upstream)')
     for proxy_port, dsh_port in mappings:
+        home = (homes or {}).get(dsh_port)
+        home_suffix = f'  [DSH_HOME={home}]' if home is not None else ''
         for listen_host in listen_hosts:
             bind = 'all interfaces' if listen_host == WILDCARD_LISTEN_HOST else listen_host
-            print(f'  {scheme}://{bind}:{proxy_port} -> 127.0.0.1:{dsh_port}')
+            print(f'  {scheme}://{bind}:{proxy_port} -> 127.0.0.1:{dsh_port}{home_suffix}')
 
 
-def print_security_warning() -> None:
-    print('warning: dsh has no authentication layer; the proxy is the trust boundary.')
-    print('         bind it to a trusted network only (use --listen, a firewall, or Caddy basic_auth).')
+def print_security_warning(cookie_injected: bool) -> None:
+    if cookie_injected:
+        print('note: Caddy will inject a signed dsh web session cookie toward the upstream;')
+        print('      devices that can reach this proxy no longer need the dsh web startup token.')
+        print('warning: the proxy is now the trust boundary again - anyone who can reach it can use dsh;')
+    else:
+        print('note: newer dsh web requires the startup token printed by `dsh web`.')
+        print('      First visit through the proxy must use <proxy-url>/?token=<token> from that line;')
+        print('      dsh then mints an HttpOnly browser cookie and the plain <proxy-url>/ works afterwards.')
+        print('warning: anyone holding the token can access dsh through this proxy;')
+    print('         bind the proxy to a trusted network only (use --listen, a firewall, or Caddy basic_auth).')
 
 
 def print_settings_availability_warning(listen_hosts: list[str], mappings: list[tuple[int, int]]) -> None:
@@ -788,12 +989,43 @@ def print_settings_availability_warning(listen_hosts: list[str], mappings: list[
         print(f'note: dsh client on port(s) {ports} still gates settings pages to loopback browsers;')
         print('      through this proxy the models settings page will show "settings are unavailable in this browser".')
     if unknown:
-        ports = ', '.join(map(str, unknown))
-        print(f'note: could not probe dsh settings availability on port(s) {ports} (dsh web not reachable?);')
-        print('      if the models settings page reports "settings are unavailable in this browser", use the workaround below.')
+        auth_gated = [port for port in unknown if probe_dsh_port(port) is not None]
+        if auth_gated:
+            ports = ', '.join(map(str, auth_gated))
+            print(f'note: dsh web on port(s) {ports} is token-auth-gated; the settings-bundle probe cannot log in.')
+            print('      Through this proxy the models settings page will still show "settings are unavailable in this browser".')
+        unreachable = sorted(set(unknown) - set(auth_gated))
+        if unreachable:
+            ports = ', '.join(map(str, unreachable))
+            print(f'note: could not probe dsh settings availability on port(s) {ports} (dsh web not reachable?);')
+            print('      if the models settings page reports "settings are unavailable in this browser", use the workaround below.')
     if blocked or unknown:
         print('      Full settings access: run `up --listen 127.0.0.1` and browse through an SSH local forward')
         print('      (e.g. ssh -L <port>:127.0.0.1:<dsh-port> <server>, then visit http://127.0.0.1:<port>/).')
+
+
+def print_login_url_guidance(
+    listen_hosts: list[str],
+    mappings: list[tuple[int, int]],
+    tls: bool,
+    cookie_injected: bool,
+) -> None:
+    """Print the access URL shape for each proxied dsh web instance.
+
+    With plan-B cookie injection the plain proxy URL is already authenticated;
+    without it, dsh web prints a per-process `?token=...` at startup and the
+    first visit must use that URL through the proxy.
+    """
+    scheme = 'https' if tls else 'http'
+    if cookie_injected:
+        print('access: Caddy injects the dsh web session cookie; open the plain URL:')
+    else:
+        print('first login: paste the token from the `dsh web:` startup line into:')
+    for proxy_port, dsh_port in mappings:
+        for listen_host in listen_hosts:
+            host = '<host>' if listen_host == WILDCARD_LISTEN_HOST else listen_host
+            suffix = '' if cookie_injected else '/?token=<TOKEN>'
+            print(f'  {scheme}://{host}:{proxy_port}{suffix}  -> 127.0.0.1:{dsh_port}')
 
 
 def write_caddyfile(content: str, dry_run: bool) -> None:
@@ -802,6 +1034,10 @@ def write_caddyfile(content: str, dry_run: bool) -> None:
         print(content, end='')
         return
     CADDYFILE_PATH.write_text(content, encoding='utf-8')
+    # When plan-B cookie injection is active the Caddyfile carries a bearer
+    # cookie for dsh web; keep it owner-readable like the other machine-local
+    # secrets (Caddy runs as the same user and reads it fine).
+    os.chmod(CADDYFILE_PATH, 0o600)
     print(f'wrote {CADDYFILE_PATH}')
 
 
@@ -970,9 +1206,27 @@ def cmd_up(args: argparse.Namespace) -> int:
     mappings = collect_mappings(args)
     if args.tls and WILDCARD_LISTEN_HOST in args.listen:
         raise SystemExit('--tls needs concrete --listen IP(s) (the default LAN IP works); 0.0.0.0 cannot be used with tls internal')
-    print_mapping_table(mappings, args.listen, args.tls)
-    print_security_warning()
+
+    homes, home_warnings = instance_homes_for_mappings(mappings)
+    for warning in home_warnings:
+        print(f'warning: {warning}')
+    upstream_cookies: dict[int, str] = {}
+    cookie_injected = False
+    if not args.preserve_host:
+        upstream_cookies, cookie_warnings = build_upstream_auth_cookies(mappings, args.auth_cookie_days)
+        for warning in cookie_warnings:
+            print(f'warning: {warning}')
+        cookie_injected = bool(upstream_cookies)
+        if cookie_injected and args.auth_cookie_days > DEFAULT_AUTH_COOKIE_DAYS:
+            print(f'note: --auth-cookie-days {args.auth_cookie_days} requires the dsh connection plugin '
+                  f'cookieMaxAgeDays >= {args.auth_cookie_days} for each proxied profile, otherwise dsh rejects the injected cookie.')
+    else:
+        print('note: --preserve-host 模式下不注入会话 Cookie；通过代理访问仍需各自 token 登录。')
+
+    print_mapping_table(mappings, args.listen, args.tls, homes)
+    print_security_warning(cookie_injected)
     print_settings_availability_warning(args.listen, mappings)
+    print_login_url_guidance(args.listen, mappings, args.tls, cookie_injected)
 
     state = container_state(args.container)
     if state is not None:
@@ -998,7 +1252,10 @@ def cmd_up(args: argparse.Namespace) -> int:
                     )
                 raise SystemExit(f'proxy port {proxy_port} is already in use on one of {", ".join(args.listen)}')
 
-    content = render_caddyfile(mappings, args.listen, args.preserve_host, args.tls, args.manage_port, http_redirect)
+    content = render_caddyfile(
+        mappings, args.listen, args.preserve_host, args.tls, args.manage_port, http_redirect,
+        upstream_cookies=upstream_cookies,
+    )
     write_caddyfile(content, args.dry_run)
     prepare_data_dirs(args)
 
@@ -1070,9 +1327,31 @@ def cmd_reload(args: argparse.Namespace) -> int:
     mappings = collect_mappings(args)
     if args.tls and WILDCARD_LISTEN_HOST in args.listen:
         raise SystemExit('--tls needs concrete --listen IP(s) (the default LAN IP works); 0.0.0.0 cannot be used with tls internal')
-    print_mapping_table(mappings, args.listen, args.tls)
+
+    homes, home_warnings = instance_homes_for_mappings(mappings)
+    for warning in home_warnings:
+        print(f'warning: {warning}')
+    upstream_cookies: dict[int, str] = {}
+    cookie_injected = False
+    if not args.preserve_host:
+        upstream_cookies, cookie_warnings = build_upstream_auth_cookies(mappings, args.auth_cookie_days)
+        for warning in cookie_warnings:
+            print(f'warning: {warning}')
+        cookie_injected = bool(upstream_cookies)
+        if cookie_injected and args.auth_cookie_days > DEFAULT_AUTH_COOKIE_DAYS:
+            print(f'note: --auth-cookie-days {args.auth_cookie_days} requires the dsh connection plugin '
+                  f'cookieMaxAgeDays >= {args.auth_cookie_days} for each proxied profile, otherwise dsh rejects the injected cookie.')
+    else:
+        print('note: --preserve-host 模式下不注入会话 Cookie；通过代理访问仍需各自 token 登录。')
+
+    print_mapping_table(mappings, args.listen, args.tls, homes)
+    print_security_warning(cookie_injected)
     print_settings_availability_warning(args.listen, mappings)
-    content = render_caddyfile(mappings, args.listen, args.preserve_host, args.tls, args.manage_port)
+    print_login_url_guidance(args.listen, mappings, args.tls, cookie_injected)
+    content = render_caddyfile(
+        mappings, args.listen, args.preserve_host, args.tls, args.manage_port,
+        upstream_cookies=upstream_cookies,
+    )
     write_caddyfile(content, args.dry_run)
     if not args.dry_run:
         (CADDYFILE_PATH.parent / 'data' / 'logs').mkdir(parents=True, exist_ok=True)
@@ -1108,6 +1387,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument('--auto', action='store_true', help='deploy: scan 127.0.0.1 listening ports for dsh web services and add them')
     parser.add_argument('--listen', action='append', default=None, help='deploy: proxy bind host; repeat for multiple IPs (default: first non-loopback IPv4, fallback 0.0.0.0; use 127.0.0.1 for local-only)')
     parser.add_argument('--preserve-host', action='store_true', help='deploy: do not rewrite Host/Origin to loopback (dsh then needs --trusted-host; privileged methods stay loopback-only)')
+    parser.add_argument('--auth-cookie-days', type=int, default=DEFAULT_AUTH_COOKIE_DAYS, help=f'deploy: lifetime in days for the Caddy-injected dsh web session cookie; requires dsh connection cookieMaxAgeDays >= this value (default: {DEFAULT_AUTH_COOKIE_DAYS})')
     parser.add_argument('--tls', action='store_true', help='deploy: serve HTTPS on the proxy ports with Caddy internal CA (needs a concrete --listen IP; fixes browser crypto.randomUUID on LAN access)')
     parser.add_argument('--container', default=DEFAULT_CONTAINER, help=f'deploy: caddy container name (default: {DEFAULT_CONTAINER})')
     parser.add_argument('--image', default=DEFAULT_IMAGE, help=f'deploy: caddy docker image (default: {DEFAULT_IMAGE})')
@@ -1134,6 +1414,8 @@ def main() -> None:
 
     if args.profile is not None or args.home is not None or args.dsh is not None:
         raise SystemExit('error: --profile/--home/--dsh are plugin-management-only options; use them with install/update')
+    if not 1 <= args.auth_cookie_days <= 36500:
+        raise SystemExit('error: --auth-cookie-days must be between 1 and 36500')
     if args.listen is None:
         args.listen = [default_listen_host()]
     if action in ('up', 'reload'):

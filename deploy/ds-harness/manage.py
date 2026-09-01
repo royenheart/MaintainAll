@@ -39,6 +39,7 @@ DEFAULT_DSH_PORT = 3080
 DEFAULT_CADDY_CONTAINER = 'dsh-proxy'
 CADDY_CONTAINER = DEFAULT_CADDY_CONTAINER
 DSH_MARKER = '__DSH_BOOT__'
+DSH_AUTH_CHALLENGE = 'dsh web authentication required'
 PROBE_TIMEOUT_SECONDS = 2.0
 LOG_TAIL_BYTES = 256 * 1024
 
@@ -111,6 +112,62 @@ def parse_caddyfile_mappings() -> list[tuple[int, int]]:
             if (current_proxy, dsh_port) not in mappings:
                 mappings.append((current_proxy, dsh_port))
     return mappings
+
+
+def parse_caddyfile_injected_ports() -> set[int]:
+    """Return dsh ports whose generated reverse_proxy block injects a session cookie.
+
+    deploy.py writes `header_up Cookie ...` inside the final dsh upstream block
+    when plan-B auth injection is active; the manage UI uses this to stop
+    telling proxy users to paste a token.
+    """
+    injected: set[int] = set()
+    if not CADDYFILE_PATH.is_file():
+        return injected
+    content = CADDYFILE_PATH.read_text(encoding='utf-8')
+    current_dsh: int | None = None
+    in_manage_block = False
+    manage_depth = 0
+    in_upstream_block = False
+    upstream_depth = 0
+    for line in content.splitlines():
+        stripped = line.strip()
+        site = re.match(r'^https?://(?:\[?[0-9a-fA-F.:]+\]?|):(\d+)\s*\{', stripped)
+        if site is not None:
+            current_dsh = None
+            in_manage_block = False
+            manage_depth = 0
+            in_upstream_block = False
+            upstream_depth = 0
+            continue
+        if in_manage_block:
+            manage_depth += stripped.count('{') - stripped.count('}')
+            if manage_depth <= 0:
+                in_manage_block = False
+            continue
+        if stripped.startswith('handle_path /manage/*'):
+            in_manage_block = True
+            manage_depth = stripped.count('{') - stripped.count('}')
+            if manage_depth <= 0:
+                in_manage_block = False
+            continue
+        if in_upstream_block:
+            if current_dsh is not None and stripped.startswith('header_up Cookie '):
+                injected.add(current_dsh)
+            upstream_depth += stripped.count('{') - stripped.count('}')
+            if upstream_depth <= 0:
+                in_upstream_block = False
+                current_dsh = None
+            continue
+        match = re.match(r'^reverse_proxy\s+127\.0\.0\.1:(\d+)\s*\{?', stripped)
+        if match is not None and stripped.endswith('{'):
+            current_dsh = int(match.group(1))
+            in_upstream_block = True
+            upstream_depth = stripped.count('{') - stripped.count('}')
+            if upstream_depth <= 0:
+                in_upstream_block = False
+                current_dsh = None
+    return injected
 
 
 def parse_instances_yml() -> list[dict]:
@@ -400,6 +457,20 @@ def probe_dsh(port: int) -> dict:
                 'marker': DSH_MARKER in body,
                 'status': response.status,
             }
+    except urllib.error.HTTPError as error:
+        # Newer dsh web guards `/` with the process launch token; a 401 with
+        # the auth-challenge body still proves the instance is up and serving.
+        if error.code == 401:
+            body = error.read(131072).decode('utf-8', 'replace')
+            if DSH_AUTH_CHALLENGE in body:
+                return {
+                    'ok': True,
+                    'latency_ms': round((time.time() - started) * 1000, 1),
+                    'marker': False,
+                    'auth_required': True,
+                    'status': error.code,
+                }
+        return {'ok': False, 'error': f'{type(error).__name__}: {error}'}
     except Exception as error:
         return {'ok': False, 'error': f'{type(error).__name__}: {error}'}
 
@@ -717,6 +788,7 @@ def instance_monitor(instance: dict) -> dict:
 def build_state() -> dict:
     instances, warnings = resolve_instances()
     state = read_state()
+    injected_ports = parse_caddyfile_injected_ports()
     result_instances = []
     online = 0
     for instance in instances:
@@ -730,6 +802,7 @@ def build_state() -> dict:
             'proxy_port': instance.get('proxy_port', instance['port']),
             'profile': instance.get('profile', 'web'),
             'home': instance.get('home', '~/.dsh'),
+            'auth_injected': instance['port'] in injected_ports,
             'manifest_error': manifest_error,
             'plugins': plugin_items(instance, manifest, state),
             'safe_mode': safe_mode_active(instance, manifest, state),
@@ -966,7 +1039,15 @@ function pluginRow(inst, p) {
 function instanceCard(inst) {
   const m = inst.monitor || {};
   const web = m.web || {};
-  const webOk = web.ok && web.marker !== false;
+  const injected = inst.auth_injected === true;
+  const webOk = web.ok && (web.marker !== false || web.auth_required === true);
+  const webValue = webOk
+    ? (injected ? '在线 · 代理免token' : (web.auth_required ? '在线 · 需 token' : '在线'))
+    : '不可达';
+  const webSub = webOk
+    ? (web.latency_ms ?? '') + ' ms · HTTP ' + (web.status ?? '?')
+      + (web.auth_required ? ' · 401 认证挑战' : '') + ' · 127.0.0.1:' + inst.port
+    : null;
   const sessions = m.sessions || {};
   const proc = m.process || {};
   const traffic = m.traffic || {};
@@ -978,6 +1059,14 @@ function instanceCard(inst) {
     + 'data-action="safe" data-port="' + inst.port + '" data-enabled="' + (!safe) + '" '
     + 'title="安全模式：只加载内置 bundle，重启 dsh 后生效">'
     + (safe ? '退出安全模式' : '进入安全模式') + '</button>';
+  const loginHint = injected
+    ? '<div class="note">Caddy 已为该实例注入 dsh web 会话 Cookie，通过代理访问无需 token；'
+      + '直连 127.0.0.1:' + inst.port + ' 仍需 dsh 启动行里的 token。</div>'
+    : (web.auth_required
+      ? '<div class="note">该实例已启用 web 认证：请把 dsh web 启动行里的 token 填到 '
+        + '<code>' + esc(entryUrl(inst)) + '?token=&lt;TOKEN&gt;</code> 完成首次登录；'
+        + '之后浏览器持有 Cookie，直接进入即可。</div>'
+      : '');
   const pluginHtml = plugins.length
     ? plugins.map(p => pluginRow(inst, p)).join('')
     : '<div class="plugin-row"><div class="pname">没有检测到外部插件</div></div>';
@@ -987,9 +1076,7 @@ function instanceCard(inst) {
     + '<div class="meta">profile: ' + esc(inst.profile) + ' · DSH_HOME: ' + esc(inst.home) + ' · proxy: ' + inst.proxy_port + '</div>'
     + manifestError
     + '<div class="grid">'
-    + metricCard('dsh web', webOk ? '在线' : '不可达',
-        webOk ? (web.latency_ms ?? '') + ' ms · HTTP ' + (web.status ?? '?') + ' · 127.0.0.1:' + inst.port : null,
-        webOk, web.error)
+    + metricCard('dsh web', webValue, webSub, webOk, web.error)
     + metricCard('sessions', sessions.ok ? String(sessions.count) : '—',
         sessions.ok ? (sessions.note || '') : null, sessions.ok, sessions.error)
     + metricCard('进程', proc.ok ? (proc.rss_mb + ' MB · ' + proc.cpu_percent + '% CPU') : '—',
@@ -1005,6 +1092,7 @@ function instanceCard(inst) {
     + '</div>'
     + '<div class="section-title">外部插件加载</div>'
     + '<div class="plugins">' + pluginHtml + '</div>'
+    + loginHint
     + '<div class="note">' + (safe ? '安全模式已开启：重启 dsh 后仅加载内置 bundle。' : '') + '插件开关写入 dsh.profile.bundles，重启 dsh 后生效。</div>'
     + '</section>';
 }
