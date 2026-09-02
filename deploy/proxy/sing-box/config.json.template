@@ -1,0 +1,50 @@
+{
+  "log": {
+    "level": "info",
+    "timestamp": true
+  },
+  "inbounds": [
+    {
+      "type": "hysteria2",
+      "tag": "hysteria2-in",
+      "listen": "0.0.0.0",
+      "listen_port": __HYSTERIA_PORT__,
+      "users": [
+        {
+          "name": "daed",
+          "password": "__HY2_PASSWORD__"
+        }
+      ],
+      "tls": {
+        "enabled": true,
+        "alpn": ["h3"],
+        "min_version": "1.3",
+        "certificate_path": "__HY2_CERT_PATH__",
+        "key_path": "__HY2_KEY_PATH__"
+      },
+      "masquerade": "__MASQUERADE_URL__"
+    },
+    {
+      "type": "vless",
+      "tag": "vless-ws-in",
+      "listen": "127.0.0.1",
+      "listen_port": __VLESS_PORT__,
+      "users": [
+        {
+          "name": "daed",
+          "uuid": "__VLESS_UUID__"
+        }
+      ],
+      "transport": {
+        "type": "ws",
+        "path": "__WS_PATH__"
+      }
+    }
+  ],
+  "outbounds": [
+    {
+      "type": "direct",
+      "tag": "direct"
+    }
+  ]
+}

@@ -1,0 +1,4 @@
+# deploy/proxy local generated files
+*.generated.json
+.secrets.env
+/tmp/

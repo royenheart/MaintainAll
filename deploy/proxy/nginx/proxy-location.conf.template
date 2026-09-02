@@ -1,0 +1,17 @@
+# ── deploy/proxy: VLESS over WebSocket (sing-box) ──
+# Paste this `location` block into the TLS server block of YOUR nginx config,
+# then run: nginx -t && systemctl reload nginx
+# (adjust the nginx service name to your setup, e.g. openresty/nginx).
+location = __WS_PATH__ {
+    proxy_pass http://127.0.0.1:__VLESS_PORT__;
+    proxy_http_version 1.1;
+    proxy_set_header Upgrade $http_upgrade;
+    proxy_set_header Connection "upgrade";
+    proxy_set_header Host $host;
+    proxy_set_header X-Real-IP $remote_addr;
+    proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+    proxy_set_header X-Forwarded-Proto $scheme;
+    proxy_read_timeout 300s;
+    proxy_send_timeout 300s;
+}
+# ── /deploy/proxy ──
