@@ -883,9 +883,12 @@ def render_caddyfile(
         #   and static bundles shrink substantially over the wire)
         # - cache hashed static assets in the browser
         # - force revalidation for the shell document and API responses
-        lines.append('\t@stream path /api/events.host /api/events.mux')
-        lines.append('\t@not-stream not path /api/events.host /api/events.mux')
-        lines.append('\t@static path /plugins/* /assets/* /favicon.svg')
+        lines.append('\t@stream path /api/events.host /api/events.mux /plugins/events')
+        lines.append('\t@not-stream not path /api/events.host /api/events.mux /plugins/events')
+        lines.append('\t@static {')
+        lines.append('\t\tpath /plugins/* /assets/* /favicon.svg')
+        lines.append('\t\tnot path /plugins/events')
+        lines.append('\t}')
         lines.append('\t@dynamic path / /api/*')
         lines.append('\tencode @not-stream zstd gzip')
         lines.append('\theader @static Cache-Control "public, max-age=31536000, immutable"')

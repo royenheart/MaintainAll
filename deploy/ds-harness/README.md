@@ -10,9 +10,9 @@
 `up` 启动代理时还会在回环端口 `9097` 拉起一个独立的 Python 管理后端
 （`manage.py`），Caddy 把每个代理站点的 `/manage/` 路径反代给它。管理界面
 用于监控每个 dsh 实例的可达性 / sessions / 进程 / 请求量，并在 dsh 被
-外部插件写坏、无法启动时，**不依赖 dsh** 地停用/启用
-`dsh.profile.bundles` 里的外部插件或切到安全模式（只加载内置 bundle），
-从而远程恢复 dsh。
+外部插件写坏、无法启动时，**不依赖 dsh** 地停用/启用外部插件——运行时
+写 profile 的 `cordis.patch.yml` 停用补丁（dsh web 热生效），无法启动时
+收窄 `dsh.profile.bundles` 或切到安全模式——从而远程恢复 dsh。
 
 ## 为什么用 Caddy Docker
 
@@ -237,22 +237,50 @@ https://<代理IP>:<代理端口>/manage/      # --tls 模式
 | 进程 | `ss -ltnp` 找监听 PID，`ps` 取 CPU/内存/运行时长 | 显示无进程或原因 |
 | 流量 | Caddy 写入 `data/logs/access-<端口>*.json` 的 JSON 访问日志 | 显示尚无日志 |
 
-外部加载控制（每次修改都写入 profile，**重启对应 dsh 后生效**）：
+外部加载控制（写 `$DSH_HOME/profiles/<profile>/cordis.patch.yml`，
+**运行中的 dsh web 热生效，无需重启**；浏览器刷新后客户端侧也生效。
+同一实例的写操作通过该 profile 目录下 `.manage-write.lock`（`flock`）+
+原子替换（写 `.tmp` 后 `os.replace`）串行化，多实例各用各的锁文件）：
 
-- **单个插件启用/停用**：修改 `$DSH_HOME/profiles/<profile>/package.json`
-  的 `dsh.profile.bundles`。停用不删依赖、不跑 pnpm，因此插件自身
-  `cordis.patch.yml` 损坏或包目录不可读时也能恢复；启用前会校验该依赖
-  确实声明了 `dsh.bundle`，避免把普通库塞进 bundles。
-- **实例安全模式**：一键把 `dsh.profile.bundles` 收窄为内置 bundle
-  （`@deepseek-ai/dsh-base` + 对应 surface 的 bundle），并记住之前的列表；
-  关闭安全模式时恢复。
+> 补丁里的 `id` 是插件 bundle patch 中 `insert` 行的 `id`（例如 `codex`、
+> `skills-manager`），**不是** dsh 插件清单里显示的层级 entryId
+> （`include:codex`）。另外，`cordis.patch.yml` 只能开关“已存在于当前
+> loader 树”的行；不在 `dsh.profile.bundles` 里的插件没有行可匹配，补丁
+> 会是 no-op，需要先把它加入 bundles（manage 的“启用”会自动加入，但当前
+> 进程要重启后才有这一行，之后才能热开关）。
 
-恢复流程示例：插件装坏 → dsh 无法启动 → 浏览器打开 `/manage/` →
-在对应实例卡片里停用该插件（或开安全模式）→ 按卡片上的启动参数重启 dsh
-→ 点「进入 dsh」。多个 dsh 实例各用独立 `DSH_HOME` 时，请编辑
-[`instances.yml`](instances.yml) 声明每个实例的 `port` / `profile` / `home`；
-留空则回退为默认实例（3080 / web / ~/.dsh）并尝试从生成的 Caddyfile
-读取端口映射。
+- **单个插件启用/停用**：写一条 `- id: <row-id>` + `disabled: true/false`
+  到 profile 的 `cordis.patch.yml`。`<row-id>` 来自插件自身 bundle patch
+  里 `insert` 行的 `id`（例如 `maintainall`、`skills-manager`）。停用不删
+  `dsh.profile.bundles`、不删依赖、不跑 pnpm，因此 dsh 运行时也能安全
+  卸载/重载该插件；启用前会校验该依赖确实声明了 `dsh.bundle`。插件安装
+  位置同时支持 `<profile>/node_modules` 和共享的
+  `$DSH_HOME/profiles/node_modules`（dsh 的 Node 解析会逐级向上找）。
+- **agent preset**：manage 会显示每个
+  `$DSH_HOME/.agent-presets/*/agent.cordis.yml` 用户 preset 本身，以及其中
+  的第三方插件行（例如 `@royenheart/dsh-plugin-server/tool-deck`）。preset
+  本身可停用/启用（把 `agent.cordis.yml` 改名为 `agent.cordis.yml.disabled`
+  来取消发布，dsh 只发现带 `agent.cordis.yml` 的目录）；preset 内部的
+  第三方行只读，要调整行级开关需编辑对应 `agent.cordis.yml`。
+- **patch 层直接插入的行（只读）**：profile 和 home 的 `cordis.patch.yml`
+  除了给已有行打 `disabled` 补丁，还可以直接 `insert` 新行；manage 会把
+  这些行显示为 `patch:profile` / `patch:home`，同样只读。
+- **不在 manage 范围**：dsh 安装自带的内置 preset（非用户插件）、启动
+  参数里的 `--patch` 覆盖层、会话内由 `dynamicCordisRunner` 动态定义的
+  Cordis 插件——这些要么不是用户文件，要么是运行时对象，manage 不显示。
+- **实例安全模式**：同时做两件事——把 `dsh.profile.bundles` 收窄为内置
+  bundle（这是插件自身 bundle patch 损坏、dsh 无法启动时唯一可靠的恢复
+  路径），并给所有外部插件写 `disabled: true` 补丁（让运行中的 dsh web
+  也立即热生效）。关闭安全模式时两层一起恢复。
+
+恢复流程示例 A（dsh 仍在运行，只想热卸载插件）：浏览器打开 `/manage/` →
+在对应实例卡片里停用该插件 → 返回 dsh 页面刷新即可，无需重启 dsh。
+
+恢复流程示例 B（插件装坏 → dsh 无法启动）：浏览器打开 `/manage/` →
+开安全模式（收窄 bundles）→ 重启 dsh → 点「进入 dsh」。多个 dsh 实例各用
+独立 `DSH_HOME` 时，请编辑 [`instances.yml`](instances.yml) 声明每个实例的
+`port` / `profile` / `home`；留空则回退为默认实例（3080 / web / ~/.dsh）并
+尝试从生成的 Caddyfile 读取端口映射。
 
 ## 代理层加载优化
 
