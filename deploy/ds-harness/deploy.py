@@ -87,6 +87,7 @@ import json
 import os
 import re
 import shutil
+import signal
 import subprocess
 import sys
 import tempfile
@@ -1132,10 +1133,12 @@ def manage_pid() -> int | None:
         return None
 
 
-def manage_running() -> bool:
-    pid = manage_pid()
-    if pid is None:
-        return False
+def write_manage_pid(pid: int) -> None:
+    MANAGE_DATA_DIR.mkdir(parents=True, exist_ok=True)
+    MANAGE_PID_PATH.write_text(str(pid), encoding='utf-8')
+
+
+def pid_alive(pid: int) -> bool:
     try:
         os.kill(pid, 0)
         return True
@@ -1147,15 +1150,151 @@ def manage_running() -> bool:
         return False
 
 
+def proc_cmdline(pid: int) -> str | None:
+    """Best-effort full command line of a host process; None when unreadable."""
+    try:
+        raw = Path(f'/proc/{pid}/cmdline').read_bytes()
+    except OSError:
+        return None
+    return raw.replace(b'\0', b' ').decode('utf-8', 'replace').strip()
+
+
+def is_manage_process(pid: int) -> bool:
+    """True when pid's command line runs this directory's manage.py."""
+    cmd = proc_cmdline(pid)
+    return cmd is not None and 'manage.py' in cmd
+
+
+def pid_for_socket_inode(inode: str) -> int | None:
+    """Map a /proc/net socket inode to the pid holding it (mirrors manage.py)."""
+    proc = Path('/proc')
+    if not proc.is_dir():
+        return None
+    for pid_dir in proc.iterdir():
+        if not pid_dir.name.isdigit():
+            continue
+        fd_dir = pid_dir / 'fd'
+        try:
+            fds = list(fd_dir.iterdir())
+        except OSError:
+            continue
+        for fd in fds:
+            try:
+                if os.readlink(fd) == f'socket:[{inode}]':
+                    return int(pid_dir.name)
+            except OSError:
+                continue
+    return None
+
+
+def manage_port_listener_pid(port: int, *, require_manage: bool = True) -> int | None:
+    """Resolve the pid actually listening on `port`.
+
+    Tries `ss -ltnpH`, then falls back to scanning /proc/net/{tcp,tcp6} socket
+    inodes (mirrors manage.py's find_listener_pid). With require_manage=True
+    the pid must also have `manage.py` in its command line, so an unrelated
+    service squatting on the port is never adopted or killed.
+    """
+    def candidate_ok(pid: int) -> bool:
+        return (not require_manage) or is_manage_process(pid)
+
+    if shutil.which('ss') is not None:
+        try:
+            completed = subprocess.run(['ss', '-ltnpH'], capture_output=True, text=True, timeout=5)
+        except (OSError, subprocess.TimeoutExpired):
+            completed = None
+        if completed is not None and completed.returncode == 0:
+            for line in completed.stdout.splitlines():
+                parts = line.split()
+                if len(parts) < 6:
+                    continue
+                match = re.match(r'^(?:\[?[0-9a-fA-F.:]+\]?|\*):(\d+)$', parts[3])
+                if match is None or int(match.group(1)) != port:
+                    continue
+                pid_match = re.search(r'pid=(\d+)', parts[-1])
+                if pid_match is not None:
+                    pid = int(pid_match.group(1))
+                    if candidate_ok(pid):
+                        return pid
+    # ss may not expose pid= (privilege/iproute build); /proc is the fallback.
+    for proto in ('tcp', 'tcp6'):
+        try:
+            lines = Path('/proc/net', proto).read_text(encoding='utf-8').splitlines()
+        except OSError:
+            continue
+        for line in lines[1:]:
+            fields = line.split()
+            if len(fields) < 10:
+                continue
+            try:
+                port_hex = fields[1].rsplit(':', 1)[1]
+                if int(port_hex, 16) != port:
+                    continue
+            except (ValueError, IndexError):
+                continue
+            pid = pid_for_socket_inode(fields[9])
+            if pid is not None and candidate_ok(pid):
+                return pid
+    return None
+
+
+def classify_manage_state(file_pid: int | None, file_alive: bool, listener: int | None) -> tuple[str, int | None]:
+    """Decide the manage lifecycle state from pid-file and port facts.
+
+    Returns (kind, pid):
+      running  pid file matches the live manage.py listener
+      orphan   a manage.py listens on the port but the pid file is missing,
+               stale, or points elsewhere
+      stale    pid file exists but no manage.py listens on the port
+      stopped  no pid file and no manage.py on the port
+    """
+    if listener is not None and file_alive and listener == file_pid:
+        return 'running', file_pid
+    if listener is not None:
+        return 'orphan', listener
+    if file_pid is not None:
+        return 'stale', file_pid if file_alive else None
+    return 'stopped', None
+
+
+def manage_state(port: int) -> tuple[str, int | None]:
+    filed = manage_pid()
+    alive = filed is not None and pid_alive(filed)
+    listener = manage_port_listener_pid(port, require_manage=True)
+    return classify_manage_state(filed, alive, listener)
+
+
+def wait_manage_port_free(port: int, timeout: float = 5.0) -> bool:
+    """Wait until nothing listens on `port` (any process); True once free."""
+    deadline = time.time() + timeout
+    while time.time() < deadline:
+        if manage_port_listener_pid(port, require_manage=False) is None:
+            return True
+        time.sleep(0.2)
+    return False
+
+
 def start_manage(args: argparse.Namespace) -> int:
-    if manage_running():
-        print(f'manage server already running (pid {manage_pid()}) on 127.0.0.1:{args.manage_port}')
+    port = args.manage_port
+    kind, pid = manage_state(port)
+    if kind == 'running':
+        print(f'manage server already running (pid {pid}) on 127.0.0.1:{port}')
         return 0
+    if kind == 'orphan':
+        # A manage.py holds the port but is untracked (started manually, or its
+        # pid file was lost to a failed duplicate start). Replace it so the
+        # backend runs the manage.py shipped next to this deploy.py and its
+        # lifecycle is tracked again.
+        print(f'manage server: replacing untracked manage (pid {pid}) on 127.0.0.1:{port} so it runs the current code')
+        if stop_manage(args) != 0:
+            return 1
+    elif kind == 'stale':
+        print(f'manage server: pid file {MANAGE_PID_PATH.name} is stale; starting a fresh instance')
     MANAGE_DATA_DIR.mkdir(parents=True, exist_ok=True)
     (MANAGE_DATA_DIR / 'logs').mkdir(parents=True, exist_ok=True)
     command = [
         sys.executable, str(MANAGE_SCRIPT_PATH),
-        '--port', str(args.manage_port),
+        '--port', str(port),
         '--container', args.container,
     ]
     print_command(command)
@@ -1169,33 +1308,66 @@ def start_manage(args: argparse.Namespace) -> int:
         stderr=subprocess.STDOUT,
         start_new_session=True,
     )
-    MANAGE_PID_PATH.write_text(str(process.pid), encoding='utf-8')
+    write_manage_pid(process.pid)
     time.sleep(0.4)
     if process.poll() is not None:
+        # The child exited right away — almost always because something took
+        # the manage port between our state check and its bind. Re-check: if a
+        # manage.py now holds the port, adopt it instead of failing.
+        listener = manage_port_listener_pid(port, require_manage=True)
+        if listener is not None:
+            write_manage_pid(listener)
+            print(f'manage server already running (pid {listener}) on 127.0.0.1:{port} — adopted after spawn race')
+            return 0
         MANAGE_PID_PATH.unlink(missing_ok=True)
+        holder = manage_port_listener_pid(port, require_manage=False)
+        holder_hint = f' by pid {holder}' if holder is not None else ''
         raise SystemExit(
-            f'manage server exited immediately (code {process.returncode}); '
-            f'check {MANAGE_LOG_PATH} — the manage port {args.manage_port} may already be in use',
+            f'manage server exited immediately (code {process.returncode}); check {MANAGE_LOG_PATH} — '
+            f'the manage port {port} is already in use{holder_hint}',
         )
-    print(f'started manage server (pid {process.pid}) on http://127.0.0.1:{args.manage_port}')
+    print(f'started manage server (pid {process.pid}) on http://127.0.0.1:{port}')
     print(f'manage UI: <proxy-url>/manage/')
     return 0
 
 
 def stop_manage(args: argparse.Namespace) -> int:
-    pid = manage_pid()
-    if pid is None:
+    port = args.manage_port
+    kind, pid = manage_state(port)
+    if kind == 'stopped':
         print('manage server is not running')
         return 0
-    print(f'==> stopping manage server (pid {pid})')
+    if kind == 'stale':
+        # No manage.py listens on the port, so the pid file is garbage. Only
+        # remove the file — a live pid-file process, when present, is not ours.
+        MANAGE_PID_PATH.unlink(missing_ok=True)
+        print('manage server is not running (stale pid file removed)')
+        return 0
+    target = pid
+    if target is None or not is_manage_process(target):
+        listener = manage_port_listener_pid(port, require_manage=True)
+        if listener is None:
+            MANAGE_PID_PATH.unlink(missing_ok=True)
+            print('manage server is not running (pid file did not point at manage.py; removed)')
+            return 0
+        target = listener
+    print(f'==> stopping manage server (pid {target})')
     if args.dry_run:
         return 0
     try:
-        os.kill(pid, 15)
+        os.kill(target, signal.SIGTERM)
     except ProcessLookupError:
         pass
     except OSError as error:
-        print(f'warning: failed to stop manage server: {error}')
+        print(f'warning: failed to signal manage server: {error}')
+    if not wait_manage_port_free(port):
+        if pid_alive(target):
+            print(f'warning: manage server (pid {target}) ignored SIGTERM; sending SIGKILL')
+            try:
+                os.kill(target, signal.SIGKILL)
+            except OSError as error:
+                print(f'warning: failed to kill manage server: {error}')
+            wait_manage_port_free(port, timeout=2.0)
     MANAGE_PID_PATH.unlink(missing_ok=True)
     return 0
 
@@ -1303,7 +1475,16 @@ def cmd_status(args: argparse.Namespace) -> int:
         )
         print('--- recent caddy logs ---')
         print(completed.stdout.strip())
-    print(f'manage server: {"running (pid " + str(manage_pid()) + ")" if manage_running() else "not running"}')
+    kind, manage_pid_value = manage_state(args.manage_port)
+    if kind == 'running':
+        print(f'manage server: running (pid {manage_pid_value}) on 127.0.0.1:{args.manage_port}')
+    elif kind == 'orphan':
+        print(f'manage server: running (pid {manage_pid_value}) on 127.0.0.1:{args.manage_port} but untracked '
+              f'({MANAGE_PID_PATH.name} missing/stale); up/reload will restart it under deploy.py management')
+    elif kind == 'stale':
+        print(f'manage server: not running ({MANAGE_PID_PATH.name} stale; no manage.py on 127.0.0.1:{args.manage_port})')
+    else:
+        print(f'manage server: not running')
     if CADDYFILE_PATH.is_file():
         print('--- Caddyfile sites ---')
         for line in CADDYFILE_PATH.read_text(encoding='utf-8').splitlines():

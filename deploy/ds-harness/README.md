@@ -55,6 +55,27 @@ dsh 端口不同。所以 `up 3080 8081:3081` 的意思是：
 如果两个实例的代理端口和 dsh 端口相同，直接写 `up 3080 3081` 即可。
 `--dry-run` 只打印将要执行的 docker 命令和生成的 Caddyfile。
 
+### manage 后端生命周期（自愈）
+
+manage 进程由 deploy.py 管理，pid 文件在 `data/manage.pid`；但 deploy.py
+会**按端口事实对账**，而不是只信 pid 文件（曾出现 pid 文件被一次失败的
+重复启动删掉后，manage 变成无人管理的“孤儿”，`status` 误报 not running、
+后续 `up`/`reload` 撞 EADDRINUSE、`down` 也停不掉它）。`status` 会如实区分：
+
+- `running` —— pid 文件与实际监听 manage 的进程一致；
+- `orphan` —— 有 manage.py 在监听，但 pid 文件缺失/过期/指向别处（例如
+  曾被手动启动，或一次失败启动删掉了 pid 文件）；`status` 会提示，并说明
+  `up`/`reload` 会如何处理；
+- `stale` —— pid 文件过期且端口上没有 manage 在监听；
+- `stopped` —— 没有 pid 文件也没有 manage 在跑。
+
+`up`/`reload` 遇到 `orphan` 会先停掉旧进程、再用与 deploy.py 同目录的
+manage.py 重启并重建 pid 文件（保证 manage 跑的是当前代码，而不是不知道
+多久以前启动的旧逻辑）；遇到 `stale` 直接清理后新起。`down` 即使 pid 文件
+丢失也能按端口找到 manage 进程停掉（SIGTERM 后等待端口释放，超时才
+SIGKILL），不会留下孤儿。判定时会校验进程命令行确实含 `manage.py`，绝不
+去停用或接管恰好占用该端口的其它服务。
+
 ## dsh web 启动 token 与首次登录
 
 新版 dsh web 启动时不再打印裸 URL，而是打印带一次性启动 token 的登录 URL：
