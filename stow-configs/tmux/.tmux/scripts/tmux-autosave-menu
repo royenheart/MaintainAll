@@ -1,0 +1,186 @@
+#!/usr/bin/env bash
+# tmux-autosave-menu — settings popup for the periodic autosave feature.
+#
+# Opened from ~/.tmux.conf via:
+#   bind M-s display-popup -E -w 70% -h 60% "~/.tmux/scripts/tmux-autosave-menu"
+#
+# Controls
+#   space          toggle autosave on / off
+#   0-9            type digits into the interval number box (left)
+#   Backspace      delete the last digit
+#   up / down      change the interval unit (right box): s m h d
+#   r              reset interval to 300s (5m)
+#   s              save now (quietly, via tmux-resurrect)
+#   q / Esc / Enter  close
+#
+# Every change is applied to the global options immediately, so closing the
+# popup always leaves tmux in the exact state shown:
+#   @autosave-enabled  -> 1/0
+#   @autosave-interval -> <number> * <unit>, in whole seconds
+#   @autosave-interval-label is refreshed via `tmux-autosave.sh label`.
+set -u
+
+CURRENT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
+tmux_cmd="${TMUX_CMD:-tmux}"
+autosave_script="$CURRENT_DIR/tmux-autosave.sh"
+save_script="${TMUX_AUTOSAVE_SCRIPT:-$HOME/.tmux/plugins/tmux-resurrect/scripts/save.sh}"
+
+UNITS=(s m h d)
+UNIT_SEC=(1 60 3600 86400)
+
+# ANSI styling
+R=$'\e[0m'; B=$'\e[1m'; DIM=$'\e[2m'
+GREEN=$'\e[32m'; RED=$'\e[31m'; CYAN=$'\e[36m'; YELLOW=$'\e[33m'
+
+get_opt() { # $1 option name, $2 default — prints the value or the default
+	local name="$1" default="$2" val
+	val="$("$tmux_cmd" show-option -gqv "$name" 2>/dev/null)" || val=""
+	if [ -n "$val" ]; then printf '%s' "$val"; else printf '%s' "$default"; fi
+}
+
+# ---- read current state -------------------------------------------------
+enabled="$(get_opt @autosave-enabled 1)"
+secs="$(get_opt @autosave-interval 300)"
+case "$secs" in
+	''|*[!0-9]*) secs=300 ;;
+esac
+[ "$secs" -ge 1 ] 2>/dev/null || secs=300
+
+# Split seconds into (number, unit): prefer the largest unit that divides
+# evenly, e.g. 300 -> 5m, 3600 -> 1h, 90 -> 90s.
+number="$secs"
+unit=0
+for i in 3 2 1; do
+	if [ $((secs % UNIT_SEC[i])) -eq 0 ]; then
+		unit=$i
+		number=$((secs / UNIT_SEC[i]))
+		break
+	fi
+done
+
+msg=""
+width="$(tput cols 2>/dev/null || printf '80')"
+[ "$width" -gt 0 ] 2>/dev/null || width=80
+
+rule() { # horizontal rule filling the popup width
+	printf '%s\n' "$(printf '%*s' "$((width - 1))" '' | tr ' ' '-')"
+}
+
+say() { printf '%s\n' "$1"; }
+
+draw() {
+	clear
+	say "  ${B}tmux autosave settings${R}"
+	rule
+	if [ "$enabled" = "1" ]; then
+		say "  State      : ${GREEN}${B}[ON]${R}"
+	else
+		say "  State      : ${RED}${B}[OFF]${R}"
+	fi
+	say "  Interval   : ${B}[${YELLOW}${number:- }${R}${B}]${R}  ${B}[${CYAN}${UNITS[unit]}${R}${B}]${R}"
+	rule
+	say "  ${DIM}space  toggle on/off${R}        ${DIM}0-9 / Backspace  edit number${R}"
+	say "  ${DIM}up/down  change unit: s m h d${R}   ${DIM}r  reset to 5m${R}"
+	say "  ${DIM}s  save now${R}                  ${DIM}q / Esc / Enter  close${R}"
+	if [ -n "$msg" ]; then
+		say ""
+		say "  $msg"
+	fi
+}
+
+apply_interval() {
+	[ -n "$number" ] || return 0
+	secs=$((10#$number * UNIT_SEC[unit]))
+	if [ "$secs" -lt 1 ]; then
+		msg="Interval must be at least 1s"
+		return 0
+	fi
+	"$tmux_cmd" set-option -g @autosave-interval "$secs" >/dev/null 2>&1 || true
+	bash "$autosave_script" label >/dev/null 2>&1 || true
+	msg="Interval: ${number}${UNITS[unit]} (${secs}s)"
+}
+
+toggle_enabled() {
+	if [ "$enabled" = "1" ]; then
+		enabled="0"
+	else
+		enabled="1"
+	fi
+	"$tmux_cmd" set-option -g @autosave-enabled "$enabled" >/dev/null 2>&1 || true
+	if [ "$enabled" = "1" ]; then msg="Autosave ON"; else msg="Autosave OFF"; fi
+}
+
+save_now() {
+	if [ ! -f "$save_script" ]; then
+		msg="tmux-resurrect is not installed"
+		return 0
+	fi
+	msg="Saving..."
+	draw
+	if "$save_script" quiet >/dev/null 2>&1; then
+		msg="Saved at $(date '+%H:%M:%S')"
+	else
+		msg="Save failed"
+	fi
+}
+
+read_key() {
+	local k k2
+	IFS= read -rsn1 k || return 1
+	if [ "$k" = $'\r' ] || [ "$k" = $'\n' ]; then
+		key="enter"
+		return 0
+	fi
+	case "$k" in
+		$'\e')
+			IFS= read -rsn1 -t 0.05 k2 || k2=""
+			if [ -z "$k2" ]; then
+				key="esc"
+			elif [ "$k2" = "[" ] || [ "$k2" = "O" ]; then
+				IFS= read -rsn1 -t 0.05 k || k=""
+				case "$k" in
+					A) key="up" ;;
+					B) key="down" ;;
+					C) key="right" ;;
+					D) key="left" ;;
+					*) key="esc" ;;
+				esac
+			else
+				key="esc"
+			fi
+			;;
+		*) key="$k" ;;
+	esac
+}
+
+# ---- main loop ----------------------------------------------------------
+trap 'printf "\e[?25h"' EXIT
+printf '\e[?25l' # hide cursor
+while :; do
+	draw
+	read_key || break
+	case "$key" in
+		q|Q|esc|enter) break ;;
+		' '|o|O) toggle_enabled ;;
+		s|S) save_now ;;
+		r|R) number="5"; unit=1; msg="Reset to 5m"; apply_interval ;;
+		[0-9])
+			if [ "${#number}" -lt 6 ]; then
+				number="${number}${key}"
+				apply_interval
+			fi
+			;;
+		$'\x7f'|$'\b')
+			number="${number%?}"
+			if [ -n "$number" ]; then
+				apply_interval
+			else
+				msg="Type a number"
+			fi
+			;;
+		up) unit=$(( (unit + 1) % 4 )); apply_interval ;;
+		down) unit=$(( (unit + 3) % 4 )); apply_interval ;;
+		*) : ;;
+	esac
+done
+exit 0
