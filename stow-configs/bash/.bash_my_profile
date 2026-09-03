@@ -96,6 +96,10 @@ function sync_skills() {
     # npx skills add https://github.com/obra/superpowers
     npx skills add https://github.com/googleworkspace/cli
     npx skills add https://github.com/royenheart/MaintainAll
+    # humanize-academic-writing
+    npx skills add https://github.com/momo2young/humanize-academic-writing
+    # figure-generation for generate much better figs for research purpose
+    npx skills add https://github.com/lingzhi227/agent-research-skills --skill figure-generation
 }
 
 # 移除通过 npx skills 安装的技能
