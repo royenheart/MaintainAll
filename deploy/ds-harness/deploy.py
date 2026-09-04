@@ -56,6 +56,7 @@ Usage:
   python3 deploy.py status
   python3 deploy.py scan
   python3 deploy.py reload [PORTS...] [--auto] [--listen HOST ...] [--manage-port PORT] [--auth-cookie-days DAYS] [--dry-run]
+  python3 deploy.py install-manage-service [--manage-port PORT] [--container NAME] [--dry-run]
   python3 deploy.py install [--profile web] [--home ~/.dsh] [--dry-run]
   python3 deploy.py update [PLUGIN...] [--profile web] [--home ~/.dsh] [--dry-run]
 
@@ -123,6 +124,7 @@ MANAGE_SCRIPT_PATH = Path(__file__).resolve().parent / 'manage.py'
 MANAGE_DATA_DIR = Path(__file__).resolve().parent / 'data'
 MANAGE_LOG_PATH = MANAGE_DATA_DIR / 'manage.log'
 MANAGE_PID_PATH = MANAGE_DATA_DIR / 'manage.pid'
+MANAGE_SYSTEMD_UNIT = 'dsh-manage.service'
 DEFAULT_MANAGE_PORT = 9097
 
 PORT_SPEC_RE = re.compile(r'^(\d{1,5})(?::(\d{1,5}))?$')
@@ -1277,6 +1279,39 @@ def wait_manage_port_free(port: int, timeout: float = 5.0) -> bool:
     return False
 
 
+def manage_systemd_unit_file() -> Path | None:
+    """Path to the installed dsh-manage systemd --user unit, when present."""
+    xdg_config = os.environ.get('XDG_CONFIG_HOME') or str(Path.home() / '.config')
+    unit_path = Path(xdg_config) / 'systemd' / 'user' / MANAGE_SYSTEMD_UNIT
+    return unit_path if unit_path.is_file() else None
+
+
+def systemctl_user(args: list[str], timeout: float = 20.0) -> subprocess.CompletedProcess | None:
+    """Run `systemctl --user ...`; None when the user manager is unreachable."""
+    if shutil.which('systemctl') is None:
+        return None
+    try:
+        return subprocess.run(
+            ['systemctl', '--user', *args],
+            capture_output=True,
+            text=True,
+            timeout=timeout,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return None
+
+
+def manage_systemd_main_pid() -> int | None:
+    """MainPID of the dsh-manage systemd --user unit, when it is active."""
+    completed = systemctl_user(['show', '-p', 'MainPID', '--value', MANAGE_SYSTEMD_UNIT])
+    if completed is None or completed.returncode != 0:
+        return None
+    try:
+        return int(completed.stdout.strip())
+    except ValueError:
+        return None
+
+
 def start_manage(args: argparse.Namespace) -> int:
     port = args.manage_port
     kind, pid = manage_state(port)
@@ -1293,6 +1328,29 @@ def start_manage(args: argparse.Namespace) -> int:
             return 1
     elif kind == 'stale':
         print(f'manage server: pid file {MANAGE_PID_PATH.name} is stale; starting a fresh instance')
+    if manage_systemd_unit_file() is not None:
+        print_command(['systemctl', '--user', 'start', MANAGE_SYSTEMD_UNIT])
+        if args.dry_run:
+            return 0
+        completed = systemctl_user(['start', MANAGE_SYSTEMD_UNIT])
+        if completed is None or completed.returncode != 0:
+            stderr = (completed.stderr or '').strip() if completed is not None else 'systemctl --user unavailable'
+            raise SystemExit(
+                f'failed to start systemd --user {MANAGE_SYSTEMD_UNIT}: {stderr or "unknown error"}'
+            )
+        deadline = time.time() + 5.0
+        listener = manage_port_listener_pid(port, require_manage=True)
+        while listener is None and time.time() < deadline:
+            time.sleep(0.2)
+            listener = manage_port_listener_pid(port, require_manage=True)
+        if listener is None:
+            raise SystemExit(
+                f'systemd --user {MANAGE_SYSTEMD_UNIT} started but nothing is listening on '
+                f'127.0.0.1:{port}; check `journalctl --user -u {MANAGE_SYSTEMD_UNIT}`'
+            )
+        print(f'started manage server via systemd --user {MANAGE_SYSTEMD_UNIT} (pid {listener}) on http://127.0.0.1:{port}')
+        print(f'manage UI: <proxy-url>/manage/')
+        return 0
     MANAGE_DATA_DIR.mkdir(parents=True, exist_ok=True)
     (MANAGE_DATA_DIR / 'logs').mkdir(parents=True, exist_ok=True)
     command = [
@@ -1354,6 +1412,19 @@ def stop_manage(args: argparse.Namespace) -> int:
             print('manage server is not running (pid file did not point at manage.py; removed)')
             return 0
         target = listener
+    unit_main_pid = manage_systemd_main_pid()
+    if unit_main_pid is not None and unit_main_pid > 0 and unit_main_pid == target:
+        print(f'==> stopping manage server via systemd --user {MANAGE_SYSTEMD_UNIT} (pid {target})')
+        if args.dry_run:
+            return 0
+        completed = systemctl_user(['stop', MANAGE_SYSTEMD_UNIT])
+        if completed is None or completed.returncode != 0:
+            stderr = (completed.stderr or '').strip() if completed is not None else 'systemctl --user unavailable'
+            raise SystemExit(f'failed to stop systemd --user {MANAGE_SYSTEMD_UNIT}: {stderr or "unknown error"}')
+        if not wait_manage_port_free(port):
+            print(f'warning: 127.0.0.1:{port} is still in use after stopping {MANAGE_SYSTEMD_UNIT}')
+        MANAGE_PID_PATH.unlink(missing_ok=True)
+        return 0
     print(f'==> stopping manage server (pid {target})')
     if args.dry_run:
         return 0
@@ -1488,11 +1559,94 @@ def cmd_status(args: argparse.Namespace) -> int:
         print(f'manage server: not running ({MANAGE_PID_PATH.name} stale; no manage.py on 127.0.0.1:{args.manage_port})')
     else:
         print(f'manage server: not running')
+    if manage_systemd_unit_file() is not None:
+        unit_main_pid = manage_systemd_main_pid()
+        if unit_main_pid is not None and unit_main_pid > 0:
+            print(f'manage systemd service: {MANAGE_SYSTEMD_UNIT} active (pid {unit_main_pid})')
+        else:
+            print(f'manage systemd service: {MANAGE_SYSTEMD_UNIT} installed but not active')
     if CADDYFILE_PATH.is_file():
         print('--- Caddyfile sites ---')
         for line in CADDYFILE_PATH.read_text(encoding='utf-8').splitlines():
             if re.match(r'^https?://', line):
                 print(line)
+    return 0
+
+
+def render_manage_service_unit(python_bin: str, port: int, container: str) -> str:
+    """Render the dsh-manage systemd --user unit for the current interpreter."""
+    return f'''[Unit]
+Description=dsh manage backend for deploy/ds-harness (manage.py on 127.0.0.1:{port})
+After=default.target
+
+[Service]
+Type=simple
+ExecStart={python_bin} {MANAGE_SCRIPT_PATH} --port {port} --container {container} --pid-file {MANAGE_PID_PATH}
+Restart=on-failure
+RestartSec=5
+
+[Install]
+WantedBy=default.target
+'''
+
+
+def cmd_install_manage_service(args: argparse.Namespace) -> int:
+    """Install manage.py as a systemd --user service (dsh-manage.service)."""
+    port = args.manage_port
+    unit_dir = Path(os.environ.get('XDG_CONFIG_HOME') or str(Path.home() / '.config')) / 'systemd' / 'user'
+    unit_path = unit_dir / MANAGE_SYSTEMD_UNIT
+    python_bin = sys.executable or shutil.which('python3')
+    if python_bin is None:
+        raise SystemExit('error: no Python interpreter available for the systemd unit')
+    unit_body = render_manage_service_unit(python_bin, port, args.container)
+
+    if args.dry_run:
+        print(f'dry-run: would write {unit_path}')
+        print('---------')
+        print(unit_body, end='')
+        print('dry-run: would run systemctl --user daemon-reload')
+        print(f'dry-run: would run systemctl --user enable --now {MANAGE_SYSTEMD_UNIT}')
+        return 0
+
+    unit_active = False
+    completed = systemctl_user(['is-active', '--quiet', MANAGE_SYSTEMD_UNIT])
+    if completed is not None and completed.returncode == 0:
+        unit_active = True
+    if not unit_active and manage_port_listener_pid(port, require_manage=False) is not None:
+        raise SystemExit(
+            f'error: something is already listening on 127.0.0.1:{port}; '
+            f'stop it first (e.g. a leftover manage.py), then re-run '
+            f'`python3 deploy.py install-manage-service`'
+        )
+
+    unit_dir.mkdir(parents=True, exist_ok=True)
+    unit_path.write_text(unit_body, encoding='utf-8')
+    print(f'wrote {unit_path}')
+
+    if systemctl_user(['daemon-reload']) is None:
+        raise SystemExit('error: systemctl --user daemon-reload failed (is the user systemd manager running?)')
+    if unit_active:
+        print(f'==> restarting systemd --user {MANAGE_SYSTEMD_UNIT}')
+        completed = systemctl_user(['restart', MANAGE_SYSTEMD_UNIT])
+    else:
+        print(f'==> enabling and starting systemd --user {MANAGE_SYSTEMD_UNIT}')
+        completed = systemctl_user(['enable', '--now', MANAGE_SYSTEMD_UNIT])
+    if completed is None or completed.returncode != 0:
+        stderr = (completed.stderr or '').strip() if completed is not None else 'systemctl --user unavailable'
+        raise SystemExit(f'error: failed to start systemd --user {MANAGE_SYSTEMD_UNIT}: {stderr or "unknown error"}')
+
+    deadline = time.time() + 5.0
+    listener = manage_port_listener_pid(port, require_manage=True)
+    while listener is None and time.time() < deadline:
+        time.sleep(0.2)
+        listener = manage_port_listener_pid(port, require_manage=True)
+    if listener is None:
+        raise SystemExit(
+            f'systemd --user {MANAGE_SYSTEMD_UNIT} started but nothing is listening on 127.0.0.1:{port}; '
+            f'check `journalctl --user -u {MANAGE_SYSTEMD_UNIT}`'
+        )
+    print(f'installed {MANAGE_SYSTEMD_UNIT}: running (pid {listener}) on http://127.0.0.1:{port}')
+    print('manage UI: <proxy-url>/manage/')
     return 0
 
 
@@ -1560,7 +1714,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         'action',
         nargs='?',
-        choices=['up', 'down', 'status', 'scan', 'reload', 'install', 'update'],
+        choices=['up', 'down', 'status', 'scan', 'reload', 'install', 'update', 'install-manage-service'],
         default='up',
     )
     parser.add_argument(
@@ -1588,6 +1742,14 @@ def main() -> None:
     args = parser.parse_args()
     action = args.action or 'up'
 
+    if action == 'install-manage-service':
+        if args.ports or args.auto or args.listen is not None or args.preserve_host or args.tls:
+            raise SystemExit('error: --auto/--listen/--preserve-host/--tls are deployment-only options; '
+                             'install-manage-service only takes --manage-port/--container/--dry-run')
+        if args.profile is not None or args.home is not None or args.dsh is not None:
+            raise SystemExit('error: --profile/--home/--dsh are plugin-management-only options')
+        return cmd_install_manage_service(args)
+
     if action in ('install', 'update'):
         if args.auto or args.listen is not None or args.preserve_host or args.tls:
             raise SystemExit('error: --auto/--listen/--preserve-host/--tls are deployment-only options; install/update only take --profile/--home/--dsh/--dry-run')
@@ -1613,6 +1775,7 @@ def main() -> None:
         'status': cmd_status,
         'scan': cmd_scan,
         'reload': cmd_reload,
+        'install-manage-service': cmd_install_manage_service,
     }
     raise SystemExit(commands[action](args))
 

@@ -43,6 +43,7 @@ python3 deploy.py reload 8080:3080   # 重新生成 Caddyfile 并热加载
 python3 deploy.py status             # 容器状态、最近日志、Caddyfile 站点
 python3 deploy.py down               # 停止并删除 dsh-proxy 容器
 python3 deploy.py scan               # 只扫描，不部署
+python3 deploy.py install-manage-service  # 把 manage 安装成 systemd 用户服务（推荐）
 ```
 
 端口写法：`PORT` 表示代理端口与 dsh 端口相同；`PROXY:DSH` 表示代理端口与
@@ -57,7 +58,7 @@ dsh 端口不同。所以 `up 3080 8081:3081` 的意思是：
 
 ### manage 后端生命周期（自愈）
 
-manage 进程由 deploy.py 管理，pid 文件在 `data/manage.pid`；但 deploy.py
+manage 进程默认由 deploy.py 管理，pid 文件在 `data/manage.pid`；但 deploy.py
 会**按端口事实对账**，而不是只信 pid 文件（曾出现 pid 文件被一次失败的
 重复启动删掉后，manage 变成无人管理的“孤儿”，`status` 误报 not running、
 后续 `up`/`reload` 撞 EADDRINUSE、`down` 也停不掉它）。`status` 会如实区分：
@@ -75,6 +76,29 @@ manage.py 重启并重建 pid 文件（保证 manage 跑的是当前代码，而
 丢失也能按端口找到 manage 进程停掉（SIGTERM 后等待端口释放，超时才
 SIGKILL），不会留下孤儿。判定时会校验进程命令行确实含 `manage.py`，绝不
 去停用或接管恰好占用该端口的其它服务。
+
+#### 推荐：用 systemd user service 常驻（重启后自动拉起）
+
+宿主机重启后 Docker 容器会自启，但直接由 deploy.py 拉起的 manage 不会，
+这就是“manage 又挂了”的常见原因。可以把它安装成 systemd 用户服务：
+
+```bash
+cd deploy/ds-harness
+python3 deploy.py install-manage-service
+# python3 deploy.py install-manage-service --dry-run   # 只想看生成的 unit 内容
+```
+
+安装后：
+
+- `dsh-manage.service` 随用户 systemd 在登录/开机后自启，`Restart=on-failure`；
+- 服务直接 `ExecStart` 当前 Python 的 `manage.py --port ... --container ...
+  --pid-file data/manage.pid`，manage.py 启动成功后会自己写 pid 文件，所以
+  `deploy.py status` 仍按四态如实显示；
+- `deploy.py up` / `reload` / `down` 检测到该 unit 已安装时，会改用
+  `systemctl --user start/stop` 管理它，不会再用 SIGTERM 直接打进程；
+- 没有安装该 unit 时，deploy.py 行为与原来完全一致（直接 Popen 管理）。
+- 卸载：`systemctl --user disable --now dsh-manage.service` 后删除
+  `~/.config/systemd/user/dsh-manage.service` 即可。
 
 ## dsh web 启动 token 与首次登录
 

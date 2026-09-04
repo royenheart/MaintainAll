@@ -41,6 +41,7 @@ INSTANCES_YML_PATH = BASE_DIR / 'instances.yml'
 DATA_DIR = BASE_DIR / 'data'
 LOGS_DIR = DATA_DIR / 'logs'
 STATE_PATH = DATA_DIR / 'manage-state.json'
+PID_FILE_PATH = DATA_DIR / 'manage.pid'
 
 DEFAULT_PORT = 9097
 DEFAULT_DSH_PORT = 3080
@@ -1762,6 +1763,7 @@ def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument('--port', type=int, default=int(os.environ.get('DSH_MANAGE_PORT', str(DEFAULT_PORT))))
     parser.add_argument('--container', default=os.environ.get('DSH_MANAGE_CADDY_CONTAINER', DEFAULT_CADDY_CONTAINER))
+    parser.add_argument('--pid-file', default=os.environ.get('DSH_MANAGE_PID_FILE', str(PID_FILE_PATH)))
     args = parser.parse_args()
     CADDY_CONTAINER = args.container
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -1772,6 +1774,11 @@ def main() -> None:
         print(f'dsh-manage: failed to bind 127.0.0.1:{args.port}: {error}', file=sys.stderr)
         sys.exit(1)
     server.daemon_threads = True
+    try:
+        Path(args.pid_file).parent.mkdir(parents=True, exist_ok=True)
+        Path(args.pid_file).write_text(str(os.getpid()), encoding='utf-8')
+    except OSError as error:
+        print(f'dsh-manage: warning: failed to write pid file {args.pid_file}: {error}', file=sys.stderr)
     print(f'dsh-manage listening on http://127.0.0.1:{args.port}', flush=True)
     try:
         server.serve_forever()
