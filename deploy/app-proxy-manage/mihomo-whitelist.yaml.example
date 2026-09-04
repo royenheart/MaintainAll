@@ -1,0 +1,70 @@
+# 仅作字段参考。日常请运行 install.py，不要手工复制本文件去改占位符。
+
+mixed-port: 7890
+bind-address: 127.0.0.1
+allow-lan: false
+mode: rule
+log-level: info
+ipv6: false
+find-process-mode: strict
+
+external-controller: 127.0.0.1:9090
+secret: ""
+external-ui: ui
+external-ui-url: "https://github.com/Zephyruso/zashboard/archive/refs/heads/gh-pages.zip"
+
+tun:
+  enable: false
+  stack: system
+  auto-route: true
+  auto-detect-interface: true
+  strict-route: false
+  dns-hijack: []
+
+dns:
+  enable: true
+  listen: 127.0.0.1:1053
+  ipv6: false
+  enhanced-mode: redir-host
+  use-system-hosts: true
+  nameserver:
+    - system
+    - 223.5.5.5
+  fallback: []
+  proxy-server-nameserver:
+    - system
+    - 223.5.5.5
+
+proxies:
+  - name: upstream-socks
+    type: socks5
+    server: <YOUR_PROXY_HOST>
+    port: 1080
+    udp: true
+  - name: upstream-http
+    type: http
+    server: <YOUR_PROXY_HOST>
+    port: 8080
+
+proxy-groups:
+  - name: proxy
+    type: select
+    proxies:
+      - upstream-socks
+      - upstream-http
+      - DIRECT
+
+rules:
+  - IP-CIDR,127.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,10.0.0.0/8,DIRECT,no-resolve
+  - IP-CIDR,172.16.0.0/12,DIRECT,no-resolve
+  - IP-CIDR,192.168.0.0/16,DIRECT,no-resolve
+  - IP-CIDR,169.254.0.0/16,DIRECT,no-resolve
+  - IP-CIDR6,::1/128,DIRECT,no-resolve
+  - IP-CIDR6,fc00::/7,DIRECT,no-resolve
+  - IP-CIDR6,fe80::/10,DIRECT,no-resolve
+
+  # --- 白名单：由 install.py 按你的勾选生成；也可之后在 Verge 里改 ---
+  # - PROCESS-NAME,example.exe,proxy
+
+  - MATCH,DIRECT
