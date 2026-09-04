@@ -1,5 +1,13 @@
 # tmux
 
+## Auto-update tmux
+
+A tmux 3.3+ version is recommended for better copying. After loading the
+config, `prefix + T` builds and installs the latest tmux into
+`~/.local/tmux` in the background.
+
+Note: `prefix + I` installs the TPM plugins (needed for autosave and `prefix + Ctrl+s`) — run it once on new machines; `prefix + T` only updates tmux.
+
 ## Periodic autosave (backed by tmux-resurrect)
 
 Prevents losing window state on an unexpected shutdown/disconnect. The current
@@ -61,12 +69,6 @@ are missing, link them once and reload with `prefix + r`:
 ln -s "$PWD/stow-configs/tmux/.tmux/scripts/tmux-autosave.sh"  ~/.tmux/scripts/tmux-autosave.sh
 ln -s "$PWD/stow-configs/tmux/.tmux/scripts/tmux-autosave-menu" ~/.tmux/scripts/tmux-autosave-menu
 ```
-
-## Auto-update tmux
-
-A tmux 3.3+ version is recommended for better copying. After loading the
-config, `prefix + T` builds and installs the latest tmux into
-`~/.local/tmux` in the background.
 
 ## Copying does not work on macOS terminals
 
