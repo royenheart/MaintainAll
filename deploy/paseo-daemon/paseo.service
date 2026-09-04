@@ -1,0 +1,18 @@
+[Unit]
+Description=Paseo daemon (user service)
+After=default.target
+
+[Service]
+Type=simple
+# 参考文件 — 不要手改这里的 ExecStart / PATH。
+# 请运行 ./deploy/paseo-daemon/install.sh: 它会解析 paseo 与 node 的真实绝对路径
+# (nvm 下形如 ~/.nvm/versions/node/<ver>/bin/...; shim 在 systemd 里常找不到),
+# 生成 ~/.config/systemd/user/paseo.service 并 enable --now。
+# 下面这行只是"长什么样"的示例, %h = 用户家目录。
+ExecStart=%h/.nvm/versions/node/v24.14.0/bin/paseo daemon start --foreground
+Restart=on-failure
+RestartSec=5
+Environment=PATH=%h/.nvm/versions/node/v24.14.0/bin:%h/.local/bin:%h/bin:/usr/local/bin:/usr/bin:/bin
+
+[Install]
+WantedBy=default.target
