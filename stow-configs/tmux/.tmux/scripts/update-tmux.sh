@@ -8,6 +8,17 @@ ok()   { echo "[OK] $*"; }
 err()  { echo "[ERR] $*"; }
 info() { echo "     $*"; }
 
+# dnf/yum and apt name the dev-header packages differently: *-devel vs *-dev.
+# pkg_name maps the capability tracked by check_deps to the package name of
+# the active manager ($1 = dnf|yum|apt; anything else falls back to dnf names).
+pkg_name() { # pkg_name <pm> <capability>
+	case "$2" in
+		libevent) [ "$1" = apt ] && echo libevent-dev || echo libevent-devel ;;
+		ncurses)  [ "$1" = apt ] && echo libncurses-dev || echo ncurses-devel ;;
+		*)        echo "$2" ;;
+	esac
+}
+
 # ── dependency check ──────────────────────────────────────────────
 
 check_deps() {
@@ -28,13 +39,13 @@ check_deps() {
 	if ! pkg-config --exists libevent 2>/dev/null \
 		&& ! pkg-config --exists libevent_core 2>/dev/null \
 		&& [ ! -f /usr/include/event.h ]; then
-		missing+=("libevent-devel")
+		missing+=("libevent")   # headers: libevent-devel (dnf/yum), libevent-dev (apt)
 	fi
 
 	if ! pkg-config --exists ncurses 2>/dev/null \
 		&& ! pkg-config --exists ncursesw 2>/dev/null \
 		&& [ ! -f /usr/include/ncurses.h ]; then
-		missing+=("ncurses-devel")
+		missing+=("ncurses")    # headers: ncurses-devel (dnf/yum), libncurses-dev (apt)
 	fi
 
 	if ! command -v bison >/dev/null 2>&1 \
@@ -47,8 +58,32 @@ check_deps() {
 		err "Missing build dependencies: ${missing[*]}"
 		echo
 		echo "Install with your package manager, e.g.:"
-		echo "  dnf install ${missing[*]}"
-		echo "  apt install ${missing[*]}"
+
+		local pm="" pkgs=() cap
+		if command -v dnf >/dev/null 2>&1; then
+			pm=dnf
+		elif command -v yum >/dev/null 2>&1; then
+			pm=yum
+		elif command -v apt-get >/dev/null 2>&1; then
+			pm=apt
+		fi
+		for cap in "${missing[@]}"; do
+			pkgs+=("$(pkg_name "$pm" "$cap")")
+		done
+		case "$pm" in
+			apt|dnf|yum)
+				echo "  $pm install ${pkgs[*]}"
+				;;
+			*)
+				# no known manager here — show both dnf and apt conventions
+				echo "  dnf install ${pkgs[*]}"
+				local apt_pkgs=()
+				for cap in "${missing[@]}"; do
+					apt_pkgs+=("$(pkg_name apt "$cap")")
+				done
+				echo "  apt install ${apt_pkgs[*]}"
+				;;
+		esac
 		return 1
 	fi
 }
