@@ -105,12 +105,98 @@ def _make_icon():
     return img
 
 
+def _checkbox_images(master, size: int = 28):
+    from PIL import Image, ImageDraw, ImageTk
+
+    def draw(checked: bool):
+        img = Image.new("RGBA", (size, size), (0, 0, 0, 0))
+        d = ImageDraw.Draw(img)
+        pad = max(1, size // 16)
+        box = (pad, pad, size - pad - 1, size - pad - 1)
+        outline = (37, 99, 235, 255)
+        width = max(2, size // 12)
+        radius = max(3, size // 8)
+        try:
+            d.rounded_rectangle(box, radius=radius, outline=outline, width=width, fill=(255, 255, 255, 255))
+        except Exception:  # noqa: BLE001
+            d.rectangle(box, outline=outline, width=width, fill=(255, 255, 255, 255))
+        if checked:
+            try:
+                d.rounded_rectangle(box, radius=radius, outline=outline, width=width, fill=outline)
+            except Exception:  # noqa: BLE001
+                d.rectangle(box, outline=outline, width=width, fill=outline)
+            x0, y0, x1, y1 = box
+            w, h = x1 - x0, y1 - y0
+            d.line(
+                [
+                    (x0 + w * 0.18, y0 + h * 0.52),
+                    (x0 + w * 0.42, y0 + h * 0.78),
+                    (x0 + w * 0.82, y0 + h * 0.28),
+                ],
+                fill=(255, 255, 255, 255),
+                width=max(3, size // 8),
+                joint="curve",
+            )
+        return ImageTk.PhotoImage(img, master=master)
+
+    return draw(True), draw(False)
+
+
+SEARCH_DEBOUNCE_MS = 100
+UNFILTERED_CAP = 600
+FILTERED_CAP = 2500
+GROUP_TITLES = ("已勾选（走代理）", "未勾选（直连）", "无法分流")
+
+
+def _entry_hay(entry) -> str:
+    hay = getattr(entry, "_haystack", None)
+    if hay is None:
+        hay = f"{entry.name} {entry.exe} {entry.path}".lower()
+        entry._haystack = hay
+    return hay
+
+
+def _entry_checked(entry, selected: set[str]) -> bool:
+    return bool(getattr(entry, "supported", True) and entry.exe and entry.key in selected)
+
+
+def _entry_group(entry, selected: set[str]) -> int:
+    if _entry_checked(entry, selected):
+        return 0
+    return 1 if getattr(entry, "supported", True) else 2
+
+
+def picker_rows(entries, selected: set[str], query: str, sel_filter: str) -> list:
+    """Sort checked-first, then apply search / 已勾选 / 未勾选 filters."""
+    rows = list(entries)
+    have = {e.key for e in rows if getattr(e, "supported", True) and e.exe}
+    missing = [k for k in selected if k not in have]
+    if missing:
+        from win_apps import AppEntry
+
+        rows = [AppEntry(exe=k, name=k, path="", source="saved", supported=True) for k in missing] + rows
+
+    rows.sort(key=lambda e: (_entry_group(e, selected), e.name.lower(), e.exe.lower()))
+    q = query.strip().lower()
+    out = []
+    for e in rows:
+        checked = _entry_checked(e, selected)
+        if q and q not in _entry_hay(e):
+            continue
+        if sel_filter == "checked" and not checked:
+            continue
+        if sel_filter == "unchecked" and (checked or not getattr(e, "supported", True)):
+            continue
+        out.append(e)
+    return out
+
+
 def _open_picker(root) -> None:
     import tkinter as tk
     from tkinter import messagebox, ttk
 
     from verge_ctl import apply_processes, reload_verge
-    from win_apps import AppEntry, scan_apps, scan_running
+    from win_apps import scan_apps, scan_running
 
     win = tk.Toplevel(root)
     win.title("MaintainAll 分应用白名单")
@@ -122,9 +208,9 @@ def _open_picker(root) -> None:
     tab = tk.StringVar(value="apps")
     sel_filter = tk.StringVar(value="all")
     selected: set[str] = _selected_from_state()
-    apps: list[AppEntry] = []
-    running: list[AppEntry] = []
-    vars_by_key: dict[str, tk.BooleanVar] = {}
+    apps: list = []
+    running: list = []
+    rebuild_job: str | None = None
 
     top = ttk.Frame(win, padding=8)
     top.pack(fill="x")
@@ -141,22 +227,35 @@ def _open_picker(root) -> None:
     ttk.Radiobutton(btns, text="已勾选", variable=sel_filter, value="checked").pack(side="left", padx=(8, 0))
     ttk.Radiobutton(btns, text="未勾选", variable=sel_filter, value="unchecked").pack(side="left", padx=(8, 0))
 
-    canvas_frame = ttk.Frame(win, padding=8)
-    canvas_frame.pack(fill="both", expand=True)
-    canvas = tk.Canvas(canvas_frame, highlightthickness=0)
-    vsb = ttk.Scrollbar(canvas_frame, orient="vertical", command=canvas.yview)
-    inner = ttk.Frame(canvas)
-    inner.bind("<Configure>", lambda e: canvas.configure(scrollregion=canvas.bbox("all")))
-    canvas.create_window((0, 0), window=inner, anchor="nw")
-    canvas.configure(yscrollcommand=vsb.set)
-    canvas.pack(side="left", fill="both", expand=True)
+    list_frame = ttk.Frame(win, padding=8)
+    list_frame.pack(fill="both", expand=True)
+    dpi = float(win.winfo_fpixels("1i") or 96)
+    check_size = max(26, int(28 * dpi / 96))
+    img_on, img_off = _checkbox_images(win, check_size)
+    win._picker_check_on = img_on
+    win._picker_check_off = img_off
+    style = ttk.Style(win)
+    style.configure("AppPicker.Treeview", rowheight=max(32, check_size + 10), indent=0)
+    tree = ttk.Treeview(
+        list_frame,
+        columns=("name",),
+        show="tree headings",
+        selectmode="browse",
+        takefocus=True,
+        style="AppPicker.Treeview",
+    )
+    check_col_w = check_size + 28
+    tree.heading("#0", text="勾选", anchor="center")
+    tree.column("#0", width=check_col_w, minwidth=check_col_w, stretch=False, anchor="center")
+    tree.heading("name", text="应用", anchor="w")
+    tree.column("name", anchor="w", stretch=True, minwidth=200)
+    vsb = ttk.Scrollbar(list_frame, orient="vertical", command=tree.yview)
+    tree.configure(yscrollcommand=vsb.set)
+    tree.pack(side="left", fill="both", expand=True)
     vsb.pack(side="right", fill="y")
-
-    def _on_mousewheel(event):
-        canvas.yview_scroll(int(-event.delta / 120), "units")
-
-    canvas.bind("<MouseWheel>", _on_mousewheel)
-    inner.bind("<MouseWheel>", _on_mousewheel)
+    tree.tag_configure("header", font=("", 9, "bold"))
+    tree.tag_configure("unsupported", foreground="#888")
+    tree.tag_configure("trunc", foreground="#666")
 
     foot = ttk.Frame(win, padding=8)
     foot.pack(fill="x")
@@ -165,96 +264,128 @@ def _open_picker(root) -> None:
     action = ttk.Frame(foot)
     action.pack(fill="x")
 
-    def current_list() -> list[AppEntry]:
+    def current_list() -> list:
         return running if tab.get() == "running" else apps
 
-    def rows_for_display() -> list[AppEntry]:
-        rows = list(current_list())
-        have = {e.key for e in rows if e.supported and e.exe}
-        ghosts: list[AppEntry] = []
-        for key in selected:
-            if key in have:
-                continue
-            ghosts.append(
-                AppEntry(exe=key, name=key, path="", source="saved", supported=True)
-            )
-        rows = ghosts + rows
-
-        def sort_key(e: AppEntry) -> tuple:
-            checked = bool(e.supported and e.exe and e.key in selected)
-            if checked:
-                group = 0
-            elif e.supported:
-                group = 1
-            else:
-                group = 2
-            return (group, e.name.lower(), e.exe.lower())
-
-        rows.sort(key=sort_key)
-        q = query.get().strip().lower()
-        filt = sel_filter.get()
-        out: list[AppEntry] = []
-        for e in rows:
-            hay = f"{e.name} {e.exe} {e.path}".lower()
-            if q and q not in hay:
-                continue
-            checked = bool(e.supported and e.exe and e.key in selected)
-            if filt == "checked" and not checked:
-                continue
-            if filt == "unchecked" and (checked or not e.supported):
-                continue
-            out.append(e)
-        return out
-
     def rebuild(*_a) -> None:
-        for child in inner.winfo_children():
-            child.destroy()
-        rows = rows_for_display()
-        shown = 0
+        nonlocal rebuild_job
+        rebuild_job = None
+        q = query.get()
+        rows = picker_rows(current_list(), selected, q, sel_filter.get())
+        total = len(rows)
+        cap = FILTERED_CAP if q.strip() else UNFILTERED_CAP
+        truncated = total > cap
+        rows = rows[:cap]
+
+        prev = tree.selection()
+        y0 = tree.yview()[0]
+        kids = tree.get_children()
+        if kids:
+            tree.delete(*kids)
+
         last_group = None
+        shown = 0
+        seen: set[str] = set()
         for e in rows:
-            checked = bool(e.supported and e.exe and e.key in selected)
-            group = 0 if checked else (1 if e.supported else 2)
+            group = _entry_group(e, selected)
             if group != last_group:
                 last_group = group
-                title = {0: "已勾选（走代理）", 1: "未勾选（直连）", 2: "无法分流"}[group]
-                ttk.Label(inner, text=title, font=("", 9, "bold")).pack(anchor="w", pady=(8 if shown else 0, 2))
+                tree.insert(
+                    "",
+                    "end",
+                    iid=f"_h{group}",
+                    text="",
+                    values=(GROUP_TITLES[group],),
+                    tags=("header",),
+                )
             if not e.supported:
-                ttk.Label(inner, text=f"○ {e.name}  — {e.note}", foreground="#888").pack(anchor="w")
+                iid = f"_u{shown}:{e.key or e.name}"
+                note = e.note or "无法分流"
+                tree.insert(
+                    "",
+                    "end",
+                    iid=iid,
+                    text="",
+                    values=(f"○ {e.name}  — {note}",),
+                    tags=("unsupported",),
+                )
                 shown += 1
                 continue
             key = e.key
-            if key not in vars_by_key:
-                vars_by_key[key] = tk.BooleanVar(value=key in selected)
-            else:
-                vars_by_key[key].set(key in selected)
-
-            def _toggle(k=key, var=vars_by_key[key]) -> None:
-                if var.get():
-                    selected.add(k)
-                else:
-                    selected.discard(k)
-                win.after_idle(rebuild)
-
-            cb = ttk.Checkbutton(
-                inner,
-                text=f"{e.name}  ({e.exe})",
-                variable=vars_by_key[key],
-                command=_toggle,
+            if not key or key in seen:
+                continue
+            seen.add(key)
+            tree.insert(
+                "",
+                "end",
+                iid=key,
+                text="",
+                image=img_on if key in selected else img_off,
+                values=(f"{e.name}  ({e.exe})",),
             )
-            cb.pack(anchor="w")
             shown += 1
-            if shown >= 400:
-                ttk.Label(inner, text="列表已截断，请用搜索缩小范围。").pack(anchor="w")
-                break
-        status.set(f"显示 {shown} 项，已勾选 {len(selected)} 个进程")
+        if truncated:
+            tree.insert("", "end", iid="_trunc", text="", values=("列表已截断，请用搜索缩小范围。",), tags=("trunc",))
+
+        if prev:
+            keep = [i for i in prev if tree.exists(i)]
+            if keep:
+                tree.selection_set(keep)
+                tree.see(keep[0])
+            else:
+                tree.yview_moveto(y0)
+        extra = f" / 共 {total}" if truncated else ""
+        status.set(f"显示 {shown}{extra} 项，已勾选 {len(selected)} 个进程")
+
+    def schedule_rebuild(delay_ms: int = 0, *_a) -> None:
+        nonlocal rebuild_job
+        if rebuild_job is not None:
+            try:
+                win.after_cancel(rebuild_job)
+            except tk.TclError:
+                pass
+            rebuild_job = None
+        if delay_ms <= 0:
+            rebuild()
+            return
+        rebuild_job = win.after(delay_ms, rebuild)
+
+    def toggle_iid(iid: str) -> None:
+        if not iid or iid.startswith("_") or not tree.exists(iid):
+            return
+        if iid in selected:
+            selected.discard(iid)
+        else:
+            selected.add(iid)
+        rebuild()
+        if tree.exists(iid):
+            tree.selection_set(iid)
+            tree.see(iid)
+            tree.focus(iid)
+
+    def on_tree_click(event) -> str | None:
+        if tree.identify_region(event.x, event.y) in ("heading", "separator", "nothing"):
+            return None
+        if tree.identify_column(event.x) != "#0":
+            return None
+        iid = tree.identify_row(event.y)
+        if iid:
+            toggle_iid(iid)
+            return "break"
+        return None
+
+    def on_mousewheel(event) -> str:
+        tree.yview_scroll(int(-event.delta / 120), "units")
+        return "break"
+
+    tree.bind("<Button-1>", on_tree_click)
+    tree.bind("<MouseWheel>", on_mousewheel)
 
     def refresh_scan() -> None:
         status.set("正在扫描开始菜单和进程…")
         win.update_idletasks()
 
         def work():
-            nonlocal apps, running
             try:
                 a = scan_apps()
                 r = scan_running()
@@ -302,18 +433,22 @@ def _open_picker(root) -> None:
         except Exception as ex:  # noqa: BLE001
             messagebox.showerror("重载失败", str(ex))
 
-    query.trace_add("write", rebuild)
-    tab.trace_add("write", rebuild)
-    sel_filter.trace_add("write", rebuild)
+    query.trace_add("write", lambda *_a: schedule_rebuild(SEARCH_DEBOUNCE_MS))
+    tab.trace_add("write", lambda *_a: schedule_rebuild(0))
+    sel_filter.trace_add("write", lambda *_a: schedule_rebuild(0))
+
     def _on_close() -> None:
-        try:
-            canvas.unbind("<MouseWheel>")
-            inner.unbind("<MouseWheel>")
-        except tk.TclError:
-            pass
+        nonlocal rebuild_job
+        if rebuild_job is not None:
+            try:
+                win.after_cancel(rebuild_job)
+            except tk.TclError:
+                pass
+            rebuild_job = None
         win.destroy()
 
     win.protocol("WM_DELETE_WINDOW", _on_close)
+    search.focus_set()
     refresh_scan()
 
 
