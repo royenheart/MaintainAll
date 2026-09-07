@@ -2,7 +2,8 @@
 
 把 [Paseo](https://paseo.sh) daemon 装到本机(无桌面、走 Remote/SSH 控制的机器)并让它**开机自启**。
 
-参考 `deploy/systemd/install-user-daemon.sh` 的同款思路；本目录对应本机的实际环境
+沿用「user systemd 托管 daemon」思路（旧版 `deploy/systemd/install-user-daemon.sh`
+已随旧版 MaintainAll daemon 一并移除）；本目录对应本机的实际环境
 (ASUS / `RoyenHeartAsus`，bash 登录 shell，node 走 nvm v24.14.0)。
 
 ## 为什么要这个脚本（设计背景）

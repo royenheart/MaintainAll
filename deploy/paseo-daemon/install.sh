@@ -4,8 +4,9 @@
 # 背景: Paseo GUI 的 Remote/SSH 只连"已经在跑"的 daemon, 不会在远端安装、启动或
 # 配置它; `paseo daemon start` 也只是 detach 一个后台进程(写 ~/.paseo/paseo.pid、
 # daemon.log), 不注册开机自启 —— 机器一重启 6767 又没人听了。
-# 本脚本参考 deploy/systemd/install-user-daemon.sh 的思路: 把 daemon 交给
-# systemd --user + loginctl enable-linger 托管, 崩溃/重启后自动拉起。
+# 本脚本沿用「user systemd 托管 daemon」的思路(参考同仓库旧版
+# install-user-daemon.sh 的做法, 该脚本已随旧版 MaintainAll daemon 一并移除):
+# 把 daemon 交给 systemd --user + loginctl enable-linger 托管, 崩溃/重启后自动拉起。
 #
 # 用法:
 #   ./install.sh                  # 缺 paseo 则 npm i -g; 生成并启用 paseo.service
