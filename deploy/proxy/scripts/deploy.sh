@@ -3,8 +3,9 @@
 #
 # By default this script only GENERATES files/links and prints them; it does
 # not touch the local machine or the remote server. Use `--install` to install
-# sing-box + systemd on a remote host over SSH. nginx is never modified: the
-# script always prints the nginx snippet for you to apply manually.
+# sing-box + systemd on a remote host over SSH. nginx/OpenResty is never
+# modified: the script prints an nginx `location` snippet AND a complete
+# OpenResty server block for you to apply manually.
 #
 # Usage:
 #   ./scripts/deploy.sh                 # generate + print (no remote change)
@@ -15,13 +16,14 @@
 # Common options:
 #   --host HOST          SSH alias/hostname for --install (env SSH_HOST)
 #   --ip IP              Server public IP used in import links (env REMOTE_IP)
-#   --sni DOMAIN         Optional TLS SNI/domain for links and nginx (env SNI_DOMAIN)
+#   --sni DOMAIN         Optional TLS SNI/domain for links and server_name (env SNI_DOMAIN)
 #   --cert-dir DIR       Remote dir with fullchain.pem + privkey.pem for
 #                        Hysteria2 TLS. When omitted, a self-signed cert is
 #                        generated on the remote and links use insecure=1.
 #   --hysteria-port N    UDP port for Hysteria2 (default 443)
 #   --vless-port N       TCP port sing-box listens on 127.0.0.1 (default 8443)
-#   --tls-port N         Public TCP TLS port for the nginx/vless link (default 443)
+#   --tls-port N         Public TCP TLS port for the nginx/openresty vless link
+#                        (default 443)
 #   --version V          sing-box version to install (default 1.14.0)
 #   --install            Upload config + service and install sing-box on remote
 #   --dry-run            Alias for default (generate + print only)
@@ -37,6 +39,7 @@ DEPLOY_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 TEMPLATE_DIR="${DEPLOY_DIR}/sing-box"
 SCRIPT_DIR="${DEPLOY_DIR}/scripts"
 NGINX_DIR="${DEPLOY_DIR}/nginx"
+ORESTY_DIR="${DEPLOY_DIR}/openresty"
 
 SSH_HOST="${SSH_HOST:-}"
 REMOTE_IP="${REMOTE_IP:-}"
@@ -90,6 +93,10 @@ VLESS_UUID="$(cat /proc/sys/kernel/random/uuid 2>/dev/null || python3 -c 'import
 HY2_PASSWORD="$(openssl rand -hex 16 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(16))')"
 WS_PATH="/vless-$(openssl rand -hex 8 2>/dev/null || python3 -c 'import secrets; print(secrets.token_hex(8))')"
 
+# ── placeholders shared by rendered files and import links ────────────────
+ADDR="${REMOTE_IP:-__SERVER_IP__}"
+SERVER_NAME="${SNI_DOMAIN:-${ADDR}}"
+
 # ── Hysteria2 TLS material decision ────────────────────────────────────────
 GEN_SELF_SIGNED=0
 if [[ -n "${CERT_DIR}" ]]; then
@@ -112,6 +119,8 @@ render() {
     WS_PATH="${WS_PATH}" \
     HYSTERIA_PORT="${HYSTERIA_PORT}" \
     VLESS_PORT="${VLESS_PORT}" \
+    TLS_PORT="${TLS_PORT}" \
+    SERVER_NAME="${SERVER_NAME}" \
     HY2_CERT_PATH="${HY2_CERT_PATH}" \
     HY2_KEY_PATH="${HY2_KEY_PATH}" \
     MASQUERADE_URL="${MASQUERADE_URL}" \
@@ -126,6 +135,10 @@ subs = {
     "__WS_PATH__": os.environ["WS_PATH"],
     "__HYSTERIA_PORT__": os.environ["HYSTERIA_PORT"],
     "__VLESS_PORT__": os.environ["VLESS_PORT"],
+    "__TLS_PORT__": os.environ["TLS_PORT"],
+    "__SERVER_NAME__": os.environ["SERVER_NAME"],
+    "__TLS_CERT_PATH__": os.environ["HY2_CERT_PATH"],
+    "__TLS_KEY_PATH__": os.environ["HY2_KEY_PATH"],
     "__HY2_CERT_PATH__": os.environ["HY2_CERT_PATH"],
     "__HY2_KEY_PATH__": os.environ["HY2_KEY_PATH"],
     "__MASQUERADE_URL__": os.environ["MASQUERADE_URL"],
@@ -139,10 +152,10 @@ with open(dst, "w", encoding="utf-8") as f:
 
 render "${TEMPLATE_DIR}/config.json.template" "${TMPDIR}/config.json"
 render "${NGINX_DIR}/proxy-location.conf.template" "${TMPDIR}/proxy-location.conf"
+render "${ORESTY_DIR}/vless-server.conf.template" "${TMPDIR}/openresty-server.conf"
 cp "${TEMPLATE_DIR}/sing-box.service" "${TMPDIR}/sing-box.service"
 
 # ── import links ───────────────────────────────────────────────────────────
-ADDR="${REMOTE_IP:-__SERVER_IP__}"
 HOST_VALUE="${SNI_DOMAIN:-${ADDR}}"
 WS_PATH_ENCODED="%2F${WS_PATH#/}"
 
@@ -174,6 +187,9 @@ cat "${TMPDIR}/config.json"
 echo
 echo "=== nginx snippet — add it to YOUR TLS server block, then reload nginx ==="
 cat "${TMPDIR}/proxy-location.conf"
+echo
+echo "=== OpenResty — complete server block (drop into http{}, then reload openresty) ==="
+cat "${TMPDIR}/openresty-server.conf"
 echo
 echo "=== import links (fill __SERVER_IP__/host/sni if still placeholders) ==="
 echo "${HY2_LINK}"
@@ -236,8 +252,10 @@ ssh_run "SING_BOX_VERSION=${SING_BOX_VERSION} BIN_DIR=${BIN_DIR} CONFIG_DIR=${CO
     < "${SCRIPT_DIR}/install.sh"
 
 echo
-echo "Done. sing-box is installed. Apply the nginx snippet printed above manually:"
-echo "  - insert it into your TLS server block"
-echo "  - run: nginx -t && systemctl reload nginx   # or your nginx service name"
+echo "Done. sing-box is installed. Apply the nginx/OpenResty snippet printed above manually:"
+echo "  - nginx: insert the location snippet into your TLS server block, then"
+echo "           nginx -t && systemctl reload nginx"
+echo "  - openresty: drop the complete server block into http{}, then"
+echo "           openresty -t && systemctl reload openresty"
 echo
 echo "Then import the two links printed above into daed."

@@ -1,0 +1,47 @@
+# ── deploy/proxy: VLESS over WebSocket (sing-box) — OpenResty server block ──
+# Complete `server` block for OpenResty. It terminates TLS on __TLS_PORT__ and
+# reverse-proxies the VLESS WebSocket path to the local sing-box VLESS inbound.
+#
+# Apply:
+#   1. Install OpenResty and drop this block into its http{} context — either
+#      append it directly under `http {` in nginx.conf, or save as a file and
+#      `include` it. (openresty -t must pass.)
+#   2. systemctl reload openresty     # or: systemctl restart openresty
+#
+# Requirements:
+#   - __TLS_CERT_PATH__ / __TLS_KEY_PATH__ must exist and be readable by the
+#     openresty master (root). When reusing the deploy/proxy self-signed pair,
+#     client links must keep allowInsecure=1 (or insecure=1 for Hysteria2).
+#   - Public inbound TCP __TLS_PORT__ must be open (security group / firewall).
+#   - Long-lived WebSocket clients (IDE/Cursor style) need generous timeouts,
+#     hence 3600s read/send and request buffering off below.
+
+server {
+    listen __TLS_PORT__ ssl;
+    server_name __SERVER_NAME__;
+
+    ssl_certificate     __TLS_CERT_PATH__;
+    ssl_certificate_key __TLS_KEY_PATH__;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    location = __WS_PATH__ {
+        proxy_pass http://127.0.0.1:__VLESS_PORT__;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_request_buffering off;
+    }
+
+    # Close everything except the exact VLESS WS path above (also hides the
+    # stock welcome page / scanner noise). `location =` wins over this prefix.
+    location / {
+        return 444;
+    }
+}
+# ── /deploy/proxy ──
