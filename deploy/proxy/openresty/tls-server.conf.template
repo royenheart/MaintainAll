@@ -1,0 +1,47 @@
+# ── deploy/proxy · openresty — 443 TLS server（VLESS WS + 订阅，同一域名证书）──
+# 一个有效证书的 server 块同时承载：
+#   1) VLESS over WebSocket（daed 节点：host/sni = __DOMAIN__，不带 allowInsecure，
+#      因为证书有效；全局 allow_insecure 保持 false 即可）
+#   2) 订阅静态文件（__SUB_PATH__ → __SUB_FILE__）
+# 其余路径一律 444。
+#
+# 前置：为该域名签好有效证书（certbot DNS-01），并把
+# deploy/proxy/nginx/certbot-restart-sing-box.sh 装到 renewal-hooks 以便续期自动 reload。
+#
+# 说明：本文件同时承担 VLESS 前端与订阅，两者共享进程/端口/证书/域名，不再是
+# "文件级独立"；若要分离，请用不同子域名拆成两个 server 块（见历史做法）。
+
+server {
+    listen 443 ssl;
+    server_name __DOMAIN__;
+
+    ssl_certificate     /etc/letsencrypt/live/__DOMAIN__/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/__DOMAIN__/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    # VLESS over WebSocket
+    location = __WS_PATH__ {
+        proxy_pass http://127.0.0.1:__VLESS_PORT__;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_request_buffering off;
+    }
+
+    # 订阅（静态 base64）
+    location = __SUB_PATH__ {
+        alias __SUB_FILE__;
+        default_type text/plain;
+    }
+
+    location / {
+        return 444;
+    }
+}
+# ── /deploy/proxy ──

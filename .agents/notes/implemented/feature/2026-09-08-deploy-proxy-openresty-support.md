@@ -84,3 +84,21 @@ plaintext port:
   VLESS front and the subscription, and a single sing-box hosts both inbounds;
   instance-level isolation is possible but not the default.
 
+
+## Follow-up 2: merge VLESS front into the LE-cert subscription block (implemented)
+
+The VLESS WS front no longer uses an IP/self-signed identity. The x509 failures
+(`cannot validate certificate for <IP> because it doesn't contain any IP SANs`)
+showed that daed does not apply the per-node `allowInsecure` flag on the WS dialer
+path while global `allow_insecure=false`. Instead of enabling insecure globally,
+the VLESS WS endpoint now shares the single Let's Encrypt 443 `server` block with
+the subscription (same domain SNI, template consolidated to
+`openresty/tls-server.conf.template`), and the vless import link uses
+`host/sni=<domain>` with no `allowInsecure`. Consequences:
+
+- One cert, one domain, one 443 server block hosts both the `/vless…` WS location
+  and the `/sub…` static location; everything else returns 444.
+- VLESS and subscription lose file-level separation (they share the server block);
+  splitting them means separate subdomains/server blocks.
+- rotate.sh is unaffected: it rewrites only credentials in import-links (host/SNI/
+  path preserved) and regenerates the payload in place.

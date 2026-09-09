@@ -121,6 +121,7 @@ render() {
     VLESS_PORT="${VLESS_PORT}" \
     TLS_PORT="${TLS_PORT}" \
     SERVER_NAME="${SERVER_NAME}" \
+    DOMAIN="${DOMAIN}" \
     HY2_CERT_PATH="${HY2_CERT_PATH}" \
     HY2_KEY_PATH="${HY2_KEY_PATH}" \
     MASQUERADE_URL="${MASQUERADE_URL}" \
@@ -137,6 +138,7 @@ subs = {
     "__VLESS_PORT__": os.environ["VLESS_PORT"],
     "__TLS_PORT__": os.environ["TLS_PORT"],
     "__SERVER_NAME__": os.environ["SERVER_NAME"],
+    "__DOMAIN__": os.environ["DOMAIN"],
     "__TLS_CERT_PATH__": os.environ["HY2_CERT_PATH"],
     "__TLS_KEY_PATH__": os.environ["HY2_KEY_PATH"],
     "__HY2_CERT_PATH__": os.environ["HY2_CERT_PATH"],
@@ -152,7 +154,8 @@ with open(dst, "w", encoding="utf-8") as f:
 
 render "${TEMPLATE_DIR}/config.json.template" "${TMPDIR}/config.json"
 render "${NGINX_DIR}/proxy-location.conf.template" "${TMPDIR}/proxy-location.conf"
-render "${ORESTY_DIR}/vless-server.conf.template" "${TMPDIR}/openresty-server.conf"
+DOMAIN="${SNI_DOMAIN:-__DOMAIN__}"
+render "${ORESTY_DIR}/tls-server.conf.template" "${TMPDIR}/openresty-server.conf"
 cp "${TEMPLATE_DIR}/sing-box.service" "${TMPDIR}/sing-box.service"
 
 # ── import links ───────────────────────────────────────────────────────────
@@ -188,7 +191,7 @@ echo
 echo "=== nginx snippet — add it to YOUR TLS server block, then reload nginx ==="
 cat "${TMPDIR}/proxy-location.conf"
 echo
-echo "=== OpenResty — complete server block (drop into http{}, then reload openresty) ==="
+echo "=== OpenResty — 完整 TLS server 块（VLESS WS + 订阅，同一域名证书; 填好 __SUB_PATH__/__SUB_FILE__ 后 drop into http{}) ==="
 cat "${TMPDIR}/openresty-server.conf"
 echo
 echo "=== import links (fill __SERVER_IP__/host/sni if still placeholders) ==="
