@@ -100,6 +100,33 @@ python3 deploy.py install-manage-service
 - 卸载：`systemctl --user disable --now dsh-manage.service` 后删除
   `~/.config/systemd/user/dsh-manage.service` 即可。
 
+### dsh 实例自监控：重载 / 重启 / 断连事件
+
+manage 页面底部新增"实例事件"时间线，用来回答"刚才是不是 dsh 自己在重载/重启"
+这类问题。manage 后台默认每 3 秒采样一次（`--monitor-interval` 或环境变量
+`DSH_MANAGE_MONITOR_INTERVAL` 可调，`<=0` 关闭），为每个实例记录如下事件并
+落盘到 `data/manage-monitor.json`（每实例环形 200 条，最新在前）：
+
+- `restart` — 监听 `127.0.0.1:<port>` 的进程 pid/启动时刻（`/proc/<pid>/stat`
+  field 22）变化；实例重启时会顺带重写 `cordis.yml`/`settings.yaml`，这些
+  文件变更折叠进同一条 restart 事件，不再单报 reload；
+- `down` / `recover` — 期望在线却无监听、以及恢复（含中断时长）；
+- `reload` — 无进程重启前提下，dsh 自己 watch 的 profile 文件发生内容变更：
+  `cordis.patch.yml`、`package.json` 的 bundle 列表、`cordis.yml`、
+  `settings.yaml`，事件文本给出停用/启用的插件与 bundle 增删摘要；
+- `churn` — 客户端重载/断连风暴（60s 窗口内代理侧整页重载、`/plugins/events`
+  订阅与中止、5xx/上游拒连超过阈值，且同 tick 没有 restart/reload/down 可归因；
+  120s 冷却避免刷屏）。
+
+信号全部来自**稳定外部事实**，不读插件内部日志、不依赖 dsh 内部 API 或版本：
+`ss`/`/proc` 的监听进程、`$DSH_HOME/profiles/<profile>/` 下 dsh 自身定义并
+watch 的文件、本部署自产的 Caddy access 日志与容器日志（`docker logs`）。
+监控有独立状态文件 `manage-monitor.json`，与插件开关写者的
+`manage-state.json` 互不干扰；任一信号失败只跳过本次采样。
+
+> 修改 manage.py 后需重启 manage 后端才生效（`deploy.py reload` 或
+> `systemctl --user restart dsh-manage.service`，systemd unit 本身不用改）。
+
 ## dsh web 启动 token 与首次登录
 
 新版 dsh web 启动时不再打印裸 URL，而是打印带一次性启动 token 的登录 URL：

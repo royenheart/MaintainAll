@@ -18,12 +18,14 @@ from __future__ import annotations
 
 import argparse
 import functools
+import hashlib
 import json
 import os
 import re
 import shutil
 import subprocess
 import sys
+import threading
 import time
 from collections import Counter
 from contextlib import contextmanager
@@ -1286,6 +1288,7 @@ def instance_monitor(instance: dict) -> dict:
 def build_state() -> dict:
     instances, warnings = resolve_instances()
     state = read_state()
+    monitor_data = monitor_read()
     injected_ports = parse_caddyfile_injected_ports()
     result_instances = []
     online = 0
@@ -1305,6 +1308,7 @@ def build_state() -> dict:
             'plugins': all_plugin_items(instance, manifest, state),
             'safe_mode': safe_mode_active(instance, manifest, state),
             'monitor': monitor,
+            'events': events_for(instance['port'], monitor_data),
         })
     return {
         'ok': True,
@@ -1352,6 +1356,424 @@ def handle_api_post(path: str, body: bytes) -> dict:
             return {'ok': False, 'error': f'没有端口 {port} 对应的实例'}
         return set_preset_enabled(instance, preset, bool(enabled))
     return {'ok': False, 'error': f'unknown endpoint {path}'}
+
+
+# ---------------------------------------------------------------- dsh self-monitor
+
+"""Generic, version-agnostic event recorder for the managed dsh web instances.
+
+Why this exists: dsh hot-recomposes its plugin tree whenever the profile's
+`cordis.patch.yml` (or bundle list) changes, and the connected browsers then
+churn through SSE/WebSocket reconnects and full page reloads. From outside —
+and without depending on any dsh internals — those reload/restart behaviours
+are observable through four stable facts that do not change across dsh
+versions:
+
+- listener identity  — `ss`/`/proc` pid + `/proc/<pid>/stat` boot ticks of the
+  process serving `127.0.0.1:<port>` (restart / down / recover);
+- profile files      — content hashes of `cordis.patch.yml`, `package.json`
+  (bundle list), `cordis.yml` and `settings.yaml` under the instance's
+  `$DSH_HOME` (composition reload, independent of the process);
+- proxy access logs  — full-page boot bursts (`GET /`), `/plugins/events`
+  subscribes and 5xx rows in `data/logs/access-<proxy_port>*.json`;
+- Caddy container log— `docker logs` warn/error rows naming the upstream port
+  (`context canceled` / `unexpected EOF` aborts, `connection refused`).
+
+A background recorder thread samples every few seconds, keeps one last-seen
+snapshot per instance, and appends single-shot events (restart / down /
+recover / reload / churn) to a small ring buffer in `data/manage-monitor.json`
+(newest first). It deliberately never probes dsh internals, never talks to the
+agent plane, and keeps its own state file so it cannot race the plugin-toggle
+writers of `manage-state.json`. Events are best-effort: a failed signal only
+skips that sample.
+"""
+
+MONITOR_PATH = DATA_DIR / 'manage-monitor.json'
+MONITOR_TICK_SECONDS = 3.0
+EVENT_RING_CAP = 200
+CHURN_WINDOW_SECONDS = 60
+CHURN_COOLDOWN_SECONDS = 120
+# Standalone-churn thresholds inside one window (no restart/reload detected in
+# the same tick): at least one 5xx, >=3 interrupted responses, >=6 SSE aborts,
+# >=3 page boots with SSE churn, or a refused upstream dial.
+CHURN_MIN_FIVE_XX = 1
+CHURN_MIN_INTERRUPTED = 3
+CHURN_MIN_ABORTS = 6
+CHURN_MIN_BOOTS = 3
+CHURN_MIN_REFUSED = 1
+CADDY_LOG_RUN_TIMEOUT_SECONDS = 6
+
+
+def monitor_read() -> dict:
+    """Read the recorder's own state file (separate from manage-state.json)."""
+    if MONITOR_PATH.is_file():
+        try:
+            data = read_json(MONITOR_PATH)
+            if isinstance(data, dict):
+                return data
+        except (OSError, json.JSONDecodeError):
+            pass
+    return {'instances': {}}
+
+
+def monitor_write(data: dict) -> None:
+    write_json_atomic(MONITOR_PATH, data)
+
+
+def _monitor_instance(port: int, data: dict) -> dict:
+    instances = data.setdefault('instances', {})
+    return instances.setdefault(str(port), {})
+
+
+def _emit_event(port: int, data: dict, kind: str, text: str, detail: dict) -> dict:
+    """Append one event to a port's ring buffer (newest first). Returns the event."""
+    st = _monitor_instance(port, data)
+    st['seq'] = int(st.get('seq', 0)) + 1
+    event = {'seq': st['seq'], 'kind': kind, 'ts': time.time(), 'text': text, 'detail': detail}
+    events = st.setdefault('events', [])
+    events.insert(0, event)
+    del events[EVENT_RING_CAP:]
+    return event
+
+
+def events_for(port: int, data: dict | None = None) -> list[dict]:
+    """Newest-first event list for the UI (empty when nothing is recorded yet)."""
+    try:
+        if data is None:
+            data = monitor_read()
+        return list((_monitor_instance(port, data)).get('events') or [])
+    except Exception:
+        return []
+
+
+def _file_sha(path: Path) -> str | None:
+    """Content hash; None when the file is missing or unreadable."""
+    try:
+        with open(path, 'rb') as f:
+            return hashlib.sha256(f.read()).hexdigest()
+    except OSError:
+        return None
+
+
+def _boot_epoch(pid: int) -> float | None:
+    """Process start instant (epoch seconds) from /proc/<pid>/stat field 22."""
+    try:
+        stat = Path(f'/proc/{pid}/stat').read_text(encoding='utf-8')
+    except OSError:
+        return None
+    rest = stat[stat.rfind(')') + 2:].split()
+    if len(rest) < 20:
+        return None
+    try:
+        ticks = int(rest[19])
+    except ValueError:
+        return None
+    try:
+        hz = os.sysconf('SC_CLK_TCK')
+    except (ValueError, OSError):
+        hz = 100
+    if hz <= 0:
+        return None
+    try:
+        uptime = float(Path('/proc/uptime').read_text(encoding='utf-8').split()[0])
+    except (OSError, ValueError, IndexError):
+        return None
+    return time.time() - uptime + ticks / hz
+
+
+def _listener_snapshot(port: int) -> dict:
+    """What serves 127.0.0.1:<port> right now, or that nothing does."""
+    pid = find_listener_pid(port)
+    if pid is None:
+        return {'present': False, 'pid': None, 'boot': None}
+    return {'present': True, 'pid': pid, 'boot': _boot_epoch(pid)}
+
+
+def _disabled_ids_from_patches(patches) -> list[str]:
+    """Top-level patch ids disabled by `disabled: true` rows (inserts walked one level)."""
+    if not isinstance(patches, list):
+        return []
+    found: list[str] = []
+
+    def walk(rows) -> None:
+        for row in rows:
+            if not isinstance(row, dict):
+                continue
+            if row.get('disabled') is True and isinstance(row.get('id'), str):
+                found.append(row['id'])
+            inserted = row.get('insert')
+            if isinstance(inserted, list):
+                walk(inserted)
+
+    walk(patches)
+    return sorted(set(found))
+
+
+def _profile_file_facts(instance: dict) -> dict:
+    """Content fingerprints of the profile files dsh itself watches/rewrites."""
+    home = instance.get('home', '~/.dsh')
+    profile = profile_dir(home, instance.get('profile', 'web'))
+    patch_path = profile / 'cordis.patch.yml'
+    patches, _ = read_patch_file(patch_path) if patch_path.is_file() else (None, None)
+    manifest, _manifest_path, _error = read_profile_manifest(instance)
+    return {
+        'patch': {'sig': _file_sha(patch_path), 'disabled': _disabled_ids_from_patches(patches)},
+        'manifest': {'sig': _file_sha(profile / 'package.json'), 'bundles': current_bundles(manifest)},
+        'cordis': {'sig': _file_sha(profile / 'cordis.yml')},
+        'settings': {'sig': _file_sha(expand(home) / 'settings.yaml')},
+    }
+
+
+_FILE_LABELS = {
+    'patch': 'cordis.patch.yml',
+    'manifest': 'package.json(bundles)',
+    'cordis': 'cordis.yml',
+    'settings': 'settings.yaml',
+}
+
+
+def _file_facts_diff(prev: dict, cur: dict) -> dict:
+    """Which watched files changed content, plus semantic deltas for patch/bundles."""
+    changed: list[str] = []
+    disabled_added: list[str] = []
+    disabled_removed: list[str] = []
+    bundles_added: list[str] = []
+    bundles_removed: list[str] = []
+    for key, label in _FILE_LABELS.items():
+        prev_sig = (prev.get(key) or {}).get('sig')
+        cur_sig = (cur.get(key) or {}).get('sig')
+        if prev_sig is None and cur_sig is None:
+            continue
+        if prev_sig != cur_sig:
+            changed.append(label)
+    prev_disabled = (prev.get('patch') or {}).get('disabled') or []
+    cur_disabled = (cur.get('patch') or {}).get('disabled') or []
+    disabled_added = [x for x in cur_disabled if x not in prev_disabled]
+    disabled_removed = [x for x in prev_disabled if x not in cur_disabled]
+    prev_bundles = (prev.get('manifest') or {}).get('bundles') or []
+    cur_bundles = (cur.get('manifest') or {}).get('bundles') or []
+    bundles_added = [x for x in cur_bundles if x not in prev_bundles]
+    bundles_removed = [x for x in prev_bundles if x not in cur_bundles]
+    return {
+        'changed': changed,
+        'disabled_added': disabled_added,
+        'disabled_removed': disabled_removed,
+        'bundles_added': bundles_added,
+        'bundles_removed': bundles_removed,
+    }
+
+
+def _reload_text(diff: dict) -> str:
+    bits = ['文件变更：' + ', '.join(diff['changed']) if diff['changed'] else '配置变更']
+    if diff['disabled_added']:
+        bits.append('停用 ' + ', '.join(diff['disabled_added']))
+    if diff['disabled_removed']:
+        bits.append('启用 ' + ', '.join(diff['disabled_removed']))
+    if diff['bundles_added']:
+        bits.append('bundle 加入 ' + ', '.join(diff['bundles_added']))
+    if diff['bundles_removed']:
+        bits.append('bundle 移除 ' + ', '.join(diff['bundles_removed']))
+    return '；'.join(bits)
+
+
+def _local_time(epoch: float | None) -> str:
+    if not epoch:
+        return '?'
+    return time.strftime('%m-%d %H:%M:%S', time.localtime(epoch))
+
+
+def _read_caddy_stderr(since_s: int) -> list[str]:
+    """Recent Caddy container stderr/stdout (warn/error rows only matter)."""
+    if shutil.which('docker') is None:
+        return []
+    try:
+        completed = subprocess.run(
+            ['docker', 'logs', '--since', f'{int(since_s)}s', CADDY_CONTAINER],
+            capture_output=True,
+            text=True,
+            timeout=CADDY_LOG_RUN_TIMEOUT_SECONDS,
+        )
+    except (OSError, subprocess.TimeoutExpired):
+        return []
+    if completed.returncode != 0:
+        return []
+    return (completed.stdout or '').splitlines()
+
+
+def _caddy_abort_counts(wanted: set[int]) -> dict[int, dict[str, int]]:
+    """Per-upstream-port abort/refused tallies from Caddy's own log in the window."""
+    counts: dict[int, dict[str, int]] = {port: {'abort': 0, 'refused': 0} for port in wanted}
+    for raw in _read_caddy_stderr(CHURN_WINDOW_SECONDS + 5):
+        line = raw.strip()
+        if not line.startswith('{'):
+            continue
+        try:
+            entry = json.loads(line)
+        except json.JSONDecodeError:
+            continue
+        match = re.search(r'127\.0\.0\.1:(\d+)', str(entry.get('upstream') or ''))
+        if match is None:
+            continue
+        port = int(match.group(1))
+        if port not in counts:
+            continue
+        error = str(entry.get('error') or '')
+        if 'connection refused' in error:
+            counts[port]['refused'] += 1
+        elif 'context canceled' in error or 'unexpected EOF' in error:
+            counts[port]['abort'] += 1
+        elif str(entry.get('msg') or '').startswith('aborting'):
+            counts[port]['abort'] += 1
+    return counts
+
+
+def _access_window_counts(proxy_port: int) -> dict[str, int]:
+    """Churn counters from the proxy access-log tail over the window."""
+    lines = read_log_lines_from_files(proxy_port)
+    if not lines:
+        lines = read_log_lines_via_docker(proxy_port)
+    boots = sse = five_xx = interrupted = 0
+    now = time.time()
+    for raw in lines:
+        try:
+            entry = json.loads(raw)
+        except json.JSONDecodeError:
+            continue
+        try:
+            ts = float(entry.get('ts', 0))
+        except (TypeError, ValueError):
+            continue
+        if now - ts > CHURN_WINDOW_SECONDS:
+            continue
+        request = entry.get('request') or {}
+        uri = str(request.get('uri') or '')
+        status = entry.get('status')
+        if request.get('method') == 'GET' and uri == '/':
+            boots += 1
+        if uri.startswith('/plugins/events'):
+            sse += 1
+        if isinstance(status, int) and status >= 500:
+            five_xx += 1
+        if status == 0 or entry.get('error'):
+            interrupted += 1
+    return {'boots': boots, 'sse': sse, 'five_xx': five_xx, 'interrupted': interrupted}
+
+
+def _tick_monitor() -> None:
+    """One sampling pass: detect per-instance events and persist the ring buffer."""
+    instances, _warnings = resolve_instances()
+    data = monitor_read()
+    wanted_ports = {instance['port'] for instance in instances}
+    caddy = _caddy_abort_counts(wanted_ports)
+    now = time.time()
+    for instance in instances:
+        port = instance['port']
+        st = _monitor_instance(port, data)
+        cur = _listener_snapshot(port)
+        files = _profile_file_facts(instance)
+        last = st.get('last')
+        if not isinstance(last, dict):
+            # First observation ever: seed the baseline silently so a manage
+            # restart alone never fabricates a restart/reload event.
+            st['last'] = {
+                'present': cur['present'],
+                'pid': cur['pid'],
+                'boot': cur['boot'],
+                'down_at': now if not cur['present'] else None,
+                'files': files,
+            }
+            continue
+        emitted = False
+        restart_event: dict | None = None
+        prev_present = bool(last.get('present'))
+        if cur['present'] and not prev_present:
+            down_at = last.get('down_at') or last.get('ts') or now
+            down_s = round(max(0.0, now - down_at), 1)
+            _emit_event(port, data, 'recover',
+                        f'实例恢复（中断约 {down_s}s，PID {cur["pid"]}）',
+                        {'down_s': down_s, 'pid': cur['pid'], 'boot': cur['boot']})
+            emitted = True
+        elif cur['present'] and prev_present:
+            pid_changed = last.get('pid') != cur['pid']
+            boot_old = last.get('boot')
+            boot_new = cur['boot']
+            boot_changed = (
+                boot_old is not None and boot_new is not None and abs(boot_new - boot_old) > 1.0
+            )
+            if pid_changed or boot_changed:
+                detail = {
+                    'pid_from': last.get('pid'),
+                    'pid_to': cur['pid'],
+                    'boot_from': _local_time(boot_old),
+                    'boot_to': _local_time(boot_new),
+                }
+                text = f'进程重启 PID {detail["pid_from"]} → {detail["pid_to"]}'
+                if detail['boot_to'] != '?':
+                    text += f'（启动于 {detail["boot_to"]}）'
+                restart_event = _emit_event(port, data, 'restart', text, detail)
+                emitted = True
+        elif not cur['present'] and prev_present:
+            _emit_event(port, data, 'down',
+                        f'实例不可达（127.0.0.1:{port} 无监听）', {'at': now})
+            emitted = True
+        if cur['present']:
+            prev_files = last.get('files') or {}
+            diff = _file_facts_diff(prev_files, files)
+            if diff['changed']:
+                if restart_event is not None:
+                    # Boot rewrites cordis.yml/settings.yaml; fold those into the
+                    # restart event instead of double-reporting a reload.
+                    restart_event['detail']['files_changed'] = diff['changed']
+                    restart_event['text'] += ' · ' + '，'.join(diff['changed'])
+                else:
+                    _emit_event(port, data, 'reload', _reload_text(diff), diff)
+                    emitted = True
+        # Standalone client churn: proxy-visible churn with no restart/reload or
+        # outage detected in the same tick (cooldown-guarded, so a long storm
+        # records once instead of flooding the ring).
+        if cur['present'] and not emitted:
+            access = _access_window_counts(instance.get('proxy_port', port))
+            caddy_counts = caddy.get(port) or {'abort': 0, 'refused': 0}
+            triggered = (
+                access['five_xx'] >= CHURN_MIN_FIVE_XX
+                or access['interrupted'] >= CHURN_MIN_INTERRUPTED
+                or caddy_counts['abort'] >= CHURN_MIN_ABORTS
+                or (access['boots'] >= CHURN_MIN_BOOTS and access['sse'] >= CHURN_MIN_BOOTS)
+                or caddy_counts['refused'] >= CHURN_MIN_REFUSED
+            )
+            last_churn = float(st.get('last_churn') or 0)
+            if triggered and now - last_churn >= CHURN_COOLDOWN_SECONDS:
+                detail = {**access, **caddy_counts, 'window_s': CHURN_WINDOW_SECONDS}
+                _emit_event(
+                    port, data, 'churn',
+                    '客户端重载/断连风暴（60s 内整页重载 %(boots)s、'
+                    'SSE 订阅 %(sse)s、5xx %(five_xx)s、中断 %(interrupted)s、'
+                    'SSE 中止 %(abort)s、上游拒连 %(refused)s）' % detail,
+                    detail,
+                )
+                st['last_churn'] = now
+        st['last'] = {
+            'present': cur['present'],
+            'pid': cur['pid'],
+            'boot': cur['boot'],
+            # Keep the original outage start while the instance stays down so a
+            # later recover reports the real gap, not the last tick's.
+            'down_at': None if cur['present'] else (
+                now if prev_present else (last.get('down_at') or now)
+            ),
+            'files': files,
+        }
+    monitor_write(data)
+
+
+def monitor_loop(interval: float) -> None:
+    """Background recorder loop; never lets a failed tick take manage down."""
+    while True:
+        try:
+            _tick_monitor()
+        except Exception as error:  # best-effort by design
+            sys.stderr.write(f'dsh-manage: monitor tick failed: {type(error).__name__}: {error}\n')
+        time.sleep(max(0.5, interval))
 
 
 # ---------------------------------------------------------------- HTTP server
@@ -1471,6 +1893,24 @@ button:disabled { opacity: .5; cursor: not-allowed; }
 .section-title { font-size: 13px; color: var(--text-2); margin: 0 0 8px; display: flex; align-items: center; gap: 8px; }
 .enter-link { text-decoration: none; }
 .note { color: var(--text-3); font-size: 12px; margin-top: 8px; }
+.ev-list {
+  display: flex; flex-direction: column; gap: 5px;
+  max-height: 260px; overflow: auto;
+  border: 1px solid var(--border); border-radius: 10px; padding: 8px 10px;
+  background: var(--panel-2);
+}
+.ev-row { display: flex; gap: 8px; align-items: baseline; font-size: 12px; line-height: 1.45; }
+.ev-time { font-family: var(--mono); color: var(--text-3); flex: none; min-width: 118px; }
+.ev-kind {
+  flex: none; border-radius: 6px; padding: 1px 7px; font-size: 11px; font-weight: 600;
+  background: color-mix(in srgb, var(--text-3) 15%, transparent); color: var(--text-2);
+}
+.ev-kind.k-restart { background: color-mix(in srgb, var(--amber) 20%, transparent); color: var(--amber); }
+.ev-kind.k-down { background: color-mix(in srgb, var(--red) 20%, transparent); color: var(--red); }
+.ev-kind.k-recover { background: color-mix(in srgb, var(--green) 20%, transparent); color: var(--green); }
+.ev-kind.k-reload { background: color-mix(in srgb, var(--accent) 20%, transparent); color: var(--accent); }
+.ev-kind.k-churn { background: color-mix(in srgb, var(--amber) 20%, transparent); color: var(--amber); }
+.ev-text { color: var(--text-2); word-break: break-all; }
 @media (max-width: 560px) {
   .wrap { padding: 16px 10px 40px; }
   .grid { grid-template-columns: 1fr 1fr; }
@@ -1564,6 +2004,23 @@ function pluginRow(inst, p) {
     + '<div class="pspec">' + esc(p.spec || '') + '</div>' + scopeBadge + badge + action + '</div>';
 }
 
+function eventRow(e) {
+  const kindLabel = { restart: '重启', reload: '重载', down: '不可达', recover: '恢复', churn: '风暴' };
+  const label = kindLabel[e.kind] || e.kind || '事件';
+  const when = new Date((e.ts || 0) * 1000);
+  return '<div class="ev-row"><span class="ev-time">' + when.toLocaleTimeString() + '</span>'
+    + '<span class="ev-kind k-' + esc(e.kind) + '">' + label + '</span>'
+    + '<span class="ev-text" title="' + esc(JSON.stringify(e.detail || {})) + '">' + esc(e.text) + '</span></div>';
+}
+
+function eventsBlock(inst) {
+  const evs = inst.events || [];
+  return '<div class="section-title">实例事件（最近 ' + evs.length + ' 条 · 由 manage 后台采样）</div>'
+    + '<div class="ev-list">'
+    + (evs.length ? evs.map(eventRow).join('') : '<div class="note" style="margin:0">暂无事件：后台持续采样中，实例重启/热重载/断连风暴会显示在这里。</div>')
+    + '</div>';
+}
+
 function instanceCard(inst) {
   const m = inst.monitor || {};
   const web = m.web || {};
@@ -1622,6 +2079,7 @@ function instanceCard(inst) {
     + '<div class="plugins">' + pluginHtml + '</div>'
     + loginHint
     + '<div class="note">' + (safe ? '安全模式已开启：仅加载内置 bundle，host 侧热生效。' : '') + '插件开关写入 cordis.patch.yml，host 侧热生效；浏览器刷新后客户端侧生效。preset 本身可停用/启用（重命名 agent.cordis.yml），preset 内的第三方行只读。</div>'
+    + eventsBlock(inst)
     + '</section>';
 }
 
@@ -1764,6 +2222,12 @@ def main() -> None:
     parser.add_argument('--port', type=int, default=int(os.environ.get('DSH_MANAGE_PORT', str(DEFAULT_PORT))))
     parser.add_argument('--container', default=os.environ.get('DSH_MANAGE_CADDY_CONTAINER', DEFAULT_CADDY_CONTAINER))
     parser.add_argument('--pid-file', default=os.environ.get('DSH_MANAGE_PID_FILE', str(PID_FILE_PATH)))
+    parser.add_argument(
+        '--monitor-interval',
+        type=float,
+        default=float(os.environ.get('DSH_MANAGE_MONITOR_INTERVAL', str(MONITOR_TICK_SECONDS))),
+        help='dsh 实例自监控采样间隔秒数（<=0 关闭自监控线程）',
+    )
     args = parser.parse_args()
     CADDY_CONTAINER = args.container
     DATA_DIR.mkdir(parents=True, exist_ok=True)
@@ -1774,6 +2238,13 @@ def main() -> None:
         print(f'dsh-manage: failed to bind 127.0.0.1:{args.port}: {error}', file=sys.stderr)
         sys.exit(1)
     server.daemon_threads = True
+    if args.monitor_interval > 0:
+        threading.Thread(
+            target=monitor_loop,
+            args=(args.monitor_interval,),
+            daemon=True,
+            name='dsh-manage-monitor',
+        ).start()
     try:
         Path(args.pid_file).parent.mkdir(parents=True, exist_ok=True)
         Path(args.pid_file).write_text(str(os.getpid()), encoding='utf-8')
