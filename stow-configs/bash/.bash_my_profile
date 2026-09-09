@@ -79,6 +79,11 @@ function ghlogin() {
     else
         gh auth login --scopes read:org,read:repo_hook,read:discussion,read:project,read:packages
     fi
+    if ! git config --global --get-all credential.https://github.com.helper | grep -q 'gh auth git-credential'; then
+        gh auth setup-git
+        echo "registered gh as the git credential helper for github.com"
+        echo "you can use git config --global --unset-all credential.https://github.com.helper to remove the helper"
+    fi
     echo "check gh login status"
     gh auth status
 }
