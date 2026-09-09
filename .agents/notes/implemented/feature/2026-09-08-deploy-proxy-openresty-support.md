@@ -60,3 +60,27 @@ unavailable and awkward to add.
 - The self-signed + `allowInsecure=1`/`insecure=1` flow remains supported; a real
   domain + certbot remains the recommended hardening, with the hook now reloading
   the WS frontend too.
+
+## Follow-up: HTTPS subscription component (implemented)
+
+The subscription leg is a separate concern from node serving, so it lives as its
+own component under `sub/` plus `openresty/sub-server.conf.template` and is served
+over **valid-cert HTTPS on the same 443 via SNI split** instead of a dedicated
+plaintext port:
+
+- One `server` block per purpose on `listen 443 ssl`, distinguished by
+  `server_name`: the VLESS front keeps its IP/self-signed identity (also marked
+  `default_server`), the subscription block uses a domain with a Let's Encrypt
+  cert issued through DNS-01 (no port 80 required; renewal via a daily cron plus
+  the `restart-sing-box.sh` deploy hook). Deleting either conf file leaves the
+  other serving — config-level independence without extra firewall ports.
+- The subscription payload is just base64 of the share links (see
+  `scripts/make-subscription.sh`), holds node credentials, and has no HTTP auth:
+  its security model is HTTPS + unguessable path + `return 444` everywhere else.
+  Rotating node secrets means regenerating the payload, never touching daed's URL.
+- Plain HTTP on a private high port remains documented as a fallback for hosts
+  without a domain; it is not the default because the payload is cleartext.
+- Remaining process-level coupling is documented: the reverse proxy hosts both the
+  VLESS front and the subscription, and a single sing-box hosts both inbounds;
+  instance-level isolation is possible but not the default.
+

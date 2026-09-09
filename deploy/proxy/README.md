@@ -22,7 +22,11 @@ dae 原生支持这两种协议，见
 
 依赖边界：sing-box 一个进程可同时含 hy2 与 vless 两个入站（最简，配置见
 `sing-box/config.json.template`）；也可以拆成两个实例分别只跑一种协议。订阅组件
-与节点服务完全解耦，详见 [sub/README.md](sub/README.md)。
+与节点服务在**配置/文件级完全解耦**：订阅建议用真证书 + 独立 `server_name` 与
+VLESS 同听 443（SNI 分流，模板 `openresty/sub-server.conf.template`），不加任何
+端口。真正的进程级共享点只有两个：反代进程（订阅 + VLESS 前端）与 sing-box
+进程（hy2 + vless 入站）；需要进程级隔离时再各自独立部署（详见
+[sub/README.md](sub/README.md)）。
 
 ## 调研结论（简述）
 
@@ -180,7 +184,8 @@ deploy/proxy/
 │   ├── install.sh                        # 远端安装脚本（只装 sing-box，不碰反代）
 │   └── make-subscription.sh              # 把链接文件合成单行 base64 订阅（无面板）
 ├── openresty/
-│   └── vless-server.conf.template        # 完整 OpenResty server 块模板（WS 反代）
+│   ├── vless-server.conf.template        # 完整 OpenResty server 块模板（WS 反代）
+│   └── sub-server.conf.template          # HTTPS 订阅 server 块（SNI 分流，真证书）
 ├── sub/
 │   └── README.md                         # 独立组件：把节点合成静态订阅（含独立服务方案）
 └── nginx/

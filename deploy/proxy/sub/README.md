@@ -1,16 +1,13 @@
 # deploy/proxy · sub — 把私有节点合成一个订阅（独立组件）
 
-把一个或多个私有节点（hy2 / vless 等）组成一条 **dae 订阅 URL**，让 daed 只维护
-"一个订阅"而不是"多份节点链接"。本组件是独立的：
-
-- 不依赖 sing-box / OpenResty 的 VLESS 前端 / Hysteria2 是否在运行；
-- 停掉 TCP 或 UDP 节点、或反过来只搭订阅，互不影响；
-- 订阅文件更新 = 重新生成 base64 覆盖静态文件（无需任何 web 面板）。
+把一个或多个私有节点（hy2 / vless 等）组成一条 **dae 订阅 URL**，daed 只维护
+"一个订阅"而不是"多份节点链接"。本组件独立：停/删 TCP 或 UDP 节点不影响订阅，
+反过来亦然（详见下文"独立性"）。
 
 ## 原理
 
 dae 的订阅 URL 只需返回 **base64 文本**：解码后每行一条分享链接（v2ray 标准 sub
-格式）。所以不需要 subconverter / web 面板 / 常驻服务——一个静态文件即可。
+格式）。不需要 subconverter / web 面板——一个静态文件即可。
 
 ## 1. 生成 base64 订阅
 
@@ -19,49 +16,55 @@ dae 的订阅 URL 只需返回 **base64 文本**：解码后每行一条分享�
 ```
 
 `import-links.txt`：每行一条分享链接，`#` 注释与空行会被剥掉。
-（等价手写：`grep -vE '^\s*(#|$)' import-links.txt | base64 -w0 > import-links.txt.b64`）
 
-## 2. 暴露订阅 URL（三选一）
+## 2. 暴露订阅 URL（推荐 HTTPS，无需额外端口）
 
-**A. 独立 HTTP 端口（推荐，无 TLS 校验问题，最通用）**——OpenResty/nginx 单独
-`server`，与 VLESS 前端不在同一 server 块，删掉节点配置不影响订阅：
-
-```nginx
-# 存为 conf.d/sub-http.conf；listen 端口请换用你方便的高位端口并在安全组放行
-server {
-    listen 18080;
-    server_name _;
-
-    location = /sub-<随机串>.b64 {
-        alias /var/www/sub/<随机串>.b64;   # 与文件名一致
-        default_type text/plain;
-    }
-    location / {
-        return 444;
-    }
-}
-```
+**方案 A（推荐）：真证书 + 独立 server_name，和 VLESS 同听 443（SNI 分流）。**
+用你已有的反代（openresty/nginx），另存一个 `server` 块（模板：
+`openresty/sub-server.conf.template`），`server_name` 用你的**子域名**（与 VLESS
+那个块不同名即可）。443 早已放行 → 不加端口、不加安全组规则。
 
 ```bash
-openresty -t && systemctl reload openresty
-curl -sS http://127.0.0.1:18080/sub-<随机串>.b64   # 应打印单行 base64
+# 2.1 签发证书（DNS-01 走你的 DNS 服务商，无需开 80）
+certbot certonly --dns-cloudflare \
+  --dns-cloudflare-credentials /root/.secrets/certbot/cloudflare.ini \
+  -d sub.example.com
+# 2.2 把模板里的 __SUB_DOMAIN__/__SUB_PATH__/__SUB_FILE__ 填好后放入 conf.d/，
+#     并 reload：
+openresty -t && systemctl reload openresty   # 或 nginx 对应服务
+# 2.3 安装续期 hook（证书轮换后自动 reload 反代 + 重启 sing-box）
+install -Dm755 deploy/proxy/nginx/certbot-restart-sing-box.sh \
+  /etc/letsencrypt/renewal-hooks/deploy/restart-sing-box.sh
+# 2.4 验证
+curl -sS https://sub.example.com/sub-<随机串>.b64    # 应打印单行 base64
 ```
 
-**B. 挂在自己的 HTTPS 站点上**（有域名/有效证书时更隐蔽）：任意静态路径返回该文件即可。
-
-**C. 任何静态托管**：GitHub raw（私有仓库需鉴权，不适合）、对象存储、别的 VPS 等。
-
-> 隐私提示：内容含节点密码/UUID。纯 HTTP 会明文过境，若在意，选 B（有效证书的
-> HTTPS）或给订阅换一套短命密钥并定期轮换；不要公开/分享该 URL。
+**方案 B（无域名/暂不想弄证书时的兜底）：独立 HTTP 高位端口**，单独 `server` 块
+（如 `listen 18080`，仅暴露精确路径、其余 `return 444`），在安全组放行该端口。
+内容明文过境，仅应急用，别外传 URL。
 
 ## 3. daed 侧
 
 1. Web UI → **Subscriptions** → 添加订阅 URL；
-2. cron 建议较长（如 `0 4 * * *`）或关闭、手动刷新——链接是静态的，不必高频拉取；
-3. 刷新出节点后，在 Groups 里把它们加入目标组（proxy 等），再删掉手动粘贴的旧节点。
+2. cron 建议较长（如 `0 4 * * *`）或手动刷新——链接是静态的；
+3. 刷新出节点后，把它们加入目标组（proxy 等），再删除手动粘贴的旧节点，
+   避免凭据漂移（每次换密钥都要重新生成订阅）。
 
-## 注意
+## 安全模型与轮换
 
-- daed 抓取订阅用的是自身 HTTP 客户端：**自签 https 可能被拒**，所以默认推荐纯
-  HTTP 端口方案 A；若走 HTTPS 请用有效证书。
-- 订阅刷新若重建节点导致分组失效，把 cron 拉长或手动刷新后在 Groups 里重新加一次。
+- 订阅 URL **本身无账号密码**，安全性 = HTTPS 加密 + 随机不可猜路径 + 其它路径
+  一律 444。**内容里嵌着节点密码/UUID**，拿到 URL 即拿到凭据——勿外传。
+- 换密钥/怀疑泄露：轮换 sing-box 凭据 → 更新 import-links.txt → 重跑
+  `make-subscription.sh` 覆盖静态文件 → 换一个随机路径，可选。
+
+## 独立性（组件/配置级）
+
+| 操作 | 影响 |
+|---|---|
+| 删 VLESS 前端文件 / 停 sing-box 的 vless 入站 | 订阅照常（不同文件/不同 server_name） |
+| 停 hy2（UDP） | 订阅、VLESS 照常 |
+| 删订阅文件/块 | TCP、UDP 节点照常 |
+| 停掉整个反代进程 | 订阅与 VLESS 一起挂（共享进程）——需进程级隔离时，订阅改用独立小服务/独立端口 |
+
+注意：单进程 sing-box 同时承载 hy2 与 vless 两个入站时，它一挂两个节点都断；
+需要进程级隔离就拆成两个 sing-box 实例。

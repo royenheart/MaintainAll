@@ -1,0 +1,33 @@
+# ── deploy/proxy · sub — HTTPS 订阅 server 块（真证书 + SNI 分流）─────────
+# 与 VLESS 前端各自独立文件/独立 server_name，可同听一个 443：
+#   客户端带 SNI=<__SUB_DOMAIN__>  → 命中本块（订阅）
+#   客户端带其它 SNI/IP          → 命中 VLESS 那个 server 块
+# 因此"关 TCP 节点"（删 VLESS 文件/停其入站）不影响订阅，反之亦然；
+# 两者仅共享 openresty 进程与 443 端口（进程级隔离需另起独立小服务）。
+#
+# 前置：已为该域名签发有效证书（推荐 certbot DNS-01，无需开放 80/额外端口）：
+#   certbot certonly --dns-cloudflare --dns-cloudflare-credentials <cf.ini> \
+#     -d __SUB_DOMAIN__
+# 并把 deploy/proxy/nginx/certbot-restart-sing-box.sh 装入
+# /etc/letsencrypt/renewal-hooks/deploy/，续期后自动 reload openresty。
+#
+# 安全模型：URL 无账号密码，靠 HTTPS + 不可猜路径 + 其余路径 444；内容含节点
+# 凭据，勿外传。换密钥/路径后重跑 make-subscription.sh 覆盖即可。
+
+server {
+    listen 443 ssl;
+    server_name __SUB_DOMAIN__;
+
+    ssl_certificate     /etc/letsencrypt/live/__SUB_DOMAIN__/fullchain.pem;
+    ssl_certificate_key /etc/letsencrypt/live/__SUB_DOMAIN__/privkey.pem;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    location = __SUB_PATH__ {
+        alias __SUB_FILE__;
+        default_type text/plain;
+    }
+    location / {
+        return 444;
+    }
+}
+# ── /deploy/proxy ──
