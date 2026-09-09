@@ -12,6 +12,47 @@ dae 原生支持这两种协议，见
 脚本本身**不修改 nginx/OpenResty**：既打印 nginx 的 `location` 片段，也打印可直接放进
 `http{}` 的完整 **OpenResty `server` 块**（`deploy/proxy/openresty/`），由你自行粘贴并 reload。
 
+## 总体架构
+
+```mermaid
+flowchart LR
+    subgraph CLIENT["本地（家里 / 局域网）"]
+        APP["Cursor / 浏览器 / 其他客户端"]
+        GOST["gost<br/>SOCKS5 :20170 · HTTP :20171"]
+        DAED["daed 容器（eBPF tproxy，Web UI :2023）<br/>routing: proxy / 各 sticky 组"]
+        APP --> GOST --> DAED
+    end
+
+    subgraph SRV["代理服务器（有公网 IP 的 Linux 主机）"]
+        direction TB
+        OR["反代 openresty/nginx :443<br/>多个 server 块按 SNI 分流"]
+        SBOX["sing-box<br/>hy2 入站（UDP，--hysteria-port，默认 443）<br/>vless 入站 127.0.0.1:--vless-port，默认 8443"]
+        SUBFILE["订阅静态文件<br/>（base64：hy2+vless 两条分享链接）"]
+        CERT["certbot DNS-01<br/>每日续期 cron + deploy hook reload"]
+        OR -. "默认/自签（server_name=服务器IP）→ VLESS WS" .-> SBOX
+        OR -. "订阅域名（有效证书）→ 订阅" .-> SUBFILE
+        CERT -.-> OR
+    end
+
+    DNSX["DNS（可选仅 DNS/灰云）<br/>订阅域名 A → 服务器公网 IP"] -. "仅解析" .-> SRV
+
+    DAED -->|"订阅抓取 https://订阅域名/sub-…"| OR
+    DAED -->|"hy2 节点 UDP"| SBOX
+    DAED -->|"VLESS 节点 TCP :443"| OR
+    SBOX -->|"direct 出站"| NET["公网目标"]
+```
+
+架构要点：
+
+- **两个节点**可在同一个 sing-box 进程：hy2（UDP，不经反代）+ vless（TCP 443 →
+  反代 → 本机回环 vless 入站 → sing-box 出站 direct）。
+- **订阅独立于节点**：反代 443 上按 **SNI 分流**成多个 `server` 块（不同
+  `server_name`、独立文件）——订阅域名（有效证书）供订阅抓取，默认/IP 那个块供
+  VLESS 前端（自签）。删除任一 conf 文件互不影响，且无需额外端口。
+- **进程级共享点**：反代进程（订阅 + VLESS 前端）、sing-box 进程（hy2 + vless
+  入站）；需要更彻底隔离时分别拆独立实例/端口（见 [sub/README.md](sub/README.md)）。
+- DNS 仅解析（灰云）时流量直连不减速；hy2 是 UDP，无法走 CDN/反代代理，只能直连。
+
 ## 三个独立组件（可插拔）
 
 | 组件 | 组成 | 停掉/移除它不影响 |
