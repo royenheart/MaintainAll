@@ -223,7 +223,8 @@ deploy/proxy/
 ├── scripts/
 │   ├── deploy.sh                         # 生成配置/链接；--install 时安装 sing-box
 │   ├── install.sh                        # 远端安装脚本（只装 sing-box，不碰反代）
-│   └── make-subscription.sh              # 把链接文件合成单行 base64 订阅（无面板）
+│   ├── make-subscription.sh              # 把链接文件合成单行 base64 订阅（无面板）
+│   └── rotate.sh                         # 在代理服务器本机跑：换凭据+重建订阅（sudo APP_USER=… ./rotate.sh）
 ├── openresty/
 │   ├── vless-server.conf.template        # 完整 OpenResty server 块模板（WS 反代）
 │   └── sub-server.conf.template          # HTTPS 订阅 server 块（SNI 分流，真证书）

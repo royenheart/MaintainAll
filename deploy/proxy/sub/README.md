@@ -57,6 +57,22 @@ curl -sS https://sub.example.com/sub-<随机串>.b64    # 应打印单行 base64
 - 换密钥/怀疑泄露：轮换 sing-box 凭据 → 更新 import-links.txt → 重跑
   `make-subscription.sh` 覆盖静态文件 → 换一个随机路径，可选。
 
+## 全量轮换（一条命令，在代理服务器本机跑）
+
+把 `../scripts/rotate.sh` 放到代理服务器上（仓库 clone 后即自带），以 root 执行：
+换 hy2 密码与 vless uuid → 重启 sing-box 用户服务 → 用新凭据重建 import-links.txt →
+重建订阅 base64（默认覆盖原文件，订阅 URL 不变）。
+
+```bash
+# 在代理服务器上（本机，无需 SSH）；APP_USER 是持有 sing-box 用户服务的账号
+sudo APP_USER=<sing-box用户> ./scripts/rotate.sh --dry-run   # 预览（只读）
+sudo APP_USER=<sing-box用户> ./scripts/rotate.sh             # 正式轮换
+```
+
+跑完后 daed 侧对同一订阅 URL 点 Update 即可；若是手动导入的节点，先删除旧节点
+（旧凭据已失效）再导入新链接。提前把"到该服务器 IP 的流量"在路由里设直连，
+可避免 SSH/订阅抓取依赖节点存活（见总 README 架构要点）。
+
 ## 独立性（组件/配置级）
 
 | 操作 | 影响 |
