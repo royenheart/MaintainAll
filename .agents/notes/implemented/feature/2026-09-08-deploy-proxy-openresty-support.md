@@ -114,3 +114,18 @@ and `split-sub-server.conf.template` (B: separate subdomains, one cert with
 multi-SAN or per-name certs). Both use valid-cert links with no allowInsecure;
 the certificate is issued for both names. Node/group wiring in daed points the
 vless node at its own subdomain.
+
+## Follow-up 4: hy2 camouflage + vless rebind (implemented, layout A+B kept)
+
+Deployment now runs hy2 on UDP 443 with its own subdomain and a real LE cert
+(link carries `sni=<hy2-subdomain>`, no `insecure`), while the plain high-port +
+self-signed variant stays supported by templates/scripts (`--hysteria-port`, and
+the link shape is only data in import-links/subscription). Notes:
+
+- UDP 443 is a privileged port; a user-scope sing-box needs
+  `setcap 'cap_net_bind_service=+ep'` on the binary (reapply after upgrades).
+- Each purpose gets its own cert (DNS-01) rather than one multi-SAN reissue,
+  which was more reliable here; the renewal hook copies the hy2 cert into the
+  sing-box user's TLS dir (readable) and reloads the reverse proxy.
+- VLESS now uses its own subdomain too (any name under the zone is fine); the
+  repo keeps both 443 layouts (merged A / split B) and both hy2 port forms.

@@ -68,6 +68,19 @@ flowchart LR
 节点链接（两方案相同风格）：`vless://…@<域名>:443?...&host=<域名>&sni=<域名>`，
 订阅 URL：`https://<订阅子域>/sub-…`。
 
+### hy2 端口与伪装（两种可选形态，模板/脚本都支持）
+
+- **高位 UDP 端口（默认参数）**：如 `--hysteria-port` 任意高位端口，自签证书 +
+  `insecure=1`；实现最省事，但指纹明显、国内出口对"高位 UDP + 自签"的 QoS 常见。
+- **UDP 443 + 域名证书（伪装，实测推荐）**：hy2 用 UDP 443（与反代 TCP 443 不冲突），
+  给 hy2 配一个子域名并签有效证书，链接带 `sni=<hy2子域>`、不带 `insecure`。像
+  HTTP/3，被针对性限速概率更低。注意：**UDP 443 是特权端口**——若 sing-box 以非
+  root 用户运行，需给二进制 `cap_net_bind_service`（`setcap 'cap_net_bind_service=+ep'
+  <sing-box二进制>`，二进制升级后需重打）。
+
+节点链接差异只需维护在 import-links/订阅里；`deploy.sh` 的端口参数与 `rotate.sh`
+（只换凭据、保留端口/域名）对两种形态都通用。
+
 ## 三个组件（边界说明）
 
 | 组件 | 组成 | 说明 |
