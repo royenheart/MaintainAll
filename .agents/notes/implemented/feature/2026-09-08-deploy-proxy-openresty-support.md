@@ -102,3 +102,15 @@ the subscription (same domain SNI, template consolidated to
   splitting them means separate subdomains/server blocks.
 - rotate.sh is unaffected: it rewrites only credentials in import-links (host/SNI/
   path preserved) and regenerates the payload in place.
+
+## Follow-up 3: split-subdomain layout kept alongside merged (implemented)
+
+The deployment switched to the split-subdomain layout (VLESS on its own
+subdomain, subscription on another), restoring file-level independence between
+the VLESS front and the subscription, while the merged single-block layout
+remains supported as an alternative. openresty/ now carries three templates:
+`tls-server.conf.template` (A: merged) plus `split-vless-server.conf.template`
+and `split-sub-server.conf.template` (B: separate subdomains, one cert with
+multi-SAN or per-name certs). Both use valid-cert links with no allowInsecure;
+the certificate is issued for both names. Node/group wiring in daed points the
+vless node at its own subdomain.

@@ -25,7 +25,7 @@ flowchart LR
 
     subgraph SRV["代理服务器（有公网 IP 的 Linux 主机）"]
         direction TB
-        OR["反代 openresty/nginx :443<br/>单 server 块（SNI=订阅域名, 有效证书）<br/>location: /vless… + /sub…"]
+        OR["反代 openresty/nginx :443<br/>VLESS WS + 订阅（布局可选：合并 或 独立子域两块）"]
         SBOX["sing-box<br/>hy2 入站（UDP，--hysteria-port，默认 443）<br/>vless 入站 127.0.0.1:--vless-port，默认 8443"]
         SUBFILE["订阅静态文件<br/>（base64：hy2+vless 两条分享链接）"]
         CERT["certbot DNS-01<br/>每日续期 cron + deploy hook reload"]
@@ -46,15 +46,27 @@ flowchart LR
 
 - **两个节点**可在同一个 sing-box 进程：hy2（UDP，不经反代）+ vless（TCP 443 →
   反代 → 本机回环 vless 入站 → sing-box 出站 direct）。
-- **VLESS 前端与订阅合并**在同一个有效证书的 443 `server` 块里（同一个域名
-  SNI）：`location /vless…`（反代 WS）与 `location /sub…`（静态订阅）共存，
-  其余路径一律 444。节点链接用域名（host/sni），**不带 allowInsecure**，全局
-  `allow_insecure=false` 即可正常工作。
-- **hy2 完全独立于反代**（UDP 直连 sing-box）；反代与订阅不再文件级分离（想分离
-  就用不同子域名拆成两个 server 块）。
+- **443 的 server 布局有两种可选方案**（仓库都支持，见下文"server 布局方案"）：
+  方案 A = VLESS 与订阅合并进同一个有效证书 `server` 块；方案 B = 各自独立子域、
+  拆成两个 `server` 块（文件级分离）。两方案节点链接都用域名（host/sni）、**不带
+  allowInsecure**，全局 `allow_insecure=false` 即可正常工作。
+- **hy2 完全独立于反代**（UDP 直连 sing-box），两方案下都成立。
 - **进程级共享点**：反代进程（VLESS 前端 + 订阅）、sing-box 进程（hy2 + vless
   入站）；需要更彻底隔离时分别拆独立实例/端口。
 - DNS 仅解析（灰云）时流量直连不减速；hy2 是 UDP，无法走 CDN/反代代理，只能直连。
+
+### 443 server 布局方案（两选一）
+
+| | 方案 A：合并 | 方案 B：独立子域（拆分） |
+|---|---|---|
+| 结构 | 一个 `server` 块含 `/vless…` + `/sub…` 两个 location | VLESS、订阅各一个 `server` 块（不同子域，SNI 分流） |
+| 模板 | `openresty/tls-server.conf.template` | `openresty/split-vless-server.conf.template` + `openresty/split-sub-server.conf.template` |
+| 文件级独立性 | 无（同块同文件） | 有（删/停任一块互不影响） |
+| 证书/域名 | 一个域名即可 | VLESS、订阅各一个子域（可同证书多 SAN 或各自证书） |
+| 适用 | 追求最少域名/最省事 | 想单独停 VLESS 或订阅时不动另一个 |
+
+节点链接（两方案相同风格）：`vless://…@<域名>:443?...&host=<域名>&sni=<域名>`，
+订阅 URL：`https://<订阅子域>/sub-…`。
 
 ## 三个组件（边界说明）
 
@@ -65,12 +77,12 @@ flowchart LR
 | **订阅**（[sub/](sub/README.md)） | 静态 base64 文件 + 反代 443 的 `/sub…` location | 只依赖反代；节点全停也能拉取 |
 
 依赖边界：sing-box 一个进程可同时含 hy2 与 vless 两个入站（最简，配置见
-`sing-box/config.json.template`）；也可以拆成两个实例分别只跑一种协议。VLESS
-前端与订阅共用反代 443 上的同一个有效证书 server 块（模板
-`openresty/tls-server.conf.template`），不再各自独立文件；需要文件级分离时，
-为 VLESS 与订阅各配一个子域名、拆成两个 `server` 块即可（见历史做法）。进程级
-共享点：反代进程（VLESS 前端 + 订阅）、sing-box 进程（hy2 + vless 入站）；需
-进程级隔离时再各自独立部署（详见 [sub/README.md](sub/README.md)）。
+`sing-box/config.json.template`）；也可以拆成两个实例分别只跑一种协议。反代 443
+上的 server 布局**两方案自选**：合并（`openresty/tls-server.conf.template`，
+一个块同域名证书）或拆分独立子域（`split-vless-server.conf.template` +
+`split-sub-server.conf.template`，文件级分离）。进程级共享点：反代进程（VLESS
+前端 + 订阅）、sing-box 进程（hy2 + vless 入站）；需进程级隔离时再各自独立部署
+（详见 [sub/README.md](sub/README.md)）。
 
 ## 调研结论（简述）
 
@@ -229,7 +241,9 @@ deploy/proxy/
 │   ├── make-subscription.sh              # 把链接文件合成单行 base64 订阅（无面板）
 │   └── rotate.sh                         # 在代理服务器本机跑：换凭据+重建订阅（sudo APP_USER=… ./rotate.sh）
 ├── openresty/
-│   └── tls-server.conf.template          # 443 TLS server 块（VLESS WS + 订阅，同一域名证书）
+│   ├── tls-server.conf.template           # 方案A：VLESS+订阅合并于一个 443 server 块
+│   ├── split-vless-server.conf.template   # 方案B：VLESS 独立子域 server 块
+│   └── split-sub-server.conf.template     # 方案B：订阅独立子域 server 块
 ├── sub/
 │   └── README.md                         # 独立组件：把节点合成静态订阅（含独立服务方案）
 └── nginx/

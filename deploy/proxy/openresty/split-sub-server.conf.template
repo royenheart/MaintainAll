@@ -1,0 +1,19 @@
+# ── deploy/proxy · 方案B（拆分/独立子域）— 订阅独立 server 块 ─────────────
+# 订阅用独立子域（__SUB_DOMAIN__），与 VLESS 的 server 块文件级分离。
+server {
+    listen 443 ssl;
+    server_name __SUB_DOMAIN__;
+
+    ssl_certificate     __TLS_CERT_PATH__;
+    ssl_certificate_key __TLS_KEY_PATH__;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    location = __SUB_PATH__ {
+        alias __SUB_FILE__;
+        default_type text/plain;
+    }
+    location / {
+        return 444;
+    }
+}
+# ── /deploy/proxy ──

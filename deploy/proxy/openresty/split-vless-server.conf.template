@@ -1,0 +1,31 @@
+# ── deploy/proxy · 方案B（拆分/独立子域）— VLESS 独立 server 块 ───────────
+# VLESS 用独立子域（__VLESS_DOMAIN__），与订阅的 server 块文件级分离：
+# 删除/停用任一块互不影响（两者仍共享 openresty 进程与 443 端口）。
+# 证书：可与订阅同证书多域名（SAN 包含两个名字），或各自证书。
+server {
+    listen 443 ssl;
+    server_name __VLESS_DOMAIN__;
+
+    ssl_certificate     __TLS_CERT_PATH__;
+    ssl_certificate_key __TLS_KEY_PATH__;
+    ssl_protocols TLSv1.2 TLSv1.3;
+
+    location = __WS_PATH__ {
+        proxy_pass http://127.0.0.1:__VLESS_PORT__;
+        proxy_http_version 1.1;
+        proxy_set_header Upgrade $http_upgrade;
+        proxy_set_header Connection "upgrade";
+        proxy_set_header Host $host;
+        proxy_set_header X-Real-IP $remote_addr;
+        proxy_set_header X-Forwarded-For $proxy_add_x_forwarded_for;
+        proxy_set_header X-Forwarded-Proto $scheme;
+        proxy_read_timeout 3600s;
+        proxy_send_timeout 3600s;
+        proxy_request_buffering off;
+    }
+    location / {
+        return 444;
+    }
+}
+# 节点链接：vless://…@__VLESS_DOMAIN__:443?...&host=__VLESS_DOMAIN__&sni=__VLESS_DOMAIN__（无 allowInsecure）
+# ── /deploy/proxy ──
