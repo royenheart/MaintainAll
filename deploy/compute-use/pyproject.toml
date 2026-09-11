@@ -1,7 +1,7 @@
 [project]
-name = "computer-browser-use-deploy"
+name = "compute-use-deploy"
 version = "0.1.0"
-description = "Remote Computer/Browser Use — Client/Server deployment for AI agent control"
+description = "Remote Computer Use — client control plane + cuactl relay deployment"
 readme = "README.md"
 requires-python = ">=3.12"
 license = { text = "MIT" }
@@ -18,17 +18,10 @@ client = [
     "pystray>=0.19.0",
     "Pillow>=10.0.0",
 ]
-server = [
+relay = [
     "fastapi>=0.115.0",
     "uvicorn[standard]>=0.30.0",
     "httpx>=0.28.0",
-]
-hermes-api = [
-    "fastapi>=0.115.0",
-    "uvicorn[standard]>=0.30.0",
-    "httpx>=0.28.0",
-    "pydantic>=2.0",
-    "pyyaml>=6.0",
 ]
 dev = [
     "pytest>=8.0",
@@ -38,7 +31,7 @@ dev = [
 ]
 
 [project.scripts]
-cua-deploy = "deploy:cli"
+compute-use-deploy = "deploy:cli"
 
 [build-system]
 requires = ["setuptools>=75.0"]

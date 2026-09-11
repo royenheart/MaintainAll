@@ -1,0 +1,54 @@
+# =============================================================
+# AstrBot — minimal deployment
+# =============================================================
+#
+# Scope: this stack deploys AstrBot and nothing else.
+#
+#   - No custom image, no pre-installed plugins: the upstream
+#     `soulter/astrbot` image is used directly, so updating is a
+#     plain `docker compose pull && docker compose up -d`.
+#   - No configuration injection. deploy.py never writes
+#     cmd_config.json, never touches any plugin `_conf_schema.json`,
+#     and never injects LLM providers. Everything under
+#     `/AstrBot/data` belongs to AstrBot and to the operator.
+#     Configure providers, plugins and IM platforms in the WebUI.
+#
+# All mutable state lives in the `astrbot_data` volume. The container
+# itself is disposable — recreate it freely, the volume carries the
+# dashboard credentials, IM platform logins, session database,
+# workspaces and installed plugins.
+#
+# Migration note: the volume name is explicit and overridable on
+# purpose. A compose project that used to host this container under a
+# different project name created a project-scoped volume (for example
+# `compute-browser-use_astrbot_data`). Point ASTRBOT_VOLUME at that
+# name to adopt the existing data instead of starting empty.
+
+services:
+  astrbot:
+    image: soulter/astrbot:${ASTRBOT_TAG:-latest}
+    container_name: ${ASTRBOT_CONTAINER:-astrbot}
+    restart: unless-stopped
+    ports:
+      - "${ASTRBOT_PORT:-6185}:6185"
+    volumes:
+      - astrbot_data:/AstrBot/data
+    # Resolves host.docker.internal to the docker host gateway.
+    #
+    # Required by any plugin that talks to a service running on the host
+    # rather than in a container. In particular hapi_connector points at
+    # `http://host.docker.internal:3006`, where the HAPI hub runs as a
+    # host process. Without this the name does not resolve and that
+    # plugin fails to connect.
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    environment:
+      # Honoured only when AstrBot initialises /AstrBot/data for the
+      # first time. Changing it later has no effect — the password
+      # lives in the volume; change it in the WebUI instead.
+      - ASTRBOT_DASHBOARD_INITIAL_PASSWORD=${ASTRBOT_DASHBOARD_PASSWORD:-}
+      - TZ=${TZ:-Asia/Shanghai}
+
+volumes:
+  astrbot_data:
+    name: ${ASTRBOT_VOLUME:-astrbot_data}

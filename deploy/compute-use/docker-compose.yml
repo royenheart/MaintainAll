@@ -1,0 +1,40 @@
+# =============================================================
+# Remote Computer Use — relay deployment
+# =============================================================
+#
+# Scope: the computer-use capability only.
+#
+#   client/   Client Control Plane, runs on the machine being
+#             controlled (deployed separately via `./deploy.py client`)
+#   cuactl    Thin HTTP relay that turns /cuactl/<command> into
+#             HTTPS + token calls against the client control plane
+#
+# The relay publishes no host port. It exists so that containers on
+# `cua-net` can drive the desktop without holding the client's token.
+# Attach any agent stack to the same network to give it desktop access:
+#
+#     networks:
+#       cua-net:
+#         external: true
+#
+# For host-side use, run `./deploy.py server` — it installs a `cuactl`
+# CLI wrapper in ~/.local/bin that talks to the client directly.
+
+services:
+  cuactl:
+    build:
+      context: .
+      dockerfile: ./server/cua-relay/Dockerfile.http
+    container_name: ${CUACTL_CONTAINER:-cuactl}
+    restart: unless-stopped
+    environment:
+      - CUACTL_ENDPOINT=${CUACTL_ENDPOINT}
+      - CUACTL_TOKEN=${CUACTL_TOKEN:-}
+      - TZ=${TZ:-Asia/Shanghai}
+    networks:
+      - cua-net
+
+networks:
+  cua-net:
+    name: ${CUA_NETWORK:-cua-net}
+    driver: bridge

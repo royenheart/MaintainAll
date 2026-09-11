@@ -1,13 +1,18 @@
-external
+# This directory is the former home of the combined compute-browser-use
+# stack, which was split into deploy/compute-use and deploy/astrbot.
+#
+# All tracked content moved out or was deleted. What remains on disk is
+# local scratch only, and it must stay ignored so it can never be
+# committed by accident — `external/` alone is ~1.2 GB of cloned
+# upstream repositories and research notes.
+#
+# Once you have decided what to do with external/, the whole directory
+# can be deleted.
+external/
 .env
-*.pyc
+.omo/
+.codegraph
 __pycache__/
-*.log
 .pytest_cache/
-export-cua-*.tar.gz
-.restore-backup-*/
-
-# server/hermes/config.yaml is generated at deploy time from config.yaml.example
-# by _configure_hermes_env(). It contains provider-specific runtime values
-# (model, base_url) and should not be committed.
-server/hermes/config.yaml
+build/
+*.egg-info/
