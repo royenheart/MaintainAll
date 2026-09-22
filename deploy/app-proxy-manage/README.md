@@ -169,7 +169,7 @@ Windows 进程名 **带 `.exe`，大小写按任务管理器「详细信息」**
 ## 行为边界（避免和「关掉全局代理」预期打架）
 
 - **路线 A**：未挂钩进程的 TCP 与系统 DNS 保持原样。
-- **路线 B**：未勾选进程出站仍是 `MATCH,DIRECT`。安装脚本会改掉 Clash Verge 自带的 `dns-hijack: any:53`（否则 Chrome 等 DNS 全进 TUN，表现为网页超时），并把局域网 / Tailscale CGNAT 排除出 TUN 路由。TUN 仍会装虚拟网卡；和公司 VPN 可能打架。网页异常时先关 TUN。域名分流留给上游代理。
+- **路线 B**：未勾选进程出站仍是 `MATCH,DIRECT`。安装脚本会改掉 Clash Verge 自带的 `dns-hijack: any:53`，把 `dns_config.yaml` 收成只监听 `127.0.0.1:1053` 的 `redir-host`（避免设置里打开 DNS 覆写后又劫持 53 端口），并在开 TUN 时把运行配置的 `ipv6` 写成 `false`。出口网卡不写死，交给 `auto-detect-interface`，避免 WLAN 改名或 TUN 起来后把直连绑进虚拟网卡。代理主机的 IP 会加进 `route-exclude-address`。`GEOSITE,cn` / `GEOIP,CN` 在进程规则前面，国内目标在本机直连，不绕到代理主机再出去。局域网 / Tailscale CGNAT 仍排除出 TUN。TUN 会装虚拟网卡；和公司 VPN 可能打架。托盘启动后会再写回这些字段，盖住 Verge 启动时重新生成的配置。
 - 本机 `mixed-port: 7890` 只给 **自愿** 填代理的程序（curl、部分 CLI）。不要把它再写进 Windows 系统代理。
 - daed 的 `routing.conf` 会拦 QUIC（UDP 443）。游戏/实时音视频若异常，在 daed 侧放行或让该进程 `DIRECT`，不要在 Windows 再叠一层分流。
 

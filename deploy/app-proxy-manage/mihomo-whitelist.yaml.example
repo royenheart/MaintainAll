@@ -67,6 +67,8 @@ rules:
   - IP-CIDR6,::1/128,DIRECT,no-resolve
   - IP-CIDR6,fc00::/7,DIRECT,no-resolve
   - IP-CIDR6,fe80::/10,DIRECT,no-resolve
+  - GEOSITE,cn,DIRECT
+  - GEOIP,CN,DIRECT,no-resolve
 
   # --- 白名单：由 install.py 按你的勾选生成；也可之后在 Verge 里改 ---
   # - PROCESS-NAME,example.exe,proxy

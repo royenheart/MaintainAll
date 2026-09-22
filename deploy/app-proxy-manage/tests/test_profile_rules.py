@@ -24,10 +24,14 @@ def test_replace_inserts_before_match():
         ]
     }
     replace_process_rules(data, ["Telegram.exe", "Cursor.exe"])
-    assert data["rules"][0] == "IP-CIDR,10.0.0.0/8,DIRECT,no-resolve"
-    assert data["rules"][1] == "PROCESS-NAME,Telegram.exe,proxy"
-    assert data["rules"][2] == "PROCESS-NAME,Cursor.exe,proxy"
-    assert data["rules"][-1] == "MATCH,DIRECT"
+    assert data["rules"] == [
+        "IP-CIDR,10.0.0.0/8,DIRECT,no-resolve",
+        "GEOSITE,cn,DIRECT",
+        "GEOIP,CN,DIRECT,no-resolve",
+        "PROCESS-NAME,Telegram.exe,proxy",
+        "PROCESS-NAME,Cursor.exe,proxy",
+        "MATCH,DIRECT",
+    ]
     assert process_names_from_rules(data) == ["Telegram.exe", "Cursor.exe"]
 
 
@@ -47,5 +51,9 @@ def test_replace_clears_process_rules_when_empty():
 def test_keeps_existing_match_policy():
     data = {"rules": ["GEOIP,CN,DIRECT", "MATCH,proxy"]}
     replace_process_rules(data, ["ssh.exe"])
-    assert data["rules"][-1] == "MATCH,proxy"
-    assert data["rules"][1] == "PROCESS-NAME,ssh.exe,proxy"
+    assert data["rules"] == [
+        "GEOSITE,cn,DIRECT",
+        "GEOIP,CN,DIRECT,no-resolve",
+        "PROCESS-NAME,ssh.exe,proxy",
+        "MATCH,proxy",
+    ]

@@ -91,16 +91,11 @@ def apply_processes(processes: list[str]) -> tuple[Path, Path | None]:
         )
     patch_yaml_file(dest, procs)
     save_wizard_processes(procs)
-    from tun_overlay import patch_yaml_tun
+    from tun_overlay import reassert_config_dir
 
-    patch_yaml_tun(dest)
-    patch_yaml_tun(verge_config_dir() / "config.yaml")
+    reassert_config_dir(verge_config_dir())
     rt = runtime_path()
-    if rt.is_file():
-        patch_yaml_file(rt, procs)
-        patch_yaml_tun(rt)
-        return dest, rt
-    return dest, None
+    return dest, rt if rt.is_file() else None
 
 
 def _controller_from_runtime() -> tuple[str, str, str]:

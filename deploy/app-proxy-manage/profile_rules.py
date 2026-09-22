@@ -2,6 +2,11 @@
 
 from __future__ import annotations
 
+CN_DIRECT_RULES = (
+    "GEOSITE,cn,DIRECT",
+    "GEOIP,CN,DIRECT,no-resolve",
+)
+
 PROCESS_PREFIXES = (
     "PROCESS-NAME,",
     "PROCESS-PATH,",
@@ -28,6 +33,15 @@ def is_process_rule(item: object) -> bool:
 
 def is_match_rule(item: object) -> bool:
     return _rule_str(item).upper().startswith("MATCH,")
+
+
+def _cn_kind(item: object) -> str | None:
+    s = _rule_str(item).upper().replace(" ", "")
+    if s.startswith("GEOSITE,CN,"):
+        return "geosite"
+    if s.startswith("GEOIP,CN,"):
+        return "geoip"
+    return None
 
 
 def normalize_exe(name: str) -> str:
@@ -57,17 +71,18 @@ def unique_exes(names: list[str]) -> list[str]:
 
 
 def replace_process_rules(data: dict, processes: list[str]) -> dict:
-    """Keep LAN/other rules; put PROCESS-NAME lines before MATCH."""
+    """Keep LAN/other rules; China destinations stay local; PROCESS-NAME before MATCH."""
     rules = list(data.get("rules") or [])
     match_rule = None
     kept: list = []
     for item in rules:
-        if is_process_rule(item):
+        if is_process_rule(item) or _cn_kind(item):
             continue
         if is_match_rule(item):
             match_rule = item
             continue
         kept.append(item)
+    kept.extend(CN_DIRECT_RULES)
     for exe in unique_exes(processes):
         kept.append(f"PROCESS-NAME,{exe},proxy")
     kept.append(match_rule if match_rule is not None else "MATCH,DIRECT")

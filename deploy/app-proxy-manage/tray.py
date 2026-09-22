@@ -452,6 +452,38 @@ def _open_picker(root) -> None:
     refresh_scan()
 
 
+def _reassert_after_verge() -> None:
+    """Verge can rewrite IPv6, DNS, and the pinned NIC after it starts."""
+    import time
+
+    from tun_overlay import reassert_config_dir
+
+    try:
+        from install import verge_config_dir
+    except ImportError:
+        return
+
+    def _reload() -> None:
+        try:
+            from verge_ctl import reload_verge
+
+            reload_verge()
+        except Exception:
+            return
+
+    try:
+        if reassert_config_dir(verge_config_dir()):
+            _reload()
+    except Exception:
+        return
+    time.sleep(8)
+    try:
+        if reassert_config_dir(verge_config_dir()):
+            _reload()
+    except Exception:
+        return
+
+
 def run_tray(*, silent: bool = False) -> int:
     ensure_gui_deps()
     import tkinter as tk
@@ -499,6 +531,7 @@ def run_tray(*, silent: bool = False) -> int:
         ),
     )
     threading.Thread(target=icon.run, daemon=True).start()
+    threading.Thread(target=_reassert_after_verge, daemon=True).start()
     if not silent:
         show_picker()
     root.mainloop()
