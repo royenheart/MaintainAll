@@ -4,6 +4,7 @@ from datetime import date
 import importlib.util
 import json
 from pathlib import Path
+import shutil
 import subprocess
 import sys
 import tempfile
@@ -121,10 +122,60 @@ class ModelPolicyTests(unittest.TestCase):
             path = ROOT / "skills" / name / "SKILL.md"
             text = path.read_text()
             self.assertTrue(text.startswith(f"---\nname: {name}\ndescription: "))
-            self.assertIn("Model policy index - model-policy/registry.json.", text)
+            self.assertIn("Shared model index is provided by the model-policy skill.", text)
             for target in re.findall(r"\]\(([^)]+)\)", text):
                 if not target.startswith(("https://", "http://", "#")):
                     self.assertTrue((path.parent / target).exists(), target)
+
+    def bundle(self, root):
+        for name in ("model-policy", "systematic-debugging", "writing-plans",
+                     "verification-before-completion"):
+            shutil.copytree(ROOT / "skills" / name, root / name,
+                            ignore=shutil.ignore_patterns("__pycache__"))
+
+    def test_relocated_renamed_bundle_and_script_work_from_another_cwd(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "installed"
+            self.bundle(root)
+            for i, path in enumerate(sorted(root.iterdir())):
+                path.rename(root / f"skill-id-{i}")
+            result = policy.check_install(root)
+            script = Path(result["policy_skill"]).parent / "scripts/resolve.py"
+            self.assertIn("systematic-debugging", result["development_skills"])
+            run = subprocess.run([sys.executable, str(script), "--model", "gpt-6-sol",
+                                  "--variant", "medium", "--skill", "systematic-debugging",
+                                  "--as-of", "2026-09-24"], cwd=tmp, text=True, capture_output=True)
+            self.assertEqual(run.returncode, 0, run.stderr)
+            self.assertEqual(json.loads(run.stdout)["tier"], "T2")
+
+    def test_missing_companion_or_index_or_support_is_reported(self):
+        for missing in ("model-policy", "model-policy/registry.json", "writing-plans"):
+            with self.subTest(missing=missing), tempfile.TemporaryDirectory() as tmp:
+                root = Path(tmp)
+                self.bundle(root)
+                path = root / missing
+                shutil.rmtree(path) if path.is_dir() else path.unlink()
+                with self.assertRaisesRegex(ValueError, "missing"):
+                    policy.check_install(root)
+
+    def test_duplicate_named_policy_is_rejected(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp)
+            self.bundle(root)
+            shutil.copytree(root / "model-policy", root / "another-policy")
+            with self.assertRaisesRegex(ValueError, "ambiguous skill name"):
+                policy.check_install(root)
+
+    def test_symlinked_installation_uses_real_resource_location(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            root = Path(tmp) / "source"
+            self.bundle(root)
+            installed = Path(tmp) / "installed"
+            installed.mkdir()
+            for path in root.iterdir():
+                (installed / path.name).symlink_to(path, target_is_directory=True)
+            result = policy.check_install(installed)
+            self.assertEqual(Path(result["registry"]), root / "model-policy/registry.json")
 
 
 if __name__ == "__main__":

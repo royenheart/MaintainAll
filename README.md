@@ -13,10 +13,14 @@
 
 初始阶梯是待校准的候选配置，不是已实测的模型优劣结论；未知或过期证据使用保守指导。
 解析器只输出建议，不切换模型、不调用付费 API，也不改变 AIOps 运行时设置。
+description 通过技能名 `model-policy` 指向共享索引；正文优先使用宿主目录提供的实际位置，
+普通文件安装才按当前 SKILL.md 的真实位置解析同级依赖，不依赖 shell 工作目录。
+安装时需要保留完整策略资源及辅助技能；缺失时明确降级，不能保证任意单文件安装可用。
 证据标准、来源、安装依赖及命令见 [分级方法](./skills/model-policy/methodology.md)。
 
 ```bash
 python3 skills/model-policy/scripts/resolve.py --validate
+python3 skills/model-policy/scripts/resolve.py --check-install skills
 python3 skills/model-policy/scripts/resolve.py --model gpt-6-sol --variant medium --skill systematic-debugging
 python3 -m unittest discover -s tests -p 'test_model_policy.py' -v
 ```

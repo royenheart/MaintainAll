@@ -1,22 +1,33 @@
 ---
 name: brainstorming
-description: Use when a feature or behavior change needs design decisions, requirements clarification, or comparison of approaches. Model policy index - model-policy/registry.json.
+description: Use when a feature or behavior change needs design decisions, requirements clarification, or comparison of approaches. Shared model index is provided by the model-policy skill.
 ---
 
 # Brainstorming Ideas Into Designs
 
 ## Model adaptation
 
-Load the sibling [model-policy](../model-policy/SKILL.md) once and resolve this skill's entry. Apply its profile and applicable supplements. If unavailable, use small explicit steps and evidence-based verification; do not guess model identity or change permissions.
+Load the skill named `model-policy` using its exact location and reader from the host skill catalog. The catalog location takes precedence over directory names. For a filesystem installation without a catalog entry, try [the sibling policy](../model-policy/SKILL.md), relative to the resolved location of this `SKILL.md`, never the working directory. Do not guess filesystem paths for opaque resource URIs. Resolve this skill by its frontmatter name and apply the returned profile and applicable supplements once. If the policy or registry cannot be read, report that adaptation is unavailable, use bounded steps and observable checks, and continue authorized work without inventing a model tier.
 
-先检查会话中已有的目标、约束和授权。用户明确要求实现并开 PR 时，常规实现选择已获授权，不重复索取设计批准。仅在关键需求不明、选择会显著改变范围/成本，或行动超出授权时提问。小改动用几句设计即可。
+Check the conversation for existing goals, constraints and authorization. An explicit
+request to implement a change and open a PR already authorizes routine implementation
+choices. Ask only about consequential ambiguity, material scope/cost changes, or actions
+outside that authorization. A short design is enough for a small change.
 
-1. **看上下文**（文件 / 文档 / 近期提交）。多子系统请求先分解成子项目，逐个走本流程。
-2. **识别仍缺少的关键上下文**，仅对会改变方案的问题逐个澄清，聚焦目的、约束、成功标准。
-3. **给 2-3 个方案**及权衡，先说推荐和理由。
-4. **呈现必要设计**（接口 / 数据流 / 失败行为 / 验收标准），只有影响方案的未知项需要澄清；其余独立工作继续。
-5. **需要长期记录或用户要求时写 spec** 到 `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` 并提交（用户偏好优先）。
-6. **自审**（内联修正即可，不再评审）：有占位符（TBD/TODO/含糊需求）？各节互相矛盾？范围够不够一个计划？低风险假设明确记录；重大歧义先澄清，不擅自写成用户要求。
-7. **按已有授权推进**：复杂任务用 writing-plans 分解；简单任务直接实现。保留用户明确要求的审阅环节。
+1. Read relevant files, documentation and recent changes. Split multi-component work
+   into coherent subprojects when that improves clarity.
+2. Identify missing context that would change the approach. Ask focused questions about
+   goals, constraints or acceptance criteria; continue independent work.
+3. For a meaningful design choice, compare 2–3 feasible approaches and their tradeoffs.
+   State the recommendation and its reason first.
+4. Describe necessary interfaces, data flow, failure behavior and acceptance checks.
+   Clarify unresolved consequential decisions without adding routine approval rounds.
+5. When a lasting record is useful or requested, save the design under
+   `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, honoring user preferences.
+6. Self-review for placeholders, contradictions and an oversized scope. Record low-risk
+   assumptions; clarify major ambiguity instead of presenting it as a user requirement.
+7. Proceed under existing authorization. Use writing-plans for complex implementation;
+   implement a simple change directly. Preserve any review gate explicitly requested.
 
-设计原则：单元职责单一、接口清晰、可独立理解测试；现有代码库遵循既有模式，只做服务于当前目标的改进；YAGNI 无情删功能。
+Keep responsibilities focused, interfaces clear and components independently testable.
+Follow existing conventions and omit features that do not serve the current goal.

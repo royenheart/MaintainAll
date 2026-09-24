@@ -1,13 +1,13 @@
 ---
 name: writing-plans
-description: Use when a multi-step change needs ordered implementation tasks, dependencies, acceptance criteria, and verification commands. Model policy index - model-policy/registry.json.
+description: Use when a multi-step change needs ordered implementation tasks, dependencies, acceptance criteria, and verification commands. Shared model index is provided by the model-policy skill.
 ---
 
 # Writing Plans
 
 ## Model adaptation
 
-Load the sibling [model-policy](../model-policy/SKILL.md) once and resolve this skill's entry. Apply its profile and applicable supplements. If unavailable, use small explicit steps and evidence-based verification; do not guess model identity or change permissions.
+Load the skill named `model-policy` using its exact location and reader from the host skill catalog. The catalog location takes precedence over directory names. For a filesystem installation without a catalog entry, try [the sibling policy](../model-policy/SKILL.md), relative to the resolved location of this `SKILL.md`, never the working directory. Do not guess filesystem paths for opaque resource URIs. Resolve this skill by its frontmatter name and apply the returned profile and applicable supplements once. If the policy or registry cannot be read, report that adaptation is unavailable, use bounded steps and observable checks, and continue authorized work without inventing a model tier.
 
 Write implementation plans assuming the engineer has **zero context** for the codebase: affected files, contracts, dependencies, acceptance criteria, and runnable checks with working directories. Keep detail proportional; do not duplicate complete implementations or invent line numbers.
 

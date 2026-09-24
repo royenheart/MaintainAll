@@ -1,50 +1,63 @@
 ---
 name: branch-lifecycle
-description: Use when isolating development in a branch/worktree or delivering, retaining, merging, or discarding completed changes. Model policy index - model-policy/registry.json.
+description: Use when isolating development in a branch/worktree or delivering, retaining, merging, or discarding completed changes. Shared model index is provided by the model-policy skill.
 ---
 
 # Branch Lifecycle
 
 ## Model adaptation
 
-Load the sibling [model-policy](../model-policy/SKILL.md) once and resolve this skill's entry. Apply its profile and applicable supplements. If unavailable, use small explicit steps and evidence-based verification; do not guess model identity or change permissions.
+Load the skill named `model-policy` using its exact location and reader from the host skill catalog. The catalog location takes precedence over directory names. For a filesystem installation without a catalog entry, try [the sibling policy](../model-policy/SKILL.md), relative to the resolved location of this `SKILL.md`, never the working directory. Do not guess filesystem paths for opaque resource URIs. Resolve this skill by its frontmatter name and apply the returned profile and applicable supplements once. If the policy or registry cannot be read, report that adaptation is unavailable, use bounded steps and observable checks, and continue authorized work without inventing a model tier.
 
-两个阶段：**Setup**（开工前隔离工作区）→ **Finish**（完成后整合）。
+Two phases: isolate the work, then deliver the requested result.
 
-## Setup: 隔离工作区
+## Setup
 
-1. **检测现有隔离**：`GIT_DIR=$(git rev-parse --git-dir)` vs `GIT_COMMON=$(git rev-parse --git-common-dir)`。两者不同 → 已在 linked worktree（先排除子模块：`git rev-parse --show-superproject-working-tree` 有输出 = 子模块，按普通仓库处理），直接进基线检查，**不要嵌套创建**。相同 → 普通仓库；按用户指定方式或合理的独立分支/worktree 隔离。已要求开 PR 无需再次询问常规分支操作。先检查 git status，保留用户改动。
-2. **创建**：优先平台原生工具（`EnterWorktree`、`/worktree` 等）——手动 `git worktree add` 会造成 harness 看不见的幽灵状态。没有原生工具才回退 git：
-   - 目录优先级：用户声明 > 已有 `.worktrees/`（或 `worktrees/`）> 默认 `.worktrees/`
-   - 项目内目录创建前必须 `git check-ignore -q .worktrees`，未忽略时优先使用仓库外任务目录，避免无关的 ignore 提交
-   - `git worktree add ".worktrees/<branch>" -b <branch>`；权限错误 → 告知用户并在原地工作
-3. **基线检查**：检查依赖和安装脚本，使用可用环境运行相关基线。区分已有失败、环境阻塞与新回归；记录限制后继续可独立完成的工作。
+1. Inspect `git status`, the current branch, remotes and repository instructions.
+   Preserve user changes. Compare `git rev-parse --git-dir` with
+   `git rev-parse --git-common-dir` to identify a linked worktree, after checking
+   `git rev-parse --show-superproject-working-tree` for a submodule. Reuse existing
+   task isolation; do not create nested worktrees.
+2. Otherwise use the user's requested isolation or a suitable task branch/worktree.
+   A PR request already authorizes routine branch creation. Prefer a host-native
+   worktree capability when available, then use Git if necessary.
+3. Prefer an explicitly requested location, then an existing worktree convention.
+   Before creating an in-repository worktree, verify the chosen directory is ignored
+   with `git check-ignore`. If it is not, prefer an external task directory over an
+   unrelated ignore-file change. Create the worktree with
+   `git worktree add <path> -b <branch>`. Report permission failures and use another
+   authorized, non-destructive isolation method.
+4. Inspect dependencies and installation scripts. Run relevant baseline checks in the
+   available environment. Distinguish pre-existing failures, environmental blockers
+   and new regressions; continue work that does not depend on a blocked check.
 
-## Finish: 整合
+## Finish
 
-1. **检查完整 diff 并运行与改动风险匹配的验证**。修复新引入的失败；无法运行或已有失败须在交付中准确说明，必要时开 draft PR。
-2. **确定基分支**：读取用户指定目标或 remote 默认分支，记录其 SHA，不硬编码 main/master。
-3. **执行已授权的交付方式；仅在未指定时给出选项**（detached HEAD 时去掉选项 1，仅 3 个）：
-   ```
-   Implementation complete. What would you like to do?
-   1. Merge back to <base-branch> locally
-   2. Push and create a Pull Request
-   3. Keep the branch as-is (I'll handle it later)
-   4. Discard this work
-   ```
-4. **执行**：
-   - **Merge**：到主仓根 `git checkout <base> && git pull && git merge <branch>` → 合并结果上重跑测试 → 清理 worktree → `git branch -d <branch>`
-   - **PR**：`git push -u origin <branch>` + `gh pr create`。**不清理 worktree**——PR 迭代还要用
-   - **Keep**：报告分支与 worktree 路径，不清理
-   - **Discard**：先展示将删除的内容（分支、提交列表、worktree 路径），等用户输入 `discard` 确认 → 清理 worktree → `git branch -D <branch>`
-5. **worktree 清理归属规则**（仅 Merge/Discard 时）：
-   - 仅清理本任务记录为自己创建的资源；目录名字不能证明归属
-   - 其它路径 → 宿主环境管理，**不要删**
-   - 先 `cd` 到主仓根（绝不在 worktree 内部执行 `git worktree remove`），移除后 `git worktree prune`
+1. Inspect the complete diff and run checks appropriate to the changed behavior.
+   Fix new failures. Explain unavailable checks or baseline failures honestly; use a
+   draft PR when the remaining uncertainty warrants it.
+2. Resolve the target branch from the user or remote default and record its SHA.
+   Do not assume main/master.
+3. Perform the already requested delivery. If no outcome was specified, offer the
+   appropriate choices: PR, retain, merge or discard. Do not repeat that question
+   after the user has selected an outcome.
+4. Deliver according to that choice:
+   - **PR:** push only the task branch and open the PR against the target. Keep the
+     worktree for review iterations.
+   - **Retain:** report the branch and worktree path without deleting them.
+   - **Merge:** only when requested, inspect the target worktree, update it without
+     overwriting user work, merge and verify the resulting revision. Clean up only
+     resources owned by this task.
+   - **Discard:** show the exact branch, commits and worktree to remove, obtain
+     explicit confirmation, then remove the owned worktree before deleting its branch.
+5. Record ownership when creating resources; a directory name does not prove ownership.
+   Do not remove host-managed worktrees. Run worktree removal from outside the worktree
+   being removed, then prune stale metadata if needed.
 
-## 红线
+## Constraints
 
-- 未验证就宣称通过；隐瞒失败或验证限制；合并后不检查受影响行为
-- 先删分支后删 worktree（`git branch -d` 会失败）
-- PR/Keep 路径清理 worktree，或清理非我们创建的 worktree
-- Discard 无二次确认；无明确请求就 force-push
+- Never claim checks passed without evidence or hide verification limits.
+- Do not remove a PR/retained worktree or resources this task did not create.
+- Do not discard work or force-push without explicit authorization.
+- In connector-only workflows, preserve the base tree, write to a separate branch,
+  and verify the remote diff and PR URL. Never move the base reference.

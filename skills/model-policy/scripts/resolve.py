@@ -6,6 +6,7 @@ import argparse
 from datetime import date
 import json
 from pathlib import Path
+import re
 import sys
 
 DEFAULT_REGISTRY = Path(__file__).resolve().parents[1] / "registry.json"
@@ -152,10 +153,49 @@ def resolve(data: dict, model: str | None, variant: str | None, skill: str,
     }
 
 
+def check_install(root: Path) -> dict:
+    """Check a filesystem bundle's adaptation dependencies by frontmatter name."""
+    root = root.resolve(strict=True)
+    if not root.is_dir():
+        raise ValueError(f"skills root is not a directory: {root}")
+    catalog = {}
+    for path in sorted(root.glob("*/SKILL.md")):
+        text = path.read_text(encoding="utf-8")
+        front = re.match(r"\A---\s*\n(.*?)\n---(?:\s*\n|$)", text, re.DOTALL)
+        name_line = re.search(r"^name:[ \t]*(.+?)[ \t]*$", front[1], re.MULTILINE) if front else None
+        if not name_line:
+            raise ValueError(f"missing single-line frontmatter name: {path}")
+        name = name_line[1].strip("\"'")
+        if not re.fullmatch(r"[a-z0-9-]+", name):
+            raise ValueError(f"invalid skill name: {path}")
+        if name in catalog:
+            raise ValueError(f"ambiguous skill name {name}: {catalog[name]} and {path}")
+        catalog[name] = path.resolve(strict=True)
+    if "model-policy" not in catalog:
+        raise ValueError("missing model-policy skill; install its complete directory")
+    policy_dir = catalog["model-policy"].parent
+    for relative in ("registry.json", "methodology.md", "scripts/resolve.py"):
+        if not (policy_dir / relative).is_file():
+            raise ValueError(f"missing policy resource: {policy_dir / relative}")
+    data = load_registry(policy_dir / "registry.json")
+    selected = sorted(set(catalog) & set(data["skills"]))
+    required = sorted({s for p in data["profiles"].values() for s in p["additional_skills"]}) if selected else []
+    missing = sorted(set(required) - set(catalog))
+    if missing:
+        raise ValueError(f"missing model-adaptation supporting skills: {', '.join(missing)}")
+    return {"valid": True, "skills_root": str(root),
+            "policy_skill": str(catalog["model-policy"]),
+            "registry": str(policy_dir / "registry.json"),
+            "development_skills": selected, "required_support": required}
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
-    parser.add_argument("--validate", action="store_true")
+    mode = parser.add_mutually_exclusive_group()
+    mode.add_argument("--validate", action="store_true")
+    mode.add_argument("--check-install", type=Path, metavar="SKILLS_ROOT",
+                      help="Check a filesystem bundle; locate skills by frontmatter name")
     parser.add_argument("--model")
     parser.add_argument("--variant", help="Exact configuration key; omission stays unknown")
     parser.add_argument("--skill")
@@ -164,6 +204,11 @@ def main() -> int:
     parser.add_argument("--as-of", type=date.fromisoformat, help="Replay a policy snapshot date")
     args = parser.parse_args()
     try:
+        if args.check_install is not None:
+            if args.registry != DEFAULT_REGISTRY:
+                parser.error("--check-install uses the installed policy's registry; omit --registry")
+            print(json.dumps(check_install(args.check_install), ensure_ascii=False, indent=2))
+            return 0
         data = load_registry(args.registry)
         if args.validate:
             print(json.dumps({"valid": True, "models": len(data["models"]),

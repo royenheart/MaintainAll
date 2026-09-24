@@ -1,13 +1,13 @@
 ---
 name: dsh-plugin-development
-description: Use when building, extending, packaging, or debugging a DeepSeek Harness (dsh) plugin or proposing a reusable harness extension. Model policy index - model-policy/registry.json.
+description: Use when building, extending, packaging, or debugging a DeepSeek Harness (dsh) plugin or proposing a reusable harness extension. Shared model index is provided by the model-policy skill.
 ---
 
 # DSH plugin development
 
 ## Model adaptation
 
-Load the sibling [model-policy](../model-policy/SKILL.md), resolve this skill's entry, and apply its profile/supplements. Unknown model identity uses bounded steps and explicit checks.
+Load the skill named `model-policy` using its exact location and reader from the host skill catalog. The catalog location takes precedence over directory names. For a filesystem installation without a catalog entry, try [the sibling policy](../model-policy/SKILL.md), relative to the resolved location of this `SKILL.md`, never the working directory. Do not guess filesystem paths for opaque resource URIs. Resolve this skill by its frontmatter name and apply the returned profile and applicable supplements once. If the policy or registry cannot be read, report that adaptation is unavailable, use bounded steps and observable checks, and continue authorized work without inventing a model tier.
 
 General reference for writing dsh plugins. It records durable conventions and gotchas — the *what / why*, not the *where* — so re-locate the current files by grepping the harness rather than relying on memorized paths.
 

@@ -1,13 +1,13 @@
 ---
 name: writing-skills
-description: Use when creating, editing, evaluating, or packaging reusable agent skills. Model policy index - model-policy/registry.json.
+description: Use when creating, editing, evaluating, or packaging reusable agent skills. Shared model index is provided by the model-policy skill.
 ---
 
 # Writing Skills
 
 ## Model adaptation
 
-Load the sibling [model-policy](../model-policy/SKILL.md) once and resolve this skill's entry. Apply its profile and applicable supplements. If unavailable, use small explicit steps and evidence-based verification; do not guess model identity or change permissions.
+Load the skill named `model-policy` using its exact location and reader from the host skill catalog. The catalog location takes precedence over directory names. For a filesystem installation without a catalog entry, try [the sibling policy](../model-policy/SKILL.md), relative to the resolved location of this `SKILL.md`, never the working directory. Do not guess filesystem paths for opaque resource URIs. Resolve this skill by its frontmatter name and apply the returned profile and applicable supplements once. If the policy or registry cannot be read, report that adaptation is unavailable, use bounded steps and observable checks, and continue authorized work without inventing a model tier.
 
 A **skill** is a reusable reference guide for a proven technique, pattern, or tool — not a narrative of how you solved a problem once.
 
@@ -56,7 +56,7 @@ For discipline-enforcing skills, apply pressure (time, sunk cost, exhaustion) in
 
 ## Central model policy
 
-Maintain model IDs, effort variants, evidence, tiers, task mappings and supplements only in sibling `model-policy/registry.json`. Update its skill entry when adding a development skill. Validate registry references and helper behavior. Install/package model-policy alongside selected skills; do not silently mutate user-installed settings.
+Maintain model IDs, effort variants, evidence, tiers, task mappings and supplements only in the `registry.json` resource of the catalog-resolved model-policy skill. In this repository its source path is `skills/model-policy/registry.json`; installed paths may differ. Update its skill entry when adding a development skill. Validate registry references and helper behavior. Package the policy resources and supporting skills, then run the installation check on the destination; do not silently mutate user-installed settings.
 
 ## Anti-patterns
 
