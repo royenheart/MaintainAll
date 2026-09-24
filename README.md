@@ -4,6 +4,23 @@
 
 详细设计与开发说明见 [`AGENTS.md`](./AGENTS.md)。
 
+## 开发技能与模型策略
+
+可复用的开发技能在 [`skills/`](./skills/)，与 AIOps 的 `.agents/skills/` 分开维护。
+技能按任务描述触发，再通过共享 [`model-policy`](./skills/model-policy/SKILL.md)
+选择执行指导。模型/推理配置/任务阶梯、证据与辅助技能统一在
+[`registry.json`](./skills/model-policy/registry.json)，不在各技能重复维护排名。
+
+初始阶梯是待校准的候选配置，不是已实测的模型优劣结论；未知或过期证据使用保守指导。
+解析器只输出建议，不切换模型、不调用付费 API，也不改变 AIOps 运行时设置。
+证据标准、来源、安装依赖及命令见 [分级方法](./skills/model-policy/methodology.md)。
+
+```bash
+python3 skills/model-policy/scripts/resolve.py --validate
+python3 skills/model-policy/scripts/resolve.py --model gpt-6-sol --variant medium --skill systematic-debugging
+python3 -m unittest discover -s tests -p 'test_model_policy.py' -v
+```
+
 ---
 
 ## AIOps Agent

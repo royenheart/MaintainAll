@@ -1,9 +1,13 @@
 ---
 name: receiving-code-review
-description: Use when receiving code review feedback, before implementing suggestions, especially if feedback seems unclear or technically questionable - requires technical rigor and verification, not performative agreement or blind implementation
+description: Use when assessing or implementing review feedback, especially disputed findings, unclear requests, or possible regressions. Model policy index - model-policy/registry.json.
 ---
 
 # Receiving Code Review
+
+## Model adaptation
+
+Load the sibling [model-policy](../model-policy/SKILL.md) once and resolve this skill's entry. Apply its profile and applicable supplements. If unavailable, use small explicit steps and evidence-based verification; do not guess model identity or change permissions.
 
 Verify before implementing. Ask before assuming. Technical correctness over social comfort.
 
@@ -24,7 +28,7 @@ Instead: restate the requirement, ask a clarifying question, push back with reas
 
 ## Unclear feedback — clarify FIRST
 
-If ANY item in multi-item feedback is unclear, STOP and clarify before implementing anything. Items may be related; partial understanding = wrong implementation.
+Clarify ambiguous items and pause only work that depends on them. Continue independent, confirmed fixes. Track each finding's evidence, dependencies and disposition.
 
 > "I understand items 1,2,3,6. Need clarification on 4 and 5 before proceeding."
 
@@ -32,11 +36,11 @@ If ANY item in multi-item feedback is unclear, STOP and clarify before implement
 
 Before implementing their suggestion, check: correct for this codebase? Breaks existing functionality? Works on all platforms? Does the reviewer have full context? Conflicts with your human partner's prior decisions → discuss first.
 
-**YAGNI check** for "implement this properly" suggestions: grep for actual usage. Unused → propose removing the endpoint instead.
+**YAGNI check** for "implement this properly" suggestions: grep for actual usage. Check public contracts, dynamic callers and compatibility before proposing removal.
 
 ## Implementation order for multi-item feedback
 
-1. Clarify everything unclear first
+1. Clarify blocking dependencies; continue independent confirmed fixes
 2. Blocking issues (breaks, security) → simple fixes → complex fixes
 3. Test each fix individually; verify no regressions
 
@@ -48,4 +52,4 @@ The suggestion breaks functionality, violates YAGNI, is technically wrong for th
 
 ## GitHub
 
-Reply to inline review comments in their thread (`gh api repos/{owner}/{repo}/pulls/{pr}/comments/{id}/replies`), not as top-level PR comments.
+Only when the user authorized posting, reply to inline review comments in their thread (`gh api repos/{owner}/{repo}/pulls/{pr}/comments/{id}/replies`), not as top-level PR comments.

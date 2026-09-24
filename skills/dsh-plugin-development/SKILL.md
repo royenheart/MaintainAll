@@ -1,15 +1,19 @@
 ---
 name: dsh-plugin-development
-description: When to use — build, extend, or debug a DeepSeek Harness (dsh) plugin — plugin naming/scope rules, the host/client entry split, cordis services, client slots/settings/locale, the apiproxy RPC, profiles and presets, self-contained bundle packaging/loading, the develop→load→reload loop, or proposing a change to dsh itself.
+description: Use when building, extending, packaging, or debugging a DeepSeek Harness (dsh) plugin or proposing a reusable harness extension. Model policy index - model-policy/registry.json.
 ---
 
 # DSH plugin development
+
+## Model adaptation
+
+Load the sibling [model-policy](../model-policy/SKILL.md), resolve this skill's entry, and apply its profile/supplements. Unknown model identity uses bounded steps and explicit checks.
 
 General reference for writing dsh plugins. It records durable conventions and gotchas — the *what / why*, not the *where* — so re-locate the current files by grepping the harness rather than relying on memorized paths.
 
 ## Locating the harness
 
-1. If the user or the current session has named a local `deepseek-harness` checkout, first check that its `master` branch is aligned with upstream; if not, fetch and pull the latest `master` before relying on that checkout. Then read it.
+1. If the user or the current session has named a local `deepseek-harness` checkout, record its branch/SHA and inspect uncommitted changes. Read the version actually in use; compare with upstream if needed. Never automatically pull into a dirty or unrelated branch.
 2. Otherwise, analyze the **published package** — the `@deepseek-ai/dsh-*` packages under `node_modules` (what `npx @deepseek-ai/dsh …` runs) — rather than assuming a local source tree exists.
 
 ## Profile
@@ -34,7 +38,7 @@ A **preset** is an agent-plane composition — the tools, prompt sections, and s
 
 ## Package shape
 
-- One plugin = one npm package, named under a user scope: when no scope is explicitly specified, default to the current user's git config `user.name` — `@<git-user.name>/dsh-plugin-<name>`. **Never use the `@deepseek-ai/*` scope for a third-party plugin** — it is reserved for the harness's own packages. Depending on `@deepseek-ai/*` via `peerDependencies` is expected; the reserved-scope rule is about the plugin's own package name.
+- One plugin = one npm package, named under a user scope: when no scope is explicitly specified, use a verified npm scope from existing package metadata, or ask for it — a Git display name is not an npm identity. **Never use the `@deepseek-ai/*` scope for a third-party plugin** — it is reserved for the harness's own packages. Depending on `@deepseek-ai/*` via `peerDependencies` is expected; the reserved-scope rule is about the plugin's own package name.
 - `package.json` carries `main`/`exports` (`.`, `./client`), a `dsh` block — `dsh.bundle.patch` pointing at the package's own `cordis.patch.yml`, plus optional `dsh.client` (`platform`, `inject`, `immediately`) — a `files` list that ships every built entry and `cordis.patch.yml`, and `peerDependencies` against `@deepseek-ai/*`.
 - The package's `cordis.patch.yml` inserts its own host row by package name (never a relative source path), so Node resolution finds the installed code.
 - Layout: `src/index.ts` (host entry), `src/client.ts` (client entry), `src/core/` (pure logic with no dsh imports → unit-testable with `node --test`), `src/locales/` (i18n dictionaries), `tests/`.
@@ -43,7 +47,7 @@ A **preset** is an agent-plane composition — the tools, prompt sections, and s
 
 ## Constraints
 
-- **Naming.** Third-party plugin packages are scoped: when no scope is explicitly specified, default to the current user's git config `user.name` — `@<git-user.name>/dsh-plugin-<name>`. `@deepseek-ai/*` is reserved for the harness and must never be a plugin's own scope.
+- **Naming.** Third-party plugin packages are scoped: when no scope is explicitly specified, use a verified npm scope from existing package metadata, or ask for it — a Git display name is not an npm identity. `@deepseek-ai/*` is reserved for the harness and must never be a plugin's own scope.
 - **Self-contained loading.** A plugin must declare `dsh.bundle.patch` pointing at its own `cordis.patch.yml`, whose `insert` lists the package's host row by package name. `dsh plugin add <spec>` automatically appends any installed dependency that declares `dsh.bundle` to the profile's `dsh.profile.bundles` — never hand-edit the profile's `cordis.patch.yml`, `cordis.yml`, or a `cordis:include` manifest just to load a plugin. Profile/home patches remain user override layers.
 - **Bundle-less packages are libraries.** A package without `dsh.bundle` still installs but activates no layer (dsh warns); reserve that shape for libraries plugins import, not for plugins.
 - **Ship runnable artifacts.** `files` must include the built host/client entries and `cordis.patch.yml`. Git installs fetch sources, not build output: ship a self-contained `prepare` script that builds the published entries without dev-only assumptions, or distribute built artifacts (npm / tarball). A user allowlisting a git `prepare` is permitting install-time code, so they should pin a commit.
@@ -96,3 +100,7 @@ For a new proposal, write a short discussion draft with this structure (sections
 6. **Appendix: patch** — the diff that implements it.
 7. **Questions to confirm** — the open questions for maintainers.
 8. **Related** — links to the docs and to related discussions/notes.
+
+## Completion evidence
+
+Record the harness/package version used. Check pure-core tests, build/typecheck, package contents and locale key symmetry. Use install/remove dry runs when supported. Claim live host/client integration only if actually tested. Draft upstream proposals without posting unless publication is authorized.

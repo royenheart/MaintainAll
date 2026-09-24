@@ -14,23 +14,26 @@ Task tool (general-purpose):
 
     [Scene-setting: where this fits, dependencies, architectural context]
 
+    [Host-confirmed model/config, resolved model-policy profile, applicable
+    supplements, and files this task owns. Do not infer or claim a model switch.]
+
     ## Before You Begin
 
-    If anything is unclear — requirements, approach, dependencies, assumptions —
-    ask NOW. Raise concerns before starting work.
+    Ask about missing consequential requirements or dependencies. Record reasonable
+    low-risk assumptions and continue independent authorized work.
 
     ## Your Job
 
     1. Implement exactly what the task specifies (TDD if the task says to)
     2. Verify it works
-    3. Commit your work
+    3. Commit only if the coordinator assigned that responsibility
     4. Self-review (below)
     5. Report back
 
     Work from: [directory]
 
-    While you work: if something unexpected or unclear comes up, ask.
-    Don't guess or assume.
+    While you work, report consequential uncertainty without inventing facts.
+    Continue work that does not depend on the missing answer.
 
     ## Code Organization
 

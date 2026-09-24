@@ -1,9 +1,13 @@
 ---
 name: writing-skills
-description: Use when creating new skills, editing existing skills, or verifying skills work before deployment
+description: Use when creating, editing, evaluating, or packaging reusable agent skills. Model policy index - model-policy/registry.json.
 ---
 
 # Writing Skills
+
+## Model adaptation
+
+Load the sibling [model-policy](../model-policy/SKILL.md) once and resolve this skill's entry. Apply its profile and applicable supplements. If unavailable, use small explicit steps and evidence-based verification; do not guess model identity or change permissions.
 
 A **skill** is a reusable reference guide for a proven technique, pattern, or tool — not a narrative of how you solved a problem once.
 
@@ -23,7 +27,7 @@ Flat namespace. Keep principles, concepts, and short code patterns inline.
 ## Frontmatter
 
 - `name`: letters, numbers, hyphens only
-- `description`: **third person, triggering conditions ONLY — start with "Use when..."**
+- `description`: clear task/trigger conditions, plus the shared model-policy index pointer; keep a single line for this repository's loader
 
 **Never summarize the skill's workflow in the description.** Agents read the description to decide whether to load the skill; if it summarizes the process, they follow the description instead of the skill body (a description saying "code review between tasks" produced ONE review when the skill required TWO). Describe the problem and symptoms, not the process:
 
@@ -36,9 +40,9 @@ Include searchable keywords: error messages, symptoms, synonyms, tool names.
 
 ## Token efficiency
 
-Frequently-loaded skills load into every conversation — every token counts. Frequently-loaded: <200 words; others: <500. Move flag-level detail to `--help`, cross-reference other skills by name instead of repeating their content, one excellent example instead of many.
+Skill metadata is indexed; bodies load on demand in supporting hosts — every token counts. Frequently-loaded: <200 words; others: <500. Move flag-level detail to `--help`, cross-reference other skills by name instead of repeating their content, one excellent example instead of many.
 
-Cross-reference as `**REQUIRED SUB-SKILL:** Use <skill-name>` — never `@`-link skill files (force-loads them, burning context).
+Use explicit skill names and relative resource links; do not assume every host implements @ links the same way. Package dependencies together.
 
 ## Test before deploying (TDD for documentation)
 
@@ -48,7 +52,11 @@ Writing skills IS TDD applied to process docs:
 2. **GREEN:** write the skill addressing those specific failures. Re-run the scenario WITH the skill — the agent should now comply.
 3. **REFACTOR:** new rationalization found → add an explicit counter (rationalization table, red-flags list) and re-verify.
 
-For discipline-enforcing skills, apply pressure (time, sunk cost, exhaustion) in test scenarios. Don't deploy untested skills — "obviously clear" to you ≠ clear to another agent.
+For discipline-enforcing skills, apply pressure (time, sunk cost, exhaustion) in test scenarios. Include negative triggers, unknown models, missing tools and already-authorized work. If only static checks were possible, state that limitation; do not claim empirical model improvements.
+
+## Central model policy
+
+Maintain model IDs, effort variants, evidence, tiers, task mappings and supplements only in sibling `model-policy/registry.json`. Update its skill entry when adding a development skill. Validate registry references and helper behavior. Install/package model-policy alongside selected skills; do not silently mutate user-installed settings.
 
 ## Anti-patterns
 

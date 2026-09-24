@@ -20,6 +20,10 @@ Task tool (general-purpose):
     git diff --stat {BASE_SHA}..{HEAD_SHA}
     git diff {BASE_SHA}..{HEAD_SHA}
 
+    For unfinished work, also inspect staged/unstaged changes and relevant new
+    files. BASE_SHA is the task baseline or merge-base with the intended target,
+    not automatically HEAD~1. State exactly which revision/artifacts were reviewed.
+
     ## What to Check
 
     - **Plan alignment:** implementation matches requirements? Deviations
