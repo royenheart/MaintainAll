@@ -1,0 +1,688 @@
+{
+  "schema_version": 1,
+  "updated_at": "2026-09-24",
+  "policy": {
+    "max_age_days": 45,
+    "unknown_tier": "U",
+    "provisional_requires_supplements": true,
+    "promotion": {
+      "independent_organizations": 2,
+      "local_cases_per_task": 30,
+      "local_repetitions": 3,
+      "confidence_level": 0.95,
+      "critical_failures_allowed": 0,
+      "requires_same_configuration": true
+    },
+    "aggregation": {
+      "method": "per-task evidence review; no arithmetic across incompatible benchmark scales",
+      "order": [
+        "local reproducible task outcomes",
+        "independent task-specific benchmarks",
+        "human preference and reproducible community reports",
+        "vendor claims"
+      ],
+      "community_can_promote_alone": false,
+      "size_can_promote_alone": false
+    },
+    "invariants": [
+      "No tier changes permissions, source requirements, or verification standards.",
+      "Never infer model identity, hidden effort, parameter counts or benchmark scores.",
+      "No provider calls, model switching, deployment or telemetry is performed by this policy helper."
+    ]
+  },
+  "tasks": {
+    "coding": {
+      "description": "Implement behavior and tests",
+      "sources": [
+        "livecodebench",
+        "swebench"
+      ]
+    },
+    "debugging": {
+      "description": "Diagnose and repair failures",
+      "sources": [
+        "swebench",
+        "terminalbench"
+      ]
+    },
+    "design": {
+      "description": "Architecture, decomposition and planning",
+      "sources": [
+        "livebench",
+        "aa-method"
+      ]
+    },
+    "review": {
+      "description": "Find defects and verify claims",
+      "sources": [
+        "swebench",
+        "livebench"
+      ]
+    },
+    "tool_use": {
+      "description": "Correct multi-step tools, shell and plugin operations",
+      "sources": [
+        "bfcl",
+        "terminalbench"
+      ]
+    },
+    "writing": {
+      "description": "Clear requirements, documentation and reusable instructions",
+      "sources": [
+        "livebench",
+        "arena"
+      ]
+    }
+  },
+  "tiers": {
+    "U": {
+      "rank": 0,
+      "profile": "scaffolded",
+      "description": "Unassessed or unavailable configuration; no capability claim."
+    },
+    "T1": {
+      "rank": 1,
+      "profile": "scaffolded",
+      "description": "Bounded tasks with explicit contracts and intermediate checks."
+    },
+    "T2": {
+      "rank": 2,
+      "profile": "standard",
+      "description": "Multi-step implementation/integration with explicit acceptance checks."
+    },
+    "T3": {
+      "rank": 3,
+      "profile": "analytical",
+      "description": "Complex diagnosis/design/review with competing hypotheses and independent evidence."
+    }
+  },
+  "profiles": {
+    "scaffolded": {
+      "instructions": [
+        "State one bounded objective, inputs and expected output before each unit of work.",
+        "Use one small change/experiment at a time and inspect the result before continuing.",
+        "Prefer deterministic scripts/schema checks and concrete examples; request missing critical context."
+      ],
+      "supplements": [
+        "contract-check",
+        "evidence-ledger"
+      ],
+      "additional_skills": [
+        "writing-plans",
+        "verification-before-completion"
+      ]
+    },
+    "standard": {
+      "instructions": [
+        "Work from explicit acceptance criteria; plan at component boundaries.",
+        "Batch independent reads, keep dependent writes ordered, and verify integration."
+      ],
+      "supplements": [
+        "evidence-ledger"
+      ],
+      "additional_skills": [
+        "verification-before-completion"
+      ]
+    },
+    "analytical": {
+      "instructions": [
+        "Compare plausible explanations and state what evidence distinguishes them.",
+        "Use concise constraints rather than redundant step-by-step prompting; review risky assumptions independently."
+      ],
+      "supplements": [
+        "evidence-ledger"
+      ],
+      "additional_skills": [
+        "verification-before-completion"
+      ]
+    }
+  },
+  "supplements": {
+    "contract-check": [
+      "Record expected inputs/outputs, boundary cases and the check that will establish completion.",
+      "After each bounded step, compare observed output with that contract."
+    ],
+    "evidence-ledger": [
+      "Separate observed facts, hypotheses, unavailable data and completed checks.",
+      "Record tool failures honestly; do not replace missing evidence with confidence."
+    ],
+    "risk-review": [
+      "For destructive, security-sensitive, migration or broad cross-system work, record rollback and inspect affected contracts.",
+      "Obtain independent review when available; a stronger model does not remove authorization requirements."
+    ]
+  },
+  "skills": {
+    "brainstorming": {
+      "task": "design",
+      "minimum_tier": "T2"
+    },
+    "branch-lifecycle": {
+      "task": "tool_use",
+      "minimum_tier": "T1"
+    },
+    "receiving-code-review": {
+      "task": "review",
+      "minimum_tier": "T1"
+    },
+    "subagent-driven-development": {
+      "task": "design",
+      "minimum_tier": "T2"
+    },
+    "systematic-debugging": {
+      "task": "debugging",
+      "minimum_tier": "T1"
+    },
+    "test-driven-development": {
+      "task": "coding",
+      "minimum_tier": "T1"
+    },
+    "verification-before-completion": {
+      "task": "review",
+      "minimum_tier": "T1"
+    },
+    "writing-plans": {
+      "task": "design",
+      "minimum_tier": "T1"
+    },
+    "writing-skills": {
+      "task": "writing",
+      "minimum_tier": "T1"
+    },
+    "dsh-plugin-development": {
+      "task": "tool_use",
+      "minimum_tier": "T2"
+    }
+  },
+  "sources": {
+    "openai-skills": {
+      "kind": "official",
+      "organization": "OpenAI",
+      "url": "https://developers.openai.com/plugins/concepts/skills",
+      "accessed_at": "2026-09-24",
+      "note": "Metadata triggers loading; instruction bodies are loaded on demand."
+    },
+    "openai-reasoning": {
+      "kind": "official",
+      "organization": "OpenAI",
+      "url": "https://developers.openai.com/api/docs/guides/reasoning",
+      "accessed_at": "2026-09-24",
+      "note": "Effort support and defaults depend on the model; no cross-provider equivalence."
+    },
+    "openai-sol": {
+      "kind": "official",
+      "organization": "OpenAI",
+      "url": "https://developers.openai.com/api/docs/models/gpt-6-sol",
+      "accessed_at": "2026-09-24",
+      "note": "Sol targets coding/agent workflows; Responses API supports tool use with reasoning."
+    },
+    "qwen8": {
+      "kind": "official",
+      "organization": "Qwen",
+      "url": "https://huggingface.co/Qwen/Qwen3-8B",
+      "accessed_at": "2026-09-24",
+      "note": "8.2B parameters; chat template supports enable_thinking."
+    },
+    "qwen32": {
+      "kind": "official",
+      "organization": "Qwen",
+      "url": "https://huggingface.co/Qwen/Qwen3-32B",
+      "accessed_at": "2026-09-24",
+      "note": "32.8B parameters; chat template supports enable_thinking."
+    },
+    "deepseek-models": {
+      "kind": "official",
+      "organization": "DeepSeek",
+      "url": "https://api-docs.deepseek.com/quick_start/pricing/",
+      "accessed_at": "2026-09-24",
+      "note": "deepseek-v4-flash is a moving legacy alias, currently served by V4.1 Flash; pro resolves to V4-Pro-0813."
+    },
+    "aa-method": {
+      "kind": "methodology",
+      "organization": "Artificial Analysis",
+      "url": "https://artificialanalysis.ai/methodology/intelligence-benchmarking",
+      "accessed_at": "2026-09-24",
+      "note": "Composite evaluation; retain component/version/harness distinctions."
+    },
+    "aa-gpt54": {
+      "kind": "independent",
+      "organization": "Artificial Analysis",
+      "url": "https://artificialanalysis.ai/models/gpt-5-4",
+      "accessed_at": "2026-09-24",
+      "note": "xhigh index 39 on displayed v4.3.2; historical/deprecated listing, not a default recommendation."
+    },
+    "aa-flash": {
+      "kind": "independent",
+      "organization": "Artificial Analysis",
+      "url": "https://artificialanalysis.ai/models/deepseek-v4-1-flash",
+      "accessed_at": "2026-09-24",
+      "note": "Max effort index 39 on displayed v4.3.2; model size 552B total / 16B active."
+    },
+    "aa-qwen": {
+      "kind": "independent",
+      "organization": "Artificial Analysis",
+      "url": "https://artificialanalysis.ai/models/comparisons/qwen3-8b-instruct-reasoning-vs-qwen3-32b-instruct-reasoning",
+      "accessed_at": "2026-09-24",
+      "note": "Comparison available; exact per-task values were not captured, so no numeric result imported."
+    },
+    "livebench": {
+      "kind": "methodology",
+      "organization": "LiveBench",
+      "url": "https://github.com/LiveBench/LiveBench",
+      "accessed_at": "2026-09-24",
+      "note": "Multiple reasoning/coding/language/instruction/data tasks; preserve release and prompt versions."
+    },
+    "swebench": {
+      "kind": "methodology",
+      "organization": "SWE-bench",
+      "url": "https://www.swebench.com/index.html",
+      "accessed_at": "2026-09-24",
+      "note": "Repository issue resolution is a model-plus-agent result; subsets and scaffolds must match."
+    },
+    "livecodebench": {
+      "kind": "methodology",
+      "organization": "LiveCodeBench",
+      "url": "https://livecodebench.github.io/",
+      "accessed_at": "2026-09-24",
+      "note": "Date-filtered programming problems and self-repair/execution tasks."
+    },
+    "bfcl": {
+      "kind": "methodology",
+      "organization": "Berkeley",
+      "url": "https://gorilla.cs.berkeley.edu/leaderboard",
+      "accessed_at": "2026-09-24",
+      "note": "Tool/function calling; native FC and prompted tool formats must be distinguished."
+    },
+    "terminalbench": {
+      "kind": "methodology",
+      "organization": "Terminal-Bench",
+      "url": "https://www.tbench.ai/",
+      "accessed_at": "2026-09-24",
+      "note": "Terminal agents; record agent, environment and benchmark release."
+    },
+    "arena": {
+      "kind": "community",
+      "organization": "Arena",
+      "url": "https://arena.ai/blog/arena-rank",
+      "accessed_at": "2026-09-24",
+      "note": "Human preference evidence requires task slice, sample counts and uncertainty; not correctness ground truth."
+    }
+  },
+  "models": {
+    "gpt-6-sol": {
+      "provider": "openai",
+      "identity": "moving API alias; record returned snapshot for live evals",
+      "size": {
+        "total_b": null,
+        "active_b": null,
+        "source": null
+      },
+      "notes": [
+        "Use Responses for reasoning plus tool calls; request examples are configuration fragments, not complete requests."
+      ],
+      "variants": {
+        "low": {
+          "config": {
+            "effort": "low"
+          },
+          "task_tiers": {
+            "coding": "T2",
+            "debugging": "T1",
+            "design": "T1",
+            "review": "T1",
+            "tool_use": "T2",
+            "writing": "T2"
+          },
+          "status": "provisional",
+          "reviewed_at": "2026-09-24",
+          "evidence": [
+            "openai-sol",
+            "openai-reasoning"
+          ],
+          "rationale": "Conservative starting hypothesis based on provider positioning, not a measured ranking.",
+          "request_example": {
+            "reasoning": {
+              "effort": "low"
+            }
+          },
+          "local_runs": [],
+          "community_observations": []
+        },
+        "medium": {
+          "config": {
+            "effort": "medium"
+          },
+          "task_tiers": {
+            "coding": "T2",
+            "debugging": "T2",
+            "design": "T2",
+            "review": "T2",
+            "tool_use": "T2",
+            "writing": "T2"
+          },
+          "status": "provisional",
+          "reviewed_at": "2026-09-24",
+          "evidence": [
+            "openai-sol",
+            "openai-reasoning"
+          ],
+          "rationale": "Balanced starting hypothesis; missing independent exact-configuration and local results.",
+          "request_example": {
+            "reasoning": {
+              "effort": "medium"
+            }
+          },
+          "local_runs": [],
+          "community_observations": []
+        },
+        "high": {
+          "config": {
+            "effort": "high"
+          },
+          "task_tiers": {
+            "coding": "T3",
+            "debugging": "T3",
+            "design": "T3",
+            "review": "T3",
+            "tool_use": "T2",
+            "writing": "T2"
+          },
+          "status": "provisional",
+          "reviewed_at": "2026-09-24",
+          "evidence": [
+            "openai-sol",
+            "openai-reasoning"
+          ],
+          "rationale": "Complex-task candidate only; extra effort does not guarantee improvement.",
+          "request_example": {
+            "reasoning": {
+              "effort": "high"
+            }
+          },
+          "local_runs": [],
+          "community_observations": []
+        }
+      }
+    },
+    "gpt-5.4": {
+      "provider": "openai",
+      "identity": "historical alias; availability must be checked by caller",
+      "size": {
+        "total_b": null,
+        "active_b": null,
+        "source": null
+      },
+      "notes": [
+        "Retained as a historical benchmark anchor, not recommended as latest."
+      ],
+      "variants": {
+        "xhigh": {
+          "config": {
+            "effort": "xhigh"
+          },
+          "task_tiers": {
+            "coding": "T2",
+            "debugging": "T2",
+            "design": "T2",
+            "review": "T2",
+            "tool_use": "T2",
+            "writing": "T2"
+          },
+          "status": "provisional",
+          "reviewed_at": "2026-09-24",
+          "evidence": [
+            "aa-gpt54"
+          ],
+          "rationale": "A composite result cannot establish individual task mastery; local calibration missing.",
+          "request_example": null,
+          "local_runs": [],
+          "community_observations": []
+        }
+      }
+    },
+    "Qwen/Qwen3-8B": {
+      "provider": "qwen",
+      "identity": "pin weights/tokenizer revision and quantization in live evals",
+      "size": {
+        "total_b": 8.2,
+        "active_b": 8.2,
+        "source": "qwen8"
+      },
+      "notes": [
+        "Legacy dense model included for local/small-model calibration; size is metadata, not a tier rule."
+      ],
+      "variants": {
+        "thinking": {
+          "config": {
+            "enable_thinking": true
+          },
+          "task_tiers": {
+            "coding": "T1",
+            "debugging": "T1",
+            "design": "T1",
+            "review": "T1",
+            "tool_use": "T1",
+            "writing": "T1"
+          },
+          "status": "provisional",
+          "reviewed_at": "2026-09-24",
+          "evidence": [
+            "qwen8",
+            "aa-qwen"
+          ],
+          "rationale": "Guided baseline pending independent task results at the actual serving precision.",
+          "request_example": {
+            "chat_template_kwargs": {
+              "enable_thinking": true
+            }
+          },
+          "local_runs": [],
+          "community_observations": []
+        },
+        "non-thinking": {
+          "config": {
+            "enable_thinking": false
+          },
+          "task_tiers": {
+            "coding": "T1",
+            "debugging": "U",
+            "design": "U",
+            "review": "U",
+            "tool_use": "U",
+            "writing": "T1"
+          },
+          "status": "provisional",
+          "reviewed_at": "2026-09-24",
+          "evidence": [
+            "qwen8"
+          ],
+          "rationale": "Do not transfer thinking-mode benchmark results to non-thinking mode.",
+          "request_example": {
+            "chat_template_kwargs": {
+              "enable_thinking": false
+            }
+          },
+          "local_runs": [],
+          "community_observations": []
+        }
+      }
+    },
+    "Qwen/Qwen3-32B": {
+      "provider": "qwen",
+      "identity": "pin weights/tokenizer revision and quantization in live evals",
+      "size": {
+        "total_b": 32.8,
+        "active_b": 32.8,
+        "source": "qwen32"
+      },
+      "notes": [
+        "Size alone is not evidence of better coding or tool use."
+      ],
+      "variants": {
+        "thinking": {
+          "config": {
+            "enable_thinking": true
+          },
+          "task_tiers": {
+            "coding": "T2",
+            "debugging": "T1",
+            "design": "T1",
+            "review": "T1",
+            "tool_use": "T1",
+            "writing": "T2"
+          },
+          "status": "provisional",
+          "reviewed_at": "2026-09-24",
+          "evidence": [
+            "qwen32",
+            "aa-qwen"
+          ],
+          "rationale": "Broader implementation candidate, still an uncalibrated task hypothesis.",
+          "request_example": {
+            "chat_template_kwargs": {
+              "enable_thinking": true
+            }
+          },
+          "local_runs": [],
+          "community_observations": []
+        },
+        "non-thinking": {
+          "config": {
+            "enable_thinking": false
+          },
+          "task_tiers": {
+            "coding": "T1",
+            "debugging": "U",
+            "design": "U",
+            "review": "U",
+            "tool_use": "U",
+            "writing": "T1"
+          },
+          "status": "provisional",
+          "reviewed_at": "2026-09-24",
+          "evidence": [
+            "qwen32"
+          ],
+          "rationale": "Separate configuration with no transferred thinking evidence.",
+          "request_example": {
+            "chat_template_kwargs": {
+              "enable_thinking": false
+            }
+          },
+          "local_runs": [],
+          "community_observations": []
+        }
+      }
+    },
+    "deepseek-flash": {
+      "provider": "deepseek",
+      "identity": "DeepSeek-V4.1-Flash observed 2026-09-24; alias can change",
+      "size": {
+        "total_b": 552,
+        "active_b": 16,
+        "source": "aa-flash"
+      },
+      "notes": [
+        "Legacy deepseek-v4-flash routes here as of source date; resolver intentionally does not silently alias it.",
+        "Official thinking-configuration page could not be retrieved; request_example remains null."
+      ],
+      "variants": {
+        "max": {
+          "config": {
+            "effort": "max",
+            "mode": "thinking"
+          },
+          "task_tiers": {
+            "coding": "T2",
+            "debugging": "T2",
+            "design": "T2",
+            "review": "T2",
+            "tool_use": "T2",
+            "writing": "T2"
+          },
+          "status": "provisional",
+          "reviewed_at": "2026-09-24",
+          "evidence": [
+            "deepseek-models",
+            "aa-flash"
+          ],
+          "rationale": "Exact label is from AA; API parameter spelling must be verified before execution.",
+          "request_example": null,
+          "local_runs": [],
+          "community_observations": []
+        }
+      }
+    },
+    "deepseek-v4-pro": {
+      "provider": "deepseek",
+      "identity": "DeepSeek-V4-Pro-0813 observed 2026-09-24; alias can change",
+      "size": {
+        "total_b": null,
+        "active_b": null,
+        "source": null
+      },
+      "notes": [
+        "Tracked because MaintainAll names it; no guessed size or effort-specific rating."
+      ],
+      "variants": {
+        "unspecified": {
+          "config": {
+            "effort": null
+          },
+          "task_tiers": {
+            "coding": "U",
+            "debugging": "U",
+            "design": "U",
+            "review": "U",
+            "tool_use": "U",
+            "writing": "U"
+          },
+          "status": "provisional",
+          "reviewed_at": "2026-09-24",
+          "evidence": [
+            "deepseek-models"
+          ],
+          "rationale": "Effort-specific independent evidence not captured; unassessed.",
+          "request_example": null,
+          "local_runs": [],
+          "community_observations": []
+        }
+      }
+    }
+  },
+  "observations": [
+    {
+      "model": "gpt-5.4",
+      "variant": "xhigh",
+      "source": "aa-gpt54",
+      "benchmark": "AA Intelligence Index",
+      "benchmark_version": "4.3.2",
+      "task": "composite",
+      "value": 39,
+      "unit": "index",
+      "direction": "higher",
+      "observed_at": "2026-09-24",
+      "sample_count": null,
+      "confidence_interval": null,
+      "harness": "as reported by Artificial Analysis",
+      "limitations": "One external composite observation; not local validation and not a current deployment recommendation.",
+      "measured_at": null
+    },
+    {
+      "model": "deepseek-flash",
+      "variant": "max",
+      "source": "aa-flash",
+      "benchmark": "AA Intelligence Index",
+      "benchmark_version": "4.3.2",
+      "task": "composite",
+      "value": 39,
+      "unit": "index",
+      "direction": "higher",
+      "observed_at": "2026-09-24",
+      "sample_count": null,
+      "confidence_interval": null,
+      "harness": "as reported by Artificial Analysis",
+      "limitations": "Provider alias may move. Equal composite scores do not imply equal per-task ability.",
+      "measured_at": null
+    }
+  ]
+}

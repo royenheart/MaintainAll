@@ -1,20 +1,41 @@
 ---
 name: systematic-debugging
-description: Use when encountering any bug, test failure, or unexpected behavior, before proposing fixes
+description: Use when a bug, failing test, intermittent failure, or unexpected behavior needs diagnosis and a verified fix. Shared model index is provided by the model-policy skill.
 ---
 
 # Systematic Debugging
 
-**Iron Law: NO FIXES WITHOUT ROOT CAUSE INVESTIGATION FIRST.**
+## Model adaptation
 
-调试知识大家都有；这里只约束纪律——模型在时间压力下会跳回"试改一下"。
+Load the skill named `model-policy` using its exact location and reader from the host skill catalog. The catalog location takes precedence over directory names. For a filesystem installation without a catalog entry, try [the sibling policy](../model-policy/SKILL.md), relative to the resolved location of this `SKILL.md`, never the working directory. Do not guess filesystem paths for opaque resource URIs. Resolve this skill by its frontmatter name and apply the returned profile and applicable supplements once. If the policy or registry cannot be read, report that adaptation is unavailable, use bounded steps and observable checks, and continue authorized work without inventing a model tier.
 
-1. **根因**：读完整错误（堆栈/行号/错误码）；稳定复现；查最近改动（git diff / 新依赖 / 环境差异）；多组件系统在每层边界打日志，跑一次让证据指出断在哪层；深层错误沿调用栈回溯到坏值的来源。没完成这步不许提修复。
-2. **对照**：找代码库里相似的工作实现，列出全部差异——别假设"那个无所谓"。
-3. **假设**：一次一个具体假设（"X 是根因，因为 Y"），用最小改动验证，一次只改一个变量。失败 → 新假设，不要堆叠修复。不懂就说，别装懂。
-4. **修复**：先写复现 bug 的失败测试（见 test-driven-development）→ 单点修根因，不做"顺手"改动 → 验证测试绿、其它测试不破、原症状消失。
-5. **3 次修复失败 → STOP，质疑架构**：每次修复都在别处暴露新问题、或修复需要大规模重构 = 模式错了，不是补丁错了。和用户讨论后再试第 4 次。
+Investigate the cause before proposing a permanent fix. Under time pressure, replace
+speculative edits with explicit, falsifiable hypotheses.
 
-**红线**：先修后查；"试改 X 看看"；一次跑多个改动；跳过复现测试；症状修复。
+1. Read the complete relevant error, stack trace and status. Capture expected versus
+   actual behavior, reproduce when possible, and inspect recent code, dependency and
+   environment changes. For intermittent failures, record frequency and timing.
+2. Trace the failing operation or value across component boundaries. Use minimal
+   instrumentation and compare a working case; do not dismiss unexplained differences.
+3. Test one concrete hypothesis at a time: state why it fits the evidence and what
+   observation would disprove it. Change one variable in a reversible experiment.
+   Record failures instead of stacking speculative patches.
+4. Once the causal explanation is supported, add a regression test where feasible,
+   fix the cause, and rerun the reproduction and affected checks. Avoid unrelated
+   changes and remove temporary diagnostics.
+5. After three ineffective attempts, reconsider assumptions, evidence and task size.
+   Address missing context or environment problems before requesting a model-policy
+   escalation. Ask the user only for missing access or a consequential decision.
 
-95% 的"查不到根因"是调查不完整。确认是环境/时序问题后：记录调查过程、加兜底处理（重试/超时/清晰报错）、补监控。
+An incident may require a reversible mitigation before the root cause is known.
+Label it as mitigation, document rollback and follow-up diagnosis, and do not claim
+that the root cause is fixed. Redact secrets from diagnostic logs.
+
+Avoid unsupported causal claims, arbitrary trial changes, simultaneous speculative
+fixes, skipped meaningful regression checks, and symptom-only patches presented as
+permanent solutions. If evidence establishes an environmental or timing problem,
+record the investigation and add appropriate timeouts or monitoring. Use bounded
+retries only when the operation is idempotent or a verified idempotency key prevents
+duplicate effects. A timeout can occur after a write commits. Without that protection,
+inspect and reconcile the actual state, report a clear error, and do not blindly retry.
+Do not invent statistics to justify an explanation.

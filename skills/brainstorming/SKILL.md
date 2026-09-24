@@ -1,20 +1,33 @@
 ---
 name: brainstorming
-description: You MUST use this before any creative work - creating features, building components, adding functionality, or modifying behavior. Explores user intent, requirements and design before implementation.
+description: Use when a feature or behavior change needs design decisions, requirements clarification, or comparison of approaches. Shared model index is provided by the model-policy skill.
 ---
 
 # Brainstorming Ideas Into Designs
 
-<HARD-GATE>
-Do NOT write code or scaffold until you have presented a design and the user has approved it. Every project, however simple — the design can be a few sentences, but approval is required.
-</HARD-GATE>
+## Model adaptation
 
-1. **看上下文**（文件 / 文档 / 近期提交）。多子系统请求先分解成子项目，逐个走本流程。
-2. **逐个问澄清问题**（偏好选择题），聚焦目的、约束、成功标准。不要一次抛一堆。
-3. **给 2-3 个方案**及权衡，先说推荐和理由。
-4. **分节呈现设计**（架构 / 组件 / 数据流 / 错误处理 / 测试），每节确认；讲不通就回头澄清。
-5. **写 spec** 到 `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md` 并提交（用户偏好优先）。
-6. **自审**（内联修正即可，不再评审）：有占位符（TBD/TODO/含糊需求）？各节互相矛盾？范围够不够一个计划？任何需求有歧义 → 挑一种解释写死。
-7. **用户审阅 spec**，批准后调用 writing-plans——那是唯一的下一个技能。
+Load the skill named `model-policy` using its exact location and reader from the host skill catalog. The catalog location takes precedence over directory names. For a filesystem installation without a catalog entry, try [the sibling policy](../model-policy/SKILL.md), relative to the resolved location of this `SKILL.md`, never the working directory. Do not guess filesystem paths for opaque resource URIs. Resolve this skill by its frontmatter name and apply the returned profile and applicable supplements once. If the policy or registry cannot be read, report that adaptation is unavailable, use bounded steps and observable checks, and continue authorized work without inventing a model tier.
 
-设计原则：单元职责单一、接口清晰、可独立理解测试；现有代码库遵循既有模式，只做服务于当前目标的改进；YAGNI 无情删功能。
+Check the conversation for existing goals, constraints and authorization. An explicit
+request to implement a change and open a PR already authorizes routine implementation
+choices. Ask only about consequential ambiguity, material scope/cost changes, or actions
+outside that authorization. A short design is enough for a small change.
+
+1. Read relevant files, documentation and recent changes. Split multi-component work
+   into coherent subprojects when that improves clarity.
+2. Identify missing context that would change the approach. Ask focused questions about
+   goals, constraints or acceptance criteria; continue independent work.
+3. For a meaningful design choice, compare 2–3 feasible approaches and their tradeoffs.
+   State the recommendation and its reason first.
+4. Describe necessary interfaces, data flow, failure behavior and acceptance checks.
+   Clarify unresolved consequential decisions without adding routine approval rounds.
+5. When a lasting record is useful or requested, save the design under
+   `docs/superpowers/specs/YYYY-MM-DD-<topic>-design.md`, honoring user preferences.
+6. Self-review for placeholders, contradictions and an oversized scope. Record low-risk
+   assumptions; clarify major ambiguity instead of presenting it as a user requirement.
+7. Proceed under existing authorization. Use writing-plans for complex implementation;
+   implement a simple change directly. Preserve any review gate explicitly requested.
+
+Keep responsibilities focused, interfaces clear and components independently testable.
+Follow existing conventions and omit features that do not serve the current goal.

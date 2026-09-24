@@ -1,15 +1,22 @@
 ---
 name: subagent-driven-development
-description: Use when executing implementation plans with independent tasks in the current session
+description: Use when an implementation plan benefits from independent task execution or review and the host supports delegation. Shared model index is provided by the model-policy skill.
 ---
 
 # Subagent-Driven Development
 
-Execute the plan by dispatching a **fresh subagent per task**, with two-stage review after each: **spec compliance first, then code quality**. Subagents get precisely crafted context — never your session history — which keeps them focused and preserves your context for coordination.
+## Model adaptation
+
+Load the skill named `model-policy` using its exact location and reader from the host skill catalog. The catalog location takes precedence over directory names. For a filesystem installation without a catalog entry, try [the sibling policy](../model-policy/SKILL.md), relative to the resolved location of this `SKILL.md`, never the working directory. Do not guess filesystem paths for opaque resource URIs. Resolve this skill by its frontmatter name and apply the returned profile and applicable supplements once. If the policy or registry cannot be read, report that adaptation is unavailable, use bounded steps and observable checks, and continue authorized work without inventing a model tier.
+
+When delegation is useful and supported, give each subagent a bounded task and relevant artifacts. Review specification compliance before code quality. If unavailable, execute and review sequentially; disclose self-review. Tiny reversible edits do not require ceremonial multiple reviews.
 
 **Continuous execution:** do not pause to check in between tasks. Stop only for: an unresolvable BLOCKED, genuine ambiguity, or all tasks complete.
 
 ## Per task
+
+The following sequence applies when independent delegation/review is available and
+warranted by the task. Otherwise perform these checks sequentially and label self-review.
 
 1. **Dispatch implementer** with `./implementer-prompt.md` — paste the FULL task text plus scene-setting context. Never make the subagent read the plan file.
 2. Answer its questions before letting it proceed.
@@ -18,15 +25,15 @@ Execute the plan by dispatching a **fresh subagent per task**, with two-stage re
 5. **Dispatch code quality reviewer** with `./code-quality-reviewer-prompt.md` (needs BASE_SHA/HEAD_SHA). Issues → implementer fixes → re-review.
 6. Mark task complete. Next task.
 
-After all tasks: dispatch a final reviewer for the whole implementation, then use branch-lifecycle.
+After all tasks: inspect the combined diff and run integration checks; use independent review when risk warrants it, then honor the user's delivery request via branch-lifecycle.
 
 ## Ad-hoc review (no plan workflow)
 
-Not running a plan? A review is still valuable before merge, after a major feature, or when stuck. Get the range (`BASE_SHA=$(git rev-parse HEAD~1)`, `HEAD_SHA=$(git rev-parse HEAD)`), dispatch a reviewer with `./code-reviewer.md`, fill `{DESCRIPTION}` / `{PLAN_OR_REQUIREMENTS}` / SHAs. Fix Critical immediately, Important before proceeding, push back with technical reasoning if the reviewer is wrong.
+Not running a plan? A review is still valuable before merge, after a major feature, or when stuck. Use the recorded task baseline, or the merge-base with the intended target branch, through the current HEAD; do not assume HEAD~1 covers a whole feature. Include staged, unstaged and relevant new files when work is not committed. Dispatch a reviewer with `./code-reviewer.md`, filling requirements, the exact review scope and `MODEL_POLICY` for the reviewer's host-confirmed model/configuration and review domain; unknown identity stays unassessed. Fix Critical immediately, Important before proceeding, and push back with evidence if the finding is wrong.
 
 ## Parallel investigations
 
-Multiple INDEPENDENT failures (different test files/subsystems) → dispatch one investigation agent per domain in parallel, each self-contained (paste the error messages and context). Do NOT parallelize implementers — they edit the same tree and conflict. After parallel agents return: check for overlapping edits, then run the full suite.
+Multiple INDEPENDENT failures (different test files/subsystems) → dispatch one investigation agent per domain in parallel, each self-contained (paste the error messages and context). Parallel implementers require disjoint write ownership and independent contracts; sequence shared-file tasks. After parallel agents return: check for overlapping edits, then run the full suite.
 
 ## Implementer status handling
 
@@ -39,13 +46,13 @@ Never ignore an escalation or make the same model retry without changing somethi
 
 ## Model selection
 
-Use the least powerful model that fits: 1-2 files + complete spec → cheap/fast model; multi-file integration → standard; architecture/judgment/review → most capable.
+Resolve implementer and reviewer separately through model-policy using the actual model/config and task domain. Prefer the least costly option that meets evidence-backed requirements. File count, brand and parameter size alone do not establish capability. Never claim a switch if the host cannot perform it.
 
 ## Red flags
 
 - Implementing on main/master without explicit consent
-- Skipping either review, or starting quality review before spec ✅
+- Omitting applicable specification/quality checks, or reviewing quality before requirements
 - Moving to the next task with open review issues
-- Dispatching multiple implementers in parallel (they conflict)
+- Dispatching writers with overlapping ownership or dependent contracts
 - Making the subagent read the plan file instead of pasting the task text
-- Letting the implementer's self-review replace the two real reviews
+- Claiming independent review when only self-review occurred

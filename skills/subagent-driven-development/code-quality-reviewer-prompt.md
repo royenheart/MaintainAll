@@ -10,6 +10,9 @@ Task tool (general-purpose):
   PLAN_OR_REQUIREMENTS: Task N from [plan-file]
   BASE_SHA: [commit before task]
   HEAD_SHA: [current commit]
+
+  MODEL_POLICY: [host-confirmed model/config, review task domain, profile and
+                 applicable supplements; unknown identity stays unassessed]
 ```
 
 In addition to the standard checks, the reviewer should verify:

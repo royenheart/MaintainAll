@@ -1,17 +1,21 @@
 ---
 name: test-driven-development
-description: Use when implementing any feature or bugfix, before writing implementation code
+description: Use when changing executable behavior or fixing a bug that benefits from a reproducible regression test. Shared model index is provided by the model-policy skill.
 ---
 
 # Test-Driven Development
 
+## Model adaptation
+
+Load the skill named `model-policy` using its exact location and reader from the host skill catalog. The catalog location takes precedence over directory names. For a filesystem installation without a catalog entry, try [the sibling policy](../model-policy/SKILL.md), relative to the resolved location of this `SKILL.md`, never the working directory. Do not guess filesystem paths for opaque resource URIs. Resolve this skill by its frontmatter name and apply the returned profile and applicable supplements once. If the policy or registry cannot be read, report that adaptation is unavailable, use bounded steps and observable checks, and continue authorized work without inventing a model tier.
+
 ## The Iron Law
 
 ```
-NO PRODUCTION CODE WITHOUT A FAILING TEST FIRST
+FOR NONTRIVIAL EXECUTABLE CHANGES, ESTABLISH A FAILING BEHAVIOR TEST FIRST
 ```
 
-Write code before the test? **Delete it. Start over.** Don't keep it as "reference", don't "adapt" it while writing tests. Delete means delete.
+Preserve existing and user-written code. If implementation already exists, demonstrate regression-test sensitivity using an isolated baseline or a reversible fault, then restore. Never delete work merely to enforce chronology.
 
 If you didn't watch the test fail, you don't know it tests the right thing.
 
@@ -26,18 +30,18 @@ If you didn't watch the test fail, you don't know it tests the right thing.
 
 ## Why order matters
 
-Tests written after code pass immediately, which proves nothing — you test what you built, not what's required, and you never saw the test catch the bug. Tests-first forces edge-case discovery before implementation.
+Tests-first helps expose missing behavior. A later regression test is still useful if it fails against the unfixed behavior. Test observable contracts and failure paths, not incidental implementation details.
 
 ## Bug fixes
 
 Bug found → write a failing test that reproduces it → fix → verify. Never fix bugs without a test; the test proves the fix and prevents regression.
 
-## Red flags — delete the code and start over with TDD
+## Red flags — check test sensitivity and coverage
 
-- Code before test, or tests added "later"
-- Test passes on the first run
+- A test that never demonstrates sensitivity to the missing/broken behavior
+- A passing test that only mirrors the implementation
 - "I already manually tested it" (ad-hoc ≠ systematic, can't re-run)
-- "Too simple to test" / "just this once" / "keep it as reference"
+- Skipping relevant checks without considering actual risk
 
 ## When stuck
 
@@ -50,11 +54,11 @@ Bug found → write a failing test that reproduces it → fix → verify. Never 
 
 ## Exceptions
 
-Throwaway prototypes, generated code, config files — **ask your human partner first**. "Skip TDD just this once" is rationalization.
+Use risk-appropriate validation for documentation, generated code, formatting, and trivial configuration: schema checks, rendering, linting or dry runs may be sufficient. Honor required repository gates and existing user authorization; do not add ritual approval requests.
 
 ## Checklist before claiming done
 
-- [ ] Every new function has a test
-- [ ] Watched each test fail before implementing, for the expected reason
+- [ ] Meaningful changed behaviors and relevant failure paths have coverage
+- [ ] Demonstrated regression/acceptance test sensitivity for the expected reason
 - [ ] Minimal code per test; all tests pass; output clean
 - [ ] Edge cases and error paths covered

@@ -140,11 +140,11 @@ the table below. Do **not** retry in a loop; diagnose and surface the issue.
 
 | Symptom | Likely cause | What to tell the user |
 |---|---|---|
-| `curl: (6) Could not resolve host: cuactl` | cuactl container not running, or you're not on cua-net | "cuactl 服务没启动。在服务器上运行 `docker compose up -d cuactl`。" |
-| `{"success": false, "error": "client PC unreachable at ..."}` | Windows PC offline / Control Plane not running / network down | "你的 Windows 客户端 Control Plane 没有启动或网络不通。请检查托盘图标是否在运行，并确认 `CUACTL_ENDPOINT` 指向的 IP 可达。" |
-| HTTP 403 Access Denied | Permission level set to `off` on the client | "请在 Windows 托盘菜单把权限级别从 OFF 切到 readonly 或 full。" |
-| HTTP 401 Unauthorized | `CUACTL_TOKEN` mismatch between server and client | "Token 不匹配。重新生成客户端 Token 并更新服务端 `.env` 的 `CUACTL_TOKEN`，然后 `docker compose up -d` 重启。" |
-| `health` returns `token_configured: false` | `CUACTL_TOKEN` env not set in cuactl container | "cuactl 容器没配 token。检查 `.env` 里 `CUACTL_TOKEN` 是否设置，然后 `docker compose up -d cuactl`。" |
+| `curl: (6) Could not resolve host: cuactl` | cuactl container not running, or you're not on cua-net | "The cuactl service is not running. Run `docker compose up -d cuactl` on the server." |
+| `{"success": false, "error": "client PC unreachable at ..."}` | Windows PC offline / Control Plane not running / network down | "The Windows client Control Plane is not running or cannot be reached. Check the tray application and confirm that the IP configured in `CUACTL_ENDPOINT` is reachable." |
+| HTTP 403 Access Denied | Permission level set to `off` on the client | "In the Windows tray menu, change the permission level from OFF to readonly or full as appropriate for the requested action." |
+| HTTP 401 Unauthorized | `CUACTL_TOKEN` mismatch between server and client | "The tokens do not match. Regenerate the client token, update `CUACTL_TOKEN` in the server `.env`, then restart with `docker compose up -d`." |
+| `health` returns `token_configured: false` | `CUACTL_TOKEN` env not set in cuactl container | "The cuactl container has no token configured. Check `CUACTL_TOKEN` in `.env`, then run `docker compose up -d cuactl`." |
 | Screenshot returns but looks wrong / all black | Screen locked / UAC dialog foreground / multi-monitor coords off | Ask the user to unlock the screen or use `app-position` to find the window first. |
 
 **Never** respond to a failure by installing packages, switching hosts, or
@@ -169,5 +169,5 @@ curl -s -X POST http://cuactl:8000/cuactl/list-apps
 - If both ok → report the actual endpoint and permission level, then
   proceed with the user's requested action.
 
-**Do not claim "已就绪" without running these checks.** Honest diagnostics
+**Do not claim "ready" without running these checks.** Honest diagnostics
 beat confident-sounding fabrication.
