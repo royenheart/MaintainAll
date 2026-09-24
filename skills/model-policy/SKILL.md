@@ -37,7 +37,11 @@ retrieve another policy.
    python3 <model-policy-dir>/scripts/resolve.py --model gpt-6-sol --variant medium --skill systematic-debugging
    ```
 
-3. Apply the returned profile instructions and supplements to the original skill.
+3. Check `replay` before applying a result. A noncurrent `--as-of` date returns
+   historical metadata only, with empty guidance and
+   `next_action: replay_only_not_for_execution`. Do not apply its tier or profile;
+   rerun without `--as-of` for current guidance. For a current result, apply the
+   returned profile instructions and supplements to the original skill.
    Load additional skills only for their applicable phase, once per task; exclude
    skills already loaded to prevent recursive policy/skill loading.
 4. Treat provisional tiers as starting hypotheses, never measured superiority.

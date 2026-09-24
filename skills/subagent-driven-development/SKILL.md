@@ -29,7 +29,7 @@ After all tasks: inspect the combined diff and run integration checks; use indep
 
 ## Ad-hoc review (no plan workflow)
 
-Not running a plan? A review is still valuable before merge, after a major feature, or when stuck. Use the recorded task baseline, or the merge-base with the intended target branch, through the current HEAD; do not assume HEAD~1 covers a whole feature. Include staged, unstaged and relevant new files when work is not committed. Dispatch a reviewer with `./code-reviewer.md`, filling requirements and the exact review scope. Fix Critical immediately, Important before proceeding, and push back with evidence if the finding is wrong.
+Not running a plan? A review is still valuable before merge, after a major feature, or when stuck. Use the recorded task baseline, or the merge-base with the intended target branch, through the current HEAD; do not assume HEAD~1 covers a whole feature. Include staged, unstaged and relevant new files when work is not committed. Dispatch a reviewer with `./code-reviewer.md`, filling requirements, the exact review scope and `MODEL_POLICY` for the reviewer's host-confirmed model/configuration and review domain; unknown identity stays unassessed. Fix Critical immediately, Important before proceeding, and push back with evidence if the finding is wrong.
 
 ## Parallel investigations
 

@@ -15,6 +15,7 @@ DEFAULT_REGISTRY = Path(__file__).resolve().parents[1] / "registry.json"
 def validate(data: dict) -> None:
     """Check policy invariants and references; v1 deliberately has no calibrated rows."""
     def require(condition, message):
+        """Reject an invalid registry invariant with a specific diagnostic."""
         if not condition:
             raise ValueError(message)
 
@@ -82,7 +83,9 @@ def validate(data: dict) -> None:
 
 
 def load_registry(path: Path = DEFAULT_REGISTRY) -> dict:
+    """Read and validate a registry, rejecting ambiguous duplicate JSON keys."""
     def unique_keys(pairs):
+        """Build a JSON object only when each key occurs once."""
         result = {}
         for key, value in pairs:
             if key in result:
@@ -97,13 +100,16 @@ def load_registry(path: Path = DEFAULT_REGISTRY) -> dict:
 
 def resolve(data: dict, model: str | None, variant: str | None, skill: str,
             task: str | None = None, risk: str = "normal", as_of: date | None = None) -> dict:
+    """Resolve exact task guidance; noncurrent snapshots omit execution instructions."""
     validate(data)
     if skill not in data["skills"]:
         raise ValueError(f"unknown skill: {skill}")
     task = task or data["skills"][skill]["task"]
     if task not in data["tasks"] or risk not in {"normal", "high"}:
         raise ValueError("unknown task or risk")
-    today = as_of or date.today()
+    real_today = date.today()
+    today = as_of or real_today
+    replay = today != real_today
     row = data["models"].get(model)
     record = row["variants"].get(variant) if row else None
     tier = "U"
@@ -138,13 +144,15 @@ def resolve(data: dict, model: str | None, variant: str | None, skill: str,
     gap = data["tiers"][tier]["rank"] < data["tiers"][required]["rank"]
     return {
         "schema_version": data["schema_version"], "as_of": today.isoformat(),
+        "evaluated_at": real_today.isoformat(), "replay": replay,
         "model": model, "variant": variant, "skill": skill, "task": task,
         "tier": tier, "status": reason, "profile": profile_name,
-        "instructions": profile["instructions"],
-        "supplements": {k: data["supplements"][k] for k in supplement_ids},
-        "additional_skills": [s for s in profile["additional_skills"] if s != skill],
+        "instructions": [] if replay else profile["instructions"],
+        "supplements": {} if replay else {k: data["supplements"][k] for k in supplement_ids},
+        "additional_skills": [] if replay else [s for s in profile["additional_skills"] if s != skill],
         "minimum_tier": required, "capability_gap": gap,
-        "next_action": "decompose_or_request_supported_escalation" if gap else "proceed_with_checks",
+        "next_action": ("replay_only_not_for_execution" if replay else
+                        "decompose_or_request_supported_escalation" if gap else "proceed_with_checks"),
         "needs_calibration": True,
         "evidence": record["evidence"] if record else [],
         "rationale": record["rationale"] if record else "No exact model/configuration evidence.",
@@ -190,6 +198,7 @@ def check_install(root: Path) -> dict:
 
 
 def main() -> int:
+    """Run an offline lookup or validation, reporting invalid input with exit code 2."""
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--registry", type=Path, default=DEFAULT_REGISTRY)
     mode = parser.add_mutually_exclusive_group()
@@ -201,7 +210,8 @@ def main() -> int:
     parser.add_argument("--skill")
     parser.add_argument("--task", help="Optional domain override, e.g. review for a reviewer")
     parser.add_argument("--risk", choices=("normal", "high"), default="normal")
-    parser.add_argument("--as-of", type=date.fromisoformat, help="Replay a policy snapshot date")
+    parser.add_argument("--as-of", type=date.fromisoformat,
+                        help="Inspect a snapshot date; noncurrent dates omit execution guidance")
     args = parser.parse_args()
     try:
         if args.check_install is not None:

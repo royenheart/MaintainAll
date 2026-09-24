@@ -15,6 +15,9 @@ Task tool (general-purpose):
     ## Requirements / Plan
     {PLAN_OR_REQUIREMENTS}
 
+    ## Model Policy
+    {MODEL_POLICY}
+
     ## Git Range
     **Base:** {BASE_SHA}  **Head:** {HEAD_SHA}
     git diff --stat {BASE_SHA}..{HEAD_SHA}
@@ -63,4 +66,4 @@ Task tool (general-purpose):
            review code you didn't read, be vague
 ```
 
-**Placeholders:** `{DESCRIPTION}` what was built · `{PLAN_OR_REQUIREMENTS}` plan path/task text · `{BASE_SHA}`/`{HEAD_SHA}` review range.
+**Placeholders:** `{DESCRIPTION}` what was built · `{PLAN_OR_REQUIREMENTS}` plan path/task text · `{MODEL_POLICY}` reviewer model/configuration, review-domain profile and applicable supplements; unknown identity stays unassessed · `{BASE_SHA}`/`{HEAD_SHA}` review range.

@@ -34,5 +34,8 @@ that the root cause is fixed. Redact secrets from diagnostic logs.
 Avoid unsupported causal claims, arbitrary trial changes, simultaneous speculative
 fixes, skipped meaningful regression checks, and symptom-only patches presented as
 permanent solutions. If evidence establishes an environmental or timing problem,
-record the investigation and add appropriate timeouts, bounded retries or monitoring.
+record the investigation and add appropriate timeouts or monitoring. Use bounded
+retries only when the operation is idempotent or a verified idempotency key prevents
+duplicate effects. A timeout can occur after a write commits. Without that protection,
+inspect and reconcile the actual state, report a clear error, and do not blindly retry.
 Do not invent statistics to justify an explanation.

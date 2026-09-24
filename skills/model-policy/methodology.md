@@ -159,8 +159,16 @@ python3 skills/model-policy/scripts/resolve.py --skill writing-skills
 python3 -m unittest discover -s tests -p 'test_model_policy.py' -v
 ```
 
-Use `--as-of` only for historical replay, not to evade current expiry. Use a relevant
-`--task` override for roles such as reviewers, not to obtain a higher tier.
+Use `--as-of` only to inspect a snapshot. Any date different from the real current
+date returns `replay: true`, `evaluated_at` (the real date), and
+`next_action: replay_only_not_for_execution`, with empty instructions, supplements
+and additional skills. Its tier/profile describe the snapshot and must not guide
+current execution. Replay evaluates the supplied registry at that date; it does
+not retrieve an older registry revision. Rerun without `--as-of` to check current
+expiry and obtain execution guidance. An explicit current date behaves like an
+ordinary lookup. Manual readers must likewise use the real current date for active
+guidance. Use a relevant `--task` override for roles such as reviewers, not to
+obtain a higher tier.
 
 For filesystem distribution, copy complete selected skill directories together with
 model-policy and the referenced writing-plans/verification-before-completion dependencies.
