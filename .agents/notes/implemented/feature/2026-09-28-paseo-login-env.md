@@ -1,0 +1,30 @@
+# Agent Note: paseo user service inherits a login-shell snapshot
+
+Status: implemented — `deploy/paseo-daemon/install.sh` no longer pins `PATH` in the unit; `sync_login_env.py` writes a login-shell snapshot to `~/.config/environment.d/60-paseo.conf`.
+
+## Problem
+
+`paseo.service` set `Environment=PATH` to a short literal list (node, `~/.local/bin`, `~/bin`, and the system directories). systemd does not expand `$PATH` in a unit, so that line replaces the user manager environment instead of extending it. Agent CLIs installed only via `~/.bashrc` / `~/.bash_profile`, such as `~/.kimi-code/bin`, stay invisible to the daemon and to processes it spawns. The user manager itself never reads shell startup files; a graphical login imports them once, and that snapshot goes stale until the next login.
+
+## Decision
+
+Keep the installer in user config only. On each systemd install:
+
+- Run `$SHELL --login` under `env -i` (home, user, and a minimal `PATH` only) and capture `env -0`.
+- Drop session variables (`DISPLAY`, `XDG_RUNTIME_DIR`, `DBUS_SESSION_BUS_ADDRESS`, and the rest of that set) and shell bookkeeping.
+- Escape `$` and `\` so `environment.d` does not expand or line-continue them.
+- If `60-paseo.conf` already exists, copy it to `60-paseo.conf.bak` (not a `.conf`, so the generator ignores it), then atomically replace the file mode `0600`.
+- Generate the unit without `Environment=PATH`. `ExecStart` stays an absolute `paseo` path. Refuse to rewrite the unit when the probed `PATH` has no `node`, because the `paseo` shebang is `/usr/bin/env node`.
+
+`daemon-reload` re-runs the user environment generators, so services started afterwards inherit the snapshot. Already-running processes do not.
+
+## Alternatives considered
+
+- Keep appending directories to the unit `PATH`. A unit assignment replaces the variable and does not expand `$PATH`, so the service would still miss the user manager's existing toolchain unless every directory is copied by hand.
+- `ExecStart=/bin/bash -lc 'exec paseo …'`. That re-reads the shell on every start, including `Restart=on-failure`, and a prompt or a failing `bashrc` takes the service down with it.
+- A user environment generator under `/etc/systemd/user-environment-generators`. That is system configuration, runs for every user, and a bad stdout can fail the user manager on its next cold start.
+- Prepend only `~/.kimi-code/bin` in `environment.d`. That fixes one binary and leaves later shell exports (and non-`PATH` variables the shell sets) out until someone edits the file again.
+
+## Consequences
+
+The snapshot applies to every user service started after `daemon-reload`, not only `paseo.service`. Secrets exported by the login shell are stored in `60-paseo.conf` and are visible through `systemctl --user show-environment`. Refreshing the shell means re-running `install.sh`, which restarts the daemon when the unit is already active. `--no-systemd` does not probe; a detached `paseo daemon start` keeps inheriting the terminal that launched it.
