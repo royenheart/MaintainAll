@@ -102,7 +102,12 @@ python3 -m unittest test_sync_login_env.py   # in this directory; no real login 
   After `daemon-reload`, **every user service started afterwards** inherits
   this snapshot, not only `paseo.service`. Already-running processes are not
   affected. Re-run `./install.sh` after changing `~/.bashrc` /
-  `~/.bash_profile` to refresh the snapshot.
+  `~/.bash_profile` to refresh the snapshot. One caveat: `daemon-reload` does
+  **not** override variables the user manager already holds — `PATH` is
+  pinned when the user manager starts (at boot/login), long before this file
+  exists. The installer therefore pushes the freshly probed PATH into the
+  manager itself with `systemctl --user set-environment PATH=…` after the
+  reload; without that step, services keep the stale manager PATH.
 - **The snapshot contains secrets exported by the shell.** A login shell
   sources `~/.bash_profile` (which on this machine sources `~/.bashrc`), so any
   token `export`ed there lands in `60-paseo.conf` and is visible via
