@@ -1,112 +1,130 @@
-# paseo-daemon 部署
+# paseo-daemon deployment
 
-把 [Paseo](https://paseo.sh) daemon 装到本机(无桌面、走 Remote/SSH 控制的机器)并让它**开机自启**。
+Installs the [Paseo](https://paseo.sh) daemon on this machine (headless, driven
+via Remote/SSH from the GUI) and keeps it running **across reboots**.
 
-沿用「user systemd 托管 daemon」思路（旧版 `deploy/systemd/install-user-daemon.sh`
-已随旧版 MaintainAll daemon 一并移除）；本目录对应本机的实际环境
-(ASUS / `RoyenHeartAsus`，bash 登录 shell，node 走 nvm v24.14.0)。
+It follows the "user systemd manages the daemon" approach (the old
+`deploy/systemd/install-user-daemon.sh` was removed together with the old
+MaintainAll daemon). This directory matches the actual environment of this
+machine (ASUS / `RoyenHeartAsus`, bash login shell, node via nvm v24.14.0).
 
-## 为什么要这个脚本（设计背景）
+## Why this script exists (design background)
 
-1. **GUI 不会自动装、也不会自动起 daemon。** 桌面版自带 daemon 会自动拉起；但
-   Remote/SSH 传输只连**已经在跑**的 daemon，官方文档明确 SSH 不负责在远端安装、
-   启动或配置。所以远端必须先自己装 CLI 再启动 daemon，这不是漏了一步，是设计。
-2. **`paseo daemon start` 不跨重启。** 它只是在当前用户下 detach 一个后台进程
-   （写 `~/.paseo/paseo.pid` 和 `~/.paseo/daemon.log`），崩溃时内部 supervisor 会拉
-   起，能熬过 SSH 断开，但**不会**注册 systemd / 开机项——机器一重启，6767 又没人
-   听了，GUI 还会报同样的 socket 错误。
-3. **方案：CLI + systemd --user + linger。** 用用户级 systemd 以
-   `paseo daemon start --foreground` 常驻（`--foreground` 是 CLI 真实 flag，见
-   [CLI docs](https://paseo.sh/docs/cli) 与上游
-   [start.ts](https://github.com/getpaseo/paseo/blob/main/packages/cli/src/commands/daemon/start.ts)），
-   `Restart=on-failure` 兜崩溃，`loginctl enable-linger` 兜“未登录也随开机启动”。
+1. **The GUI never installs or starts a daemon for you.** The desktop app runs
+   its own daemon automatically, but Remote/SSH transport only connects to a
+   daemon that is **already running** — the official docs state SSH does not
+   install, start, or configure anything remotely. So a headless machine must
+   install the CLI and start the daemon itself; this is by design, not a
+   missing step.
+2. **`paseo daemon start` does not survive a reboot.** It detaches a background
+   supervisor (writing `~/.paseo/paseo.pid` and `~/.paseo/daemon.log`) in the
+   current user session; an internal supervisor survives SSH disconnects, but
+   nothing is registered with systemd — after a reboot nothing listens on 6767
+   again and the GUI reports the same socket error.
+3. **Solution: CLI + systemd --user + linger.** A user-level systemd service
+   runs `paseo daemon run --home ~/.paseo` in the foreground
+   (`daemon run` is the foreground/deployment command since CLI 0.9.2; the old
+   `--foreground` flag of `daemon start` was removed — passing it exits 1 with
+   "Error: --foreground was removed"). `Restart=on-failure` covers crashes, and
+   `loginctl enable-linger` covers "start at boot even when nobody is logged
+   in".
 
-## 快速开始（一键）
+> Note: in CLI 0.9.2 `paseo daemon start` itself changed semantics — it now
+> spawns a *managed* supervisor and **exits 0 once the daemon is ready**. Used
+> as a `Type=simple` ExecStart, systemd considers the service finished and
+> tears down the cgroup, killing the daemon. Foreground mode under systemd is
+> exactly what `paseo daemon run` is for.
+
+## Quick start (one shot)
 
 ```bash
 cd deploy/paseo-daemon
 ./install.sh
 ```
 
-脚本幂等，可反复跑；内部对应顺序：
+The script is idempotent; each run does, in order:
 
-| 步骤 | 等价命令 | 说明 |
+| Step | Equivalent command | Notes |
 | --- | --- | --- |
-| 1 | `npm install -g @getpaseo/cli` | 仅当 `paseo` 不在 PATH 时执行 |
-| 2 | 生成 `~/.config/systemd/user/paseo.service` | `ExecStart` 用解析后的真实绝对路径（nvm 软链会被 `readlink -f` 展开），并带上 node bin 的 `PATH` |
-| 3 | `systemctl --user daemon-reload && systemctl --user enable --now paseo.service` | 启动前若检测到旧的 detached 实例会先 `paseo daemon stop`，避免占用 6767 |
-| 4 | `loginctl enable-linger "$USER"` | 已开启则跳过 |
-| 5 | 就绪探测 + `paseo daemon status` | 校验 6767 在听、Local Daemon = running |
+| 1 | `npm install -g @getpaseo/cli` | Only when `paseo` is not on PATH |
+| 2 | `sync_login_env.py` | Runs a clean login shell once and writes its environment to `~/.config/environment.d/60-paseo.conf` (an existing file is first copied to `60-paseo.conf.bak`) |
+| 3 | Generate `~/.config/systemd/user/paseo.service` | `ExecStart` uses the resolved real absolute path (nvm symlinks are expanded with `readlink -f`); the unit sets no `PATH` |
+| 4 | `systemctl --user daemon-reload && systemctl --user enable --now paseo.service` | `daemon-reload` makes the user manager re-export `environment.d`. If an old detached instance is detected it is stopped first with `paseo daemon stop` so it cannot hold 6767 |
+| 5 | `loginctl enable-linger "$USER"` | Skipped when already enabled |
+| 6 | Readiness probe + `paseo daemon status` | Verifies 6767 is listening / `localDaemon: running` |
 
-## 校验
+## Verify
 
 ```bash
 paseo daemon status --no-color
 systemctl --user is-active paseo.service      # active
 ```
 
-`paseo daemon status` 应显示 `Local Daemon: running`、`Connected Daemon: reachable`。
-之后 GUI 的 Remote/SSH 连这台机器就不该再报连接/socket 错误了。
+`paseo daemon status` should show `localDaemon: running` (and
+`connectedDaemon: reachable` once a client connects). After that, the GUI's
+Remote/SSH to this machine should no longer report connection/socket errors.
 
-## 管理 / 卸载
+## Manage / uninstall
 
 ```bash
-systemctl --user restart paseo.service        # 重启
-journalctl --user -u paseo.service -f         # systemd 日志
-tail -f ~/.paseo/daemon.log                   # daemon 日志
+systemctl --user restart paseo.service        # restart
+journalctl --user -u paseo.service -f         # systemd journal
+tail -f ~/.paseo/daemon.log                   # daemon log
 
-# 卸载
+# Uninstall
 systemctl --user disable --now paseo.service
 rm -f ~/.config/systemd/user/paseo.service
+rm -f ~/.config/environment.d/60-paseo.conf
 systemctl --user daemon-reload
-# (可选) npm uninstall -g @getpaseo/cli
+# (optional) npm uninstall -g @getpaseo/cli
 ```
 
-## 选项
+## Options
 
 ```bash
-./install.sh --no-systemd   # 只做 步骤1 + `paseo daemon start`(后台进程, 不跨重启)
-./install.sh --no-install   # 跳过 npm install(要求 paseo 已在 PATH)
-./install.sh --dry-run      # 打印将生成的 unit / 将执行的命令, 不落盘不启动
+./install.sh --no-systemd   # only step 1 + `paseo daemon start` (detached; no boot autostart)
+./install.sh --no-install   # skip npm install (paseo must already be on PATH)
+./install.sh --dry-run      # sniff and print the generated unit / commands; write nothing, start nothing
+python3 -m unittest test_sync_login_env.py   # in this directory; no real login shell is run
 ```
 
-## 注意事项
+## Notes
 
-- **nvm shim 在 systemd 里经常找不到。** unit 的 `ExecStart` 与 `PATH` 都由脚本按
-  真实路径生成，不要手改（参考文件 `paseo.service` 只是示例）。
-- **daemon 的子进程环境。** daemon 会拉起 agent / 终端等子进程，它们找
-  `claude`/`codex`/`opencode`/`pnpm`/`gh` 靠的是 daemon 启动时拿到的 `PATH` 等
-  环境变量；systemd --user 默认不读 `~/.bashrc`。脚本已把 `~/.local/bin`、`~/bin`
-  和 node bin 放进 unit 的 `PATH`；若还缺别的工具，用 drop-in 包一层登录 shell
-  （注意：`bash -lc` 会继承 `.bash_profile`/`.profile` 里 `export` 的一切，含
-  token / 代理 / API key）：
+- **nvm shims are often invisible to systemd.** The unit's `ExecStart` is
+  generated from the resolved real path — do not hand-edit it (the reference
+  `paseo.service` in this directory is only an example). `PATH` is not written
+  into the unit: `Environment=PATH=...` would replace the user manager's whole
+  `PATH`, and `$PATH` is not expanded in a unit.
+- **Login-shell snapshot.** `sync_login_env.py` runs
+  `env -i $SHELL --login -c 'env -0'` and writes the result to
+  `~/.config/environment.d/60-paseo.conf` (mode `0600`). An existing file is
+  first copied to `60-paseo.conf.bak` (not a `.conf`, so systemd ignores it).
+  After `daemon-reload`, **every user service started afterwards** inherits
+  this snapshot, not only `paseo.service`. Already-running processes are not
+  affected. Re-run `./install.sh` after changing `~/.bashrc` /
+  `~/.bash_profile` to refresh the snapshot.
+- **The snapshot contains secrets exported by the shell.** A login shell
+  sources `~/.bash_profile` (which on this machine sources `~/.bashrc`), so any
+  token `export`ed there lands in `60-paseo.conf` and is visible via
+  `systemctl --user show-environment`. Graphical-session variables (`DISPLAY`,
+  `XDG_RUNTIME_DIR`, `DBUS_SESSION_BUS_ADDRESS`, …) are dropped so a single
+  login is not pinned onto every future user service.
+- **`node` must be on the probed `PATH`.** The `paseo` shebang is
+  `/usr/bin/env node`. When the probe fails or finds no `node`, the script
+  refuses to rewrite the unit.
+- **`systemctl --user` cannot connect to the bus?** You are not in a real user
+  session (e.g. cron, or an early SSH phase without a session). Run
+  `loginctl enable-linger "$USER"` and run `./install.sh` from a normal login
+  terminal.
+- **After upgrading / switching node versions**, simply re-run `./install.sh`
+  to regenerate the unit path.
 
-  ```bash
-  mkdir -p ~/.config/systemd/user/paseo.service.d
-  cat > ~/.config/systemd/user/paseo.service.d/10-login-env.conf <<'EOF'
-  [Service]
-  Environment=HOME=%h
-  ExecStart=
-  ExecStart=/usr/bin/bash -lc 'exec /home/royenheart/.nvm/versions/node/v24.14.0/bin/paseo daemon start --foreground'
-  EOF
-  systemctl --user daemon-reload
-  systemctl --user restart paseo.service
-  ```
+## Troubleshooting
 
-  思路同 [LINUX DO: Ubuntu 上让 Paseo 开机自启，并拿到正常环境变量](https://linux.do/t/topic/2717636)
-  （原文用 zsh，本机登录 shell 是 bash，故换成 `bash -lc`）。
-
-- **`systemctl --user` 连不上 bus？** 说明当前不在真实用户会话（如 cron、某些无
-  会话 SSH 的早期阶段）。先 `loginctl enable-linger "$USER"` 并在正常登录终端里跑
-  `./install.sh`。
-
-- **升级 / 换 node 版本** 后重跑一次 `./install.sh` 即可重新生成 unit 路径。
-
-## 排障速查
-
-| 现象 | 处理 |
+| Symptom | Fix |
 | --- | --- |
-| `systemctl --user status` 显示 restarting 循环 | `journalctl --user -u paseo.service -n 50` 看报错；常见是 6767 被旧 detached 实例占着，先 `paseo daemon stop` 再 `systemctl --user restart` |
-| `paseo daemon status` 显示 stale_pid / unresponsive | 机器重启过而 pid 文件残留属正常；起服务后自动覆盖 |
-| GUI 仍报 socket/连接拒绝 | 本机 daemon 没起来：`paseo daemon status` 确认 Local Daemon running；SSH transport 不会替你启动 |
-| agent 里找不到某命令 | 见上方 drop-in 登录 shell 方案 |
+| `systemctl --user status` shows a restart loop | `journalctl --user -u paseo.service -n 50` for the error; often 6767 is held by an old detached instance — `paseo daemon stop`, then `systemctl --user restart`. If the log says `--foreground was removed`, the unit predates CLI 0.9.2: re-run `./install.sh` to regenerate it with `paseo daemon run` |
+| `systemctl --user status` shows `active (exited)` / `inactive (dead)` right after start | The unit uses `paseo daemon start`, which exits 0 after spawning the daemon — under `Type=simple` systemd then kills the cgroup. Re-run `./install.sh` so ExecStart becomes `paseo daemon run --home ~/.paseo` |
+| `paseo daemon status` shows stale_pid / unresponsive | A leftover pid file after a reboot is normal; starting the service overwrites it |
+| GUI still reports socket/connection refused | The local daemon is not running: check `paseo daemon status` shows `localDaemon: running`; the SSH transport will never start it for you |
+| The agent cannot find some command | Make sure the command is visible in a fresh login shell, then re-run `./install.sh` to refresh `60-paseo.conf` and restart the service |

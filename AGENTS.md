@@ -249,3 +249,7 @@ python -m pytest -q
 ```
 
 设计与实现计划见 `docs/superpowers/specs/2026-07-10-aiops-agent-design.md` 与 `docs/superpowers/plans/2026-07-10-aiops-agent.md`。
+
+## 语言约定
+
+- 代码、注释、提示与文档一律使用英文；仅向用户汇报时使用用户的默认语言。

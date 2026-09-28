@@ -1,26 +1,23 @@
 #!/usr/bin/env bash
-# Paseo daemon 一键部署: 安装 CLI → systemd --user 常驻(开机自启) → 校验。
+# Paseo daemon one-shot deploy: install the CLI -> systemd --user service
+# (enabled at boot) -> verify.
 #
-# 背景: Paseo GUI 的 Remote/SSH 只连"已经在跑"的 daemon, 不会在远端安装、启动或
-# 配置它; `paseo daemon start` 也只是 detach 一个后台进程(写 ~/.paseo/paseo.pid、
-# daemon.log), 不注册开机自启 —— 机器一重启 6767 又没人听了。
-# 本脚本沿用「user systemd 托管 daemon」的思路(参考同仓库旧版
-# install-user-daemon.sh 的做法, 该脚本已随旧版 MaintainAll daemon 一并移除):
-# 把 daemon 交给 systemd --user + loginctl enable-linger 托管, 崩溃/重启后自动拉起。
+# Background: the Paseo GUI's Remote/SSH only connects to a daemon that is
+# already running; it never installs, starts, or configures one remotely, and
+# `paseo daemon start` merely detaches a background supervisor (writing
+# ~/.paseo/paseo.pid and daemon.log) without registering boot autostart — so
+# after a reboot nothing listens on 6767 again.
+# This script follows the "user systemd manages the daemon" approach (the old
+# install-user-daemon.sh from this repo was removed together with the old
+# MaintainAll daemon): hand the daemon to systemd --user plus
+# `loginctl enable-linger`, so crashes and reboots bring it back automatically.
 #
-# 用法:
-#   ./install.sh                  # 缺 paseo 则 npm i -g; 生成并启用 paseo.service
-#   ./install.sh --no-install     # 跳过 npm install(要求 paseo 已在 PATH)
-#   ./install.sh --no-systemd     # 不写 unit: 只 npm i -g + paseo daemon start
-#                                 #   (后台进程, 不跨重启)
-#   ./install.sh --dry-run        # 打印将生成的 unit / 将执行的命令, 不落盘
-#   ./install.sh -h | --help
-#
-# 环境变量: PASEO_HOME(默认 ~/.paseo)、PASEO_LISTEN_ADDR(默认 127.0.0.1)、
-#           PASEO_PORT(默认 6767) 可覆盖就绪探测目标。
+# Env: PASEO_HOME (default ~/.paseo), PASEO_LISTEN_ADDR (default 127.0.0.1),
+#      and PASEO_PORT (default 6767) override the readiness probe target.
 
 set -euo pipefail
 
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UNIT_NAME="paseo.service"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 UNIT_PATH="$UNIT_DIR/$UNIT_NAME"
@@ -35,16 +32,27 @@ DO_SYSTEMD=1    # 0 = --no-systemd
 DRY_RUN=0
 
 usage() {
-  sed -n '2,19p' "$0" | sed 's/^# \?//'
+  cat <<'EOF'
+Usage:
+  ./install.sh                  # npm i -g if paseo is missing; sniff the login shell;
+                                # write ~/.config/environment.d/60-paseo.conf;
+                                # generate and enable paseo.service
+  ./install.sh --no-install     # skip npm install (paseo must already be on PATH)
+  ./install.sh --no-systemd     # no unit, no sniffing: only npm i -g + `paseo daemon start`
+                                #   (detached; inherits this terminal; no boot autostart)
+  ./install.sh --dry-run        # sniff and print the unit / commands; write nothing
+  ./install.sh -h | --help
+EOF
   exit "${1:-0}"
 }
 
 step() { printf '\033[1;36m==> %s\033[0m\n' "$*"; }
 ok()   { printf '\033[1;32m    %s\033[0m\n' "$*"; }
-warn() { printf '\033[1;33m[警告] %s\033[0m\n' "$*" >&2; }
-die()  { printf '\033[1;31m[错误] %s\033[0m\n' "$*" >&2; exit 1; }
+warn() { printf '\033[1;33m[warn] %s\033[0m\n' "$*" >&2; }
+die()  { printf '\033[1;31m[error] %s\033[0m\n' "$*" >&2; exit 1; }
 
-# command -v + readlink -f: 拿到可执行文件的真实绝对路径(nvm 的 bin 是软链)。
+# command -v + readlink -f: resolve the real absolute path of a binary (nvm's
+# bin entries are symlinks).
 resolve_bin() {
   local p
   p="$(command -v "$1" 2>/dev/null || true)"
@@ -52,7 +60,8 @@ resolve_bin() {
   readlink -f "$p" 2>/dev/null || realpath "$p" 2>/dev/null || printf '%s\n' "$p"
 }
 
-# 非交互环境(npm 常被 nvm 挡在 PATH 外): 找不到 node/npm 时尝试 source nvm。
+# Non-interactive environments often lack npm on PATH (nvm); fall back to
+# sourcing nvm when node/npm are missing.
 ensure_nvm() {
   if command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1; then
     return 0
@@ -65,7 +74,7 @@ ensure_nvm() {
   command -v node >/dev/null 2>&1 && command -v npm >/dev/null 2>&1
 }
 
-# 读 ~/.paseo/paseo.pid 里的 PID(daemon 自己写; 空则返回空串)。
+# Read the PID from ~/.paseo/paseo.pid (written by the daemon; empty output when unset).
 daemon_pid() {
   [[ -f "$PID_FILE" ]] || return 0
   python3 - "$PID_FILE" <<'PY' || true
@@ -82,7 +91,7 @@ port_open() {
   timeout 1 bash -c "exec 3<>/dev/tcp/$LISTEN_ADDR/$LISTEN_PORT" 2>/dev/null
 }
 
-wait_port_open() {  # $1 = 最多等几秒
+wait_port_open() {  # $1 = max seconds to wait
   local i
   for ((i = 0; i < $1; i++)); do
     if port_open; then return 0; fi
@@ -91,7 +100,7 @@ wait_port_open() {  # $1 = 最多等几秒
   return 1
 }
 
-wait_port_closed() {  # $1 = 最多等几秒
+wait_port_closed() {  # $1 = max seconds to wait
   local i
   for ((i = 0; i < $1; i++)); do
     if ! port_open; then return 0; fi
@@ -100,7 +109,13 @@ wait_port_closed() {  # $1 = 最多等几秒
   return 1
 }
 
-# unit 内容在调用时才展开, 依赖全局 PASEO_BIN / ENV_PATH 已赋值。
+# The unit body is expanded at call time; the global PASEO_BIN must be set.
+# PATH is not written into the unit: Environment= replaces the whole variable
+# and does not expand $PATH. The login-shell environment is written to
+# ~/.config/environment.d/60-paseo.conf by sync_login_env.py; after
+# daemon-reload the user manager hands it to user services started afterwards.
+# `paseo daemon run` keeps the daemon in the foreground (CLI >= 0.9.2; the old
+# `--foreground` flag of `daemon start` was removed).
 unit_body() {
   cat <<EOF
 [Unit]
@@ -109,15 +124,23 @@ After=default.target
 
 [Service]
 Type=simple
-# Generated by install.sh — do not hand-edit ExecStart/PATH; re-run the installer.
-ExecStart=$PASEO_BIN daemon start --foreground
+# Generated by install.sh — do not hand-edit ExecStart; re-run the installer.
+# Login-shell environment: ~/.config/environment.d/60-paseo.conf
+ExecStart=$PASEO_BIN daemon run --home $PASEO_HOME
 Restart=on-failure
 RestartSec=5
-Environment=PATH=$ENV_PATH
 
 [Install]
 WantedBy=default.target
 EOF
+}
+
+sync_login_env() {
+  local -a args=()
+  if [[ "$DRY_RUN" -eq 1 ]]; then
+    args+=(--dry-run)
+  fi
+  python3 "$SCRIPT_DIR/sync_login_env.py" "${args[@]}"
 }
 
 show_status() {
@@ -127,50 +150,50 @@ show_status() {
 }
 
 install_cli() {
-  step "安装 @getpaseo/cli: npm install -g @getpaseo/cli"
+  step "Install @getpaseo/cli: npm install -g @getpaseo/cli"
   npm install -g @getpaseo/cli
-  ok "已安装: $(command -v paseo)"
+  ok "installed: $(command -v paseo)"
 }
 
 start_detached() {
   local pid
   pid="$(daemon_pid)"
   if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
-    warn "daemon 已在运行(PID $pid), 跳过 start"
+    warn "daemon already running (PID $pid); skipping start"
   else
     step "paseo daemon start (detached)"
     "$PASEO_BIN" daemon start
   fi
   sleep 1
   show_status
-  warn "detached 模式不注册开机自启: 重启后需重跑本脚本(不带 --no-systemd)。"
+  warn "detached mode has no boot autostart: re-run this script (without --no-systemd) after a reboot."
 }
 
 run_systemctl() {
   systemctl --user "$@" 2>&1 \
-    || die "systemctl --user 失败($*): 请从真实登录会话运行本脚本(普通 SSH/桌面终端, 而非无 user bus 的环境)。"
+    || die "systemctl --user failed ($*): run this script from a real login session (a normal SSH/desktop terminal, not an environment without a user bus)."
 }
 
 systemd_install() {
-  step "生成 $UNIT_PATH"
+  step "Generate $UNIT_PATH"
   mkdir -p "$UNIT_DIR"
   printf '%s\n' "$(unit_body)" >"$UNIT_PATH"
-  ok "unit 已写入"
+  ok "unit written"
 
   step "systemctl --user daemon-reload"
   run_systemctl daemon-reload
 
   if systemctl --user is-active --quiet "$UNIT_NAME" 2>/dev/null; then
-    step "paseo.service 已激活 → restart"
+    step "paseo.service is active -> restart"
     run_systemctl restart "$UNIT_NAME"
   else
     local pid
     pid="$(daemon_pid)"
     if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
-      warn "存在旧的非托管 daemon(PID $pid), 先停掉, 避免占用 $LISTEN_ADDR:$LISTEN_PORT"
+      warn "found an old unmanaged daemon (PID $pid); stopping it so it cannot hold $LISTEN_ADDR:$LISTEN_PORT"
       "$PASEO_BIN" daemon stop || true
       wait_port_closed 10 \
-        || warn "旧 daemon 可能还在监听; 若新实例起不来, 看 $LOG_FILE 尾部"
+        || warn "old daemon may still be listening; if the new instance fails to start, see the tail of $LOG_FILE"
     fi
     step "systemctl --user enable --now $UNIT_NAME"
     run_systemctl enable --now "$UNIT_NAME"
@@ -178,46 +201,49 @@ systemd_install() {
 }
 
 enable_linger() {
-  step "loginctl enable-linger \"$USER\" (未登录也随开机自启)"
+  step "loginctl enable-linger \"$USER\" (start at boot even when not logged in)"
   if loginctl enable-linger "$USER" 2>/dev/null; then
     ok "linger: $(loginctl show-user "$USER" -p Linger 2>/dev/null | cut -d= -f2)"
   else
-    warn "enable-linger 失败: 可在有 sudo 的会话执行: sudo loginctl enable-linger \"$USER\""
+    warn "enable-linger failed; run this in a session with sudo: sudo loginctl enable-linger \"$USER\""
   fi
 }
 
 verify() {
-  step "等待 daemon 就绪 ($LISTEN_ADDR:$LISTEN_PORT)"
+  step "Waiting for the daemon to become ready ($LISTEN_ADDR:$LISTEN_PORT)"
   local ready=0
   if wait_port_open 30; then
     ready=1
   elif systemctl --user is-active --quiet "$UNIT_NAME" 2>/dev/null \
-    && "$PASEO_BIN" daemon status --no-color 2>/dev/null | grep -qiE 'local daemon.*running'; then
+    && "$PASEO_BIN" daemon status --no-color 2>/dev/null | grep -qiE 'localDaemon:[[:space:]]*running'; then
     ready=1
   fi
   if [[ "$ready" -eq 0 ]]; then
-    warn "端口探测失败, 打印诊断:"
+    warn "port probe failed; diagnostics:"
     show_status || true
     tail -n 30 "$LOG_FILE" 2>/dev/null || true
     journalctl --user -u "$UNIT_NAME" -n 30 --no-pager 2>/dev/null || true
-    die "daemon 未就绪, 见上方日志"
+    die "daemon is not ready; see the logs above"
   fi
-  ok "daemon 已就绪"
+  ok "daemon is ready"
   show_status
 }
 
 print_cheatsheet() {
   cat <<EOF
 
-安装完成。常用命令:
-  paseo daemon status                         # daemon 自身视角
-  systemctl --user status $UNIT_NAME          # systemd 视角
-  systemctl --user restart $UNIT_NAME         # 手动重启
-  journalctl --user -u $UNIT_NAME -f          # systemd 日志
-  tail -f $LOG_FILE                            # daemon 日志
+Installed. Common commands:
+  paseo daemon status                         # the daemon's own view
+  systemctl --user status $UNIT_NAME          # systemd's view
+  systemctl --user restart $UNIT_NAME         # restart manually
+  journalctl --user -u $UNIT_NAME -f          # systemd journal
+  tail -f $LOG_FILE                            # daemon log
+  # Login-shell snapshot: ~/.config/environment.d/60-paseo.conf
+  # Re-run this script after changing ~/.bashrc / ~/.bash_profile, then restart paseo.service
 
-GUI/SSH 只连"已经在跑"的 daemon, 不负责安装/启动; 只要本机 daemon 在跑, 远端就能连。
-relay/扫码配对是另一回事: paseo daemon pair。
+The GUI/SSH transport only connects to a daemon that is already running; it does
+not install or start one. As long as the local daemon runs, remote connects work.
+Relay/QR pairing is a separate thing: paseo daemon pair.
 EOF
 }
 
@@ -227,52 +253,54 @@ while [[ $# -gt 0 ]]; do
     --no-systemd) DO_SYSTEMD=0; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
     -h|--help) usage 0 ;;
-    *) echo "未知选项: $1" >&2; usage 1 ;;
+    *) echo "unknown option: $1" >&2; usage 1 ;;
   esac
 done
 
-# ---- dry-run: 只打印, 不落盘/不启动 ----
+# ---- dry-run: print only; write nothing, start nothing ----
 if [[ "$DRY_RUN" -eq 1 ]]; then
+  if [[ "$DO_SYSTEMD" -eq 1 ]]; then
+    sync_login_env
+  else
+    echo "skipping login-shell sniff (--no-systemd inherits this terminal)"
+  fi
   PASEO_BIN="$(resolve_bin paseo 2>/dev/null || true)"
   if [[ -z "$PASEO_BIN" ]]; then
-    echo "计划执行: npm install -g @getpaseo/cli"
-    echo "(paseo 装好后再次 --dry-run 可预览 unit 内容)"
+    echo "planned: npm install -g @getpaseo/cli"
+    echo "(run --dry-run again once paseo is installed to preview the unit)"
     exit 0
   fi
-  NODE_BIN="$(resolve_bin node)"
-  ENV_PATH="$(dirname "$NODE_BIN"):$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/bin"
   echo "paseo (real): $PASEO_BIN"
-  echo "node dir    : $(dirname "$NODE_BIN")"
   if [[ "$DO_SYSTEMD" -eq 1 ]]; then
-    echo "unit 路径    : $UNIT_PATH"
+    echo "unit path : $UNIT_PATH"
     echo "---- unit ----"
     unit_body
-    echo "---- 将执行 ----"
+    echo "---- planned commands ----"
     echo "systemctl --user daemon-reload"
     echo "systemctl --user enable --now $UNIT_NAME"
     echo "loginctl enable-linger \"$USER\""
   else
-    echo "将执行: $PASEO_BIN daemon start && $PASEO_BIN daemon status"
+    echo "planned: $PASEO_BIN daemon start && $PASEO_BIN daemon status"
   fi
   exit 0
 fi
 
-# ---- 正式流程 ----
-ensure_nvm || die "node/npm 不在 PATH(本脚本尝试过 source \$NVM_DIR/nvm.sh)。请先: source ~/.nvm/nvm.sh"
+# ---- real flow ----
+ensure_nvm || die "node/npm not on PATH (this script tried sourcing \$NVM_DIR/nvm.sh). First: source ~/.nvm/nvm.sh"
 
 if resolve_bin paseo >/dev/null 2>&1; then
-  step "paseo 已安装: $(command -v paseo)"
+  step "paseo already installed: $(command -v paseo)"
 elif [[ "$DO_INSTALL" -eq 0 ]]; then
-  die "--no-install 但 paseo 不在 PATH"
+  die "--no-install given but paseo is not on PATH"
 else
   install_cli
 fi
 
-PASEO_BIN="$(resolve_bin paseo)" || die "找不到 paseo 可执行文件"
-NODE_BIN="$(resolve_bin node)"
-ENV_PATH="$(dirname "$NODE_BIN"):$HOME/.local/bin:$HOME/bin:/usr/local/bin:/usr/bin:/bin"
+PASEO_BIN="$(resolve_bin paseo)" || die "cannot find the paseo executable"
 
 if [[ "$DO_SYSTEMD" -eq 1 ]]; then
+  step "Sniffing the login shell; writing environment.d"
+  sync_login_env
   systemd_install
   enable_linger
   verify
