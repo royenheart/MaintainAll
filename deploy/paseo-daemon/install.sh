@@ -114,6 +114,9 @@ wait_port_closed() {  # $1 = max seconds to wait
 # and does not expand $PATH. The login-shell environment is written to
 # ~/.config/environment.d/60-paseo.conf by sync_login_env.py; after
 # daemon-reload the user manager hands it to user services started afterwards.
+# daemon-reload alone does NOT refresh variables the manager already holds
+# (PATH is pinned when the user manager starts, long before this file exists),
+# so systemd_install also pushes the probed PATH via set-environment.
 # `paseo daemon run` keeps the daemon in the foreground (CLI >= 0.9.2; the old
 # `--foreground` flag of `daemon start` was removed).
 unit_body() {
@@ -174,6 +177,29 @@ run_systemctl() {
     || die "systemctl --user failed ($*): run this script from a real login session (a normal SSH/desktop terminal, not an environment without a user bus)."
 }
 
+# daemon-reload re-runs the environment generators but does not override
+# variables the user manager already holds; PATH in practice is pinned when
+# the user manager starts (at boot/login), long before 60-paseo.conf exists.
+# Push the freshly probed PATH into the manager so this and later services
+# actually get it. Non-fatal: without it services keep the stale manager PATH.
+push_manager_path() {
+  step "Refreshing the user manager PATH from the login shell"
+  local probed
+  if ! probed="$(python3 "$SCRIPT_DIR/sync_login_env.py" --emit-env PATH 2>/dev/null)"; then
+    warn "login-shell PATH probe failed; leaving the user manager PATH untouched"
+    return 0
+  fi
+  if [[ -z "$probed" ]]; then
+    warn "login-shell PATH probe returned empty; leaving the user manager PATH untouched"
+    return 0
+  fi
+  if systemctl --user set-environment "PATH=$probed" 2>/dev/null; then
+    ok "user manager PATH refreshed"
+  else
+    warn "systemctl --user set-environment PATH failed; services may keep a stale PATH"
+  fi
+}
+
 systemd_install() {
   step "Generate $UNIT_PATH"
   mkdir -p "$UNIT_DIR"
@@ -182,6 +208,7 @@ systemd_install() {
 
   step "systemctl --user daemon-reload"
   run_systemctl daemon-reload
+  push_manager_path
 
   if systemctl --user is-active --quiet "$UNIT_NAME" 2>/dev/null; then
     step "paseo.service is active -> restart"
@@ -277,6 +304,12 @@ if [[ "$DRY_RUN" -eq 1 ]]; then
     unit_body
     echo "---- planned commands ----"
     echo "systemctl --user daemon-reload"
+    probed_path="$(python3 "$SCRIPT_DIR/sync_login_env.py" --emit-env PATH 2>/dev/null)" || probed_path=""
+    if [[ -n "$probed_path" ]]; then
+      echo "systemctl --user set-environment PATH=$probed_path"
+    else
+      echo "systemctl --user set-environment PATH=<probe failed; will be skipped at runtime>"
+    fi
     echo "systemctl --user enable --now $UNIT_NAME"
     echo "loginctl enable-linger \"$USER\""
   else

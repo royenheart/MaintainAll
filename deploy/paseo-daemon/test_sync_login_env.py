@@ -1,3 +1,5 @@
+import contextlib
+import io
 import os
 import stat
 import subprocess
@@ -82,6 +84,54 @@ class ProbeTest(unittest.TestCase):
             self.assertEqual(env["PATH"], raw)
             self.assertEqual(env["NVM_DIR"], "/nvm")
             self.assertNotIn("DISPLAY", env)
+
+
+class EmitEnvTest(unittest.TestCase):
+    def test_emit_env_prints_raw_value_and_writes_nothing(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            node = Path(raw) / "node"
+            node.write_text("#!/bin/sh\n", encoding="utf-8")
+            node.chmod(0o755)
+
+            def runner(argv: list[str], timeout: float) -> subprocess.CompletedProcess[bytes]:
+                del argv, timeout
+                return subprocess.CompletedProcess(
+                    args=[],
+                    returncode=0,
+                    stdout=f"PATH={raw}\0HOME=/h\0".encode(),
+                    stderr=b"",
+                )
+
+            original = sync.default_runner
+            sync.default_runner = runner
+            try:
+                dest = Path(raw) / "environment.d" / "60-paseo.conf"
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    rc = sync.main(["--emit-env", "PATH", "--dest", str(dest)])
+                self.assertEqual(rc, 0)
+                self.assertEqual(buf.getvalue().strip(), raw)
+                self.assertFalse(dest.exists())
+            finally:
+                sync.default_runner = original
+
+    def test_emit_env_fails_when_key_is_missing(self) -> None:
+        def runner(argv: list[str], timeout: float) -> subprocess.CompletedProcess[bytes]:
+            del argv, timeout
+            return subprocess.CompletedProcess(args=[], returncode=0, stdout=b"HOME=/h\0", stderr=b"")
+
+        original = sync.default_runner
+        sync.default_runner = runner
+        try:
+            with tempfile.TemporaryDirectory() as raw:
+                dest = Path(raw) / "environment.d" / "60-paseo.conf"
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    rc = sync.main(["--emit-env", "PATH", "--dest", str(dest)])
+                self.assertEqual(rc, 1)
+                self.assertEqual(buf.getvalue(), "")
+        finally:
+            sync.default_runner = original
 
 
 if __name__ == "__main__":

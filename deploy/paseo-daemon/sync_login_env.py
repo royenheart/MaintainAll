@@ -170,9 +170,11 @@ def probe_login_env(
     shell: str,
     home: str,
     user: str,
-    runner: Runner = default_runner,
+    runner: Runner | None = None,
     timeout: float = PROBE_TIMEOUT_SEC,
 ) -> dict[str, str]:
+    if runner is None:
+        runner = default_runner
     argv = [
         "env",
         "-i",
@@ -226,6 +228,24 @@ def sync(*, dest: Path, dry_run: bool) -> int:
     return 0
 
 
+def emit_env(*, key: str) -> int:
+    """Probe the login shell and print the raw value of one variable.
+
+    Writes nothing. Used by install.sh to push the probed PATH into the
+    user manager, because daemon-reload does not override variables the
+    manager already holds.
+    """
+    home = str(Path.home())
+    user = os.environ.get("USER") or pwd.getpwuid(os.getuid()).pw_name
+    shell = login_shell()
+    env = probe_login_env(shell=shell, home=home, user=user)
+    if key not in env:
+        print(f"error: {key} not found in the login-shell environment", file=sys.stderr)
+        return 1
+    print(env[key])
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument(
@@ -235,7 +255,19 @@ def main(argv: Sequence[str] | None = None) -> int:
         help=f"output file (default: ~/.config/environment.d/{ENV_FILE_NAME})",
     )
     parser.add_argument("--dry-run", action="store_true", help="probe and print key names only")
+    parser.add_argument(
+        "--emit-env",
+        metavar="NAME",
+        default=None,
+        help="probe and print the raw value of NAME (writes nothing)",
+    )
     args = parser.parse_args(argv)
+    if args.emit_env is not None:
+        try:
+            return emit_env(key=args.emit_env)
+        except ProbeError as error:
+            print(f"error: {error}", file=sys.stderr)
+            return 1
     dest = args.dest if args.dest is not None else default_dest()
     try:
         return sync(dest=dest, dry_run=args.dry_run)

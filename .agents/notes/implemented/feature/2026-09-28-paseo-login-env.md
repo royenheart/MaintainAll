@@ -16,7 +16,7 @@ Keep the installer in user config only. On each systemd install:
 - If `60-paseo.conf` already exists, copy it to `60-paseo.conf.bak` (not a `.conf`, so the generator ignores it), then atomically replace the file mode `0600`.
 - Generate the unit without `Environment=PATH`. `ExecStart` stays an absolute `paseo` path. Refuse to rewrite the unit when the probed `PATH` has no `node`, because the `paseo` shebang is `/usr/bin/env node`.
 
-`daemon-reload` re-runs the user environment generators, so services started afterwards inherit the snapshot. Already-running processes do not.
+`daemon-reload` re-runs the user environment generators, so services started afterwards inherit the snapshot — with one exception: it does not override variables the user manager already holds, and `PATH` is pinned when the user manager starts (at boot/login), long before `60-paseo.conf` exists. The installer therefore pushes the freshly probed PATH into the manager explicitly (`systemctl --user set-environment PATH=…`, via `sync_login_env.py --emit-env PATH`) right after `daemon-reload`. Already-running processes are not affected.
 
 ## Alternatives considered
 
@@ -27,4 +27,4 @@ Keep the installer in user config only. On each systemd install:
 
 ## Consequences
 
-The snapshot applies to every user service started after `daemon-reload`, not only `paseo.service`. Secrets exported by the login shell are stored in `60-paseo.conf` and are visible through `systemctl --user show-environment`. Refreshing the shell means re-running `install.sh`, which restarts the daemon when the unit is already active. `--no-systemd` does not probe; a detached `paseo daemon start` keeps inheriting the terminal that launched it.
+The snapshot applies to every user service started after `daemon-reload`, not only `paseo.service`. Secrets exported by the login shell are stored in `60-paseo.conf` and are visible through `systemctl --user show-environment`. Refreshing the shell means re-running `install.sh`, which restarts the daemon when the unit is already active; the PATH half of the refresh is the explicit `set-environment` push, so a stale manager PATH cannot silently survive a re-install. `--no-systemd` does not probe; a detached `paseo daemon start` keeps inheriting the terminal that launched it.
