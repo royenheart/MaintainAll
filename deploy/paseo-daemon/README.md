@@ -35,6 +35,60 @@ machine (ASUS / `RoyenHeartAsus`, bash login shell, node via nvm v24.14.0).
 > tears down the cgroup, killing the daemon. Foreground mode under systemd is
 > exactly what `paseo daemon run` is for.
 
+## Supervisor auto-refresh on update
+
+The daemon is two processes: a **supervisor** (a tiny long-lived launcher
+that owns `paseo.pid` and respawns the worker) and a **worker** (the real
+daemon). Updating the npm package — from the GUI or
+`npm install -g @getpaseo/cli` — only replaces the worker; the supervisor
+keeps running its original in-memory code ("The running supervisor retains
+its original code. Its launcher must stop and start it to refresh the
+supervisor."). Only a full restart of `paseo.service` refreshes it.
+
+`install.sh` therefore also generates and enables a watcher pair:
+
+| Unit | Role |
+| --- | --- |
+| `paseo-supervisor-refresh.path` | `PathModified` on the installed `@getpaseo` npm scope directory; fires whenever an install/update rewrites the package |
+| `paseo-supervisor-refresh.service` | oneshot: runs `supervisor_refresh.py`, which restarts `paseo.service` only when safe |
+
+`supervisor_refresh.py` guards, in order:
+
+1. `paseo.service` must be active — a stopped daemon is never started.
+2. The installed package must be newer than the running supervisor process
+   (newest `package.json` mtime under the `@getpaseo` scope vs. the
+   supervisor's start time from `/proc/<pid>/stat` field 22 plus `/proc/stat`
+   `btime`), so unrelated touches and reinstalls that predate the supervisor
+   are no-ops.
+3. The daemon must be **quiescent** — no `npm install` inside the service
+   cgroup (the GUI "update daemon" flow runs its install there) and a worker
+   that has been up for at least a minute (the update flow restarts the
+   worker right after installing; restarting the service inside either
+   window breaks the update). The watcher waits, bounded (20 minutes; the
+   oneshot unit gets a matching `TimeoutStartSec=1500`), then proceeds, so a
+   successful self-update still ends with a refreshed supervisor.
+4. No agent may be `running` or `initializing` — restarting the daemon
+   kills the worker and its child agent processes. When the agent list
+   cannot be fetched, the refresh is skipped too; the next package change
+   retries. Idle agents do not block the restart; their sessions are
+   terminated and can be resumed afterwards.
+
+The installer also runs the guarded check once at install time — `PathModified`
+only reports changes that happen after the watcher exists, so an update that
+predates the watcher would otherwise sit unrefreshed — and retires (stops,
+disables, removes) a watcher from an earlier installation when it can no
+longer derive the package scope, instead of leaving it pointed at an old path.
+
+Trigger a check manually at any time:
+
+```bash
+systemctl --user start paseo-supervisor-refresh.service   # safe: skips busy agents
+journalctl --user -u paseo-supervisor-refresh.service -n 5
+```
+
+The watched path is pinned at install time to the resolved nvm path;
+after switching/upgrading node versions, re-run `./install.sh`.
+
 ## Quick start (one shot)
 
 ```bash
@@ -48,10 +102,11 @@ The script is idempotent; each run does, in order:
 | --- | --- | --- |
 | 1 | `npm install -g @getpaseo/cli` | Only when `paseo` is not on PATH |
 | 2 | `sync_login_env.py` | Runs a clean login shell once and writes its environment to `~/.config/environment.d/60-paseo.conf` (an existing file is first copied to `60-paseo.conf.bak`) |
-| 3 | Generate `~/.config/systemd/user/paseo.service` | `ExecStart` uses the resolved real absolute path (nvm symlinks are expanded with `readlink -f`); the unit sets no `PATH` |
-| 4 | `systemctl --user daemon-reload && systemctl --user enable --now paseo.service` | `daemon-reload` makes the user manager re-export `environment.d`. If an old detached instance is detected it is stopped first with `paseo daemon stop` so it cannot hold 6767 |
-| 5 | `loginctl enable-linger "$USER"` | Skipped when already enabled |
-| 6 | Readiness probe + `paseo daemon status` | Verifies 6767 is listening / `localDaemon: running` |
+| 3 | Generate `~/.config/systemd/user/paseo.service` | `ExecStart` uses the resolved real absolute path (nvm symlinks are expanded with `readlink -f`); the unit sets no `PATH`. Re-runs leave an active daemon running when the unit is unchanged |
+| 4 | Generate the supervisor-refresh units + `systemctl --user daemon-reload` + `enable --now paseo-supervisor-refresh.path` | See [Supervisor auto-refresh on update](#supervisor-auto-refresh-on-update); skipped when the `@getpaseo` scope cannot be derived from the resolved binary |
+| 5 | `systemctl --user enable --now paseo.service` (when not active) | If an old detached instance is detected it is stopped first with `paseo daemon stop` so it cannot hold 6767 |
+| 6 | `loginctl enable-linger "$USER"` | Skipped when already enabled |
+| 7 | Readiness probe + `paseo daemon status` | Verifies 6767 is listening / `localDaemon: running` |
 
 ## Verify
 
@@ -68,12 +123,16 @@ Remote/SSH to this machine should no longer report connection/socket errors.
 
 ```bash
 systemctl --user restart paseo.service        # restart
+systemctl --user start paseo-supervisor-refresh.service  # supervisor refresh check (skips busy agents)
 journalctl --user -u paseo.service -f         # systemd journal
 tail -f ~/.paseo/daemon.log                   # daemon log
 
 # Uninstall
 systemctl --user disable --now paseo.service
+systemctl --user disable --now paseo-supervisor-refresh.path
 rm -f ~/.config/systemd/user/paseo.service
+rm -f ~/.config/systemd/user/paseo-supervisor-refresh.path
+rm -f ~/.config/systemd/user/paseo-supervisor-refresh.service
 rm -f ~/.config/environment.d/60-paseo.conf
 systemctl --user daemon-reload
 # (optional) npm uninstall -g @getpaseo/cli
@@ -85,7 +144,7 @@ systemctl --user daemon-reload
 ./install.sh --no-systemd   # only step 1 + `paseo daemon start` (detached; no boot autostart)
 ./install.sh --no-install   # skip npm install (paseo must already be on PATH)
 ./install.sh --dry-run      # sniff and print the generated unit / commands; write nothing, start nothing
-python3 -m unittest test_sync_login_env.py   # in this directory; no real login shell is run
+python3 -m unittest test_sync_login_env test_supervisor_refresh test_install_sh   # in this directory; synthetic inputs only, no real login shell or daemon is touched
 ```
 
 ## Notes
@@ -95,19 +154,45 @@ python3 -m unittest test_sync_login_env.py   # in this directory; no real login 
   `paseo.service` in this directory is only an example). `PATH` is not written
   into the unit: `Environment=PATH=...` would replace the user manager's whole
   `PATH`, and `$PATH` is not expanded in a unit.
-- **Login-shell snapshot.** `sync_login_env.py` runs
-  `env -i $SHELL --login -c 'env -0'` and writes the result to
-  `~/.config/environment.d/60-paseo.conf` (mode `0600`). An existing file is
-  first copied to `60-paseo.conf.bak` (not a `.conf`, so systemd ignores it).
-  After `daemon-reload`, **every user service started afterwards** inherits
-  this snapshot, not only `paseo.service`. Already-running processes are not
+- **Login-shell snapshot.** `sync_login_env.py` probes the configured login
+  shell with a clean environment (`env -i $SHELL -l -c 'env -0'`; the short
+  `-l` because ksh/mksh lack `--login`) and writes the result to
+  `~/.config/environment.d/60-paseo.conf` (mode `0600`). A plain
+  non-interactive login shell stops at the `case $- in *i*)` guard at the
+  top of `~/.bashrc` (Debian/Ubuntu dotfiles source it from `~/.profile`, and
+  custom `~/.bash_profile` files may not source it at all), so everything
+  exported there — nvm, PATH additions, API tokens — would stay invisible.
+  Three probes therefore run, each in its own shell so one failing rc cannot
+  take down the others: login non-interactive (the base; its failure is a
+  hard error), non-login interactive, and login interactive (which wins on
+  conflicts). The probes use `TERM=xterm` (some rc files return early on
+  `TERM=dumb`) and `HISTFILE=/dev/null` (an interactive probe must never
+  touch the real shell history). An existing file is first copied to
+  `60-paseo.conf.bak` (not a `.conf`, so systemd ignores it). After
+  `daemon-reload`, **every user service started afterwards** inherits this
+  snapshot, not only `paseo.service`. Already-running processes are not
   affected. Re-run `./install.sh` after changing `~/.bashrc` /
-  `~/.bash_profile` to refresh the snapshot. One caveat: `daemon-reload` does
-  **not** override variables the user manager already holds — `PATH` is
+  `~/.bash_profile` to refresh the snapshot. One caveat: `daemon-reload`
+  does **not** override variables the user manager already holds — `PATH` is
   pinned when the user manager starts (at boot/login), long before this file
   exists. The installer therefore pushes the freshly probed PATH into the
   manager itself with `systemctl --user set-environment PATH=…` after the
   reload; without that step, services keep the stale manager PATH.
+- **The install-time toolchain is pinned onto PATH.** `install.sh` passes
+  the bin directories of the resolved `paseo` and `node` (for example
+  `~/.nvm/versions/node/<ver>/bin`) to `sync_login_env.py
+  --ensure-path-dir`, and the snapshot prepends them when missing. Without
+  this, a host whose login shell sees a different node first (a system node
+  in `/usr/bin` while paseo lives under nvm) runs the daemon with the wrong
+  npm, and the daemon's self-update fails with "@getpaseo/cli is not
+  installed with npm -g on this host" — its `npm -g ls @getpaseo/cli` then
+  probes the global prefix of the wrong npm, which does not own the
+  install. Re-run `./install.sh` after switching node versions so the
+  snapshot tracks the new toolchain. The installer also *discovers* paseo
+  when it is not on PATH at all — installed under an nvm version that is not
+  the nvm default, or shadowed by a system node — by scanning the nvm
+  versions directory, and deploys with the newest toolchain that provides
+  it.
 - **The snapshot contains secrets exported by the shell.** A login shell
   sources `~/.bash_profile` (which on this machine sources `~/.bashrc`), so any
   token `export`ed there lands in `60-paseo.conf` and is visible via

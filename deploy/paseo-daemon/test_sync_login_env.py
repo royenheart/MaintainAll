@@ -69,9 +69,12 @@ class ProbeTest(unittest.TestCase):
 
             def runner(argv: list[str], timeout: float) -> subprocess.CompletedProcess[bytes]:
                 del timeout
-                self.assertIn("--login", argv)
-                self.assertEqual(argv[0], "env")
+                self.assertIn("-l", argv)  # short flag: ksh/mksh lack --login
+                self.assertNotIn("--login", argv)
                 self.assertIn("PATH=/usr/bin:/bin", argv)
+                self.assertIn("TERM=xterm", argv)
+                self.assertIn("HISTFILE=/dev/null", argv)
+                self.assertIn("env", argv[0])
                 stdout = f"PATH={raw}\0DISPLAY=:1\0NVM_DIR=/nvm\0".encode()
                 return subprocess.CompletedProcess(args=[], returncode=0, stdout=stdout, stderr=b"")
 
@@ -132,6 +135,266 @@ class EmitEnvTest(unittest.TestCase):
                 self.assertEqual(buf.getvalue(), "")
         finally:
             sync.default_runner = original
+
+
+class MergePathTest(unittest.TestCase):
+    def test_prepends_missing_dirs_and_deduplicates(self) -> None:
+        # Extra dirs keep their relative order and claim their slots up
+        # front; entries already in the probe move up, not duplicate.
+        merged = sync.merge_path(
+            "/home/u/.local/bin:/usr/local/bin:/usr/bin",
+            ["/nvm/bin", "/usr/bin", "/nvm/bin"],
+        )
+        self.assertEqual(merged, "/nvm/bin:/usr/bin:/home/u/.local/bin:/usr/local/bin")
+
+    def test_preserves_probe_order_and_drops_empty_entries(self) -> None:
+        merged = sync.merge_path("/a::/b:", [])
+        self.assertEqual(merged, "/a:/b")
+        merged = sync.merge_path("", ["/x", "", "/x", "/y"])
+        self.assertEqual(merged, "/x:/y")
+
+    def test_existing_front_entry_stays_put(self) -> None:
+        # When the toolchain dir is already first, the PATH must not change.
+        merged = sync.merge_path("/nvm/bin:/usr/bin", ["/nvm/bin"])
+        self.assertEqual(merged, "/nvm/bin:/usr/bin")
+
+
+class EnsurePathDirTest(unittest.TestCase):
+    """Regression for the daemon self-update failure on hosts where the
+    login-shell probe sees a different node than the install (e.g. a system
+    node in /usr/bin while paseo lives under nvm): the snapshot PATH must
+    pin the install-time toolchain dirs, so `npm -g ls @getpaseo/cli` in the
+    daemon resolves the owning prefix."""
+
+    def make_toolchain(self, raw: str) -> Path:
+        toolchain = Path(raw) / "toolchain" / "bin"
+        toolchain.mkdir(parents=True)
+        for name in ("node", "npm", "paseo"):
+            shim = toolchain / name
+            shim.write_text("#!/bin/sh\n", encoding="utf-8")
+            shim.chmod(0o755)
+        return toolchain
+
+    def probe_runner(self, probed_path: str):
+        def runner(argv: list[str], timeout: float) -> subprocess.CompletedProcess[bytes]:
+            del argv, timeout
+            stdout = f"PATH={probed_path}\0HOME=/home/u\0".encode()
+            return subprocess.CompletedProcess(args=[], returncode=0, stdout=stdout, stderr=b"")
+
+        return runner
+
+    def test_ensure_dirs_are_prepended_even_when_probe_has_system_node(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            toolchain = self.make_toolchain(raw)
+            env = sync.probe_login_env(
+                shell="/bin/bash",
+                home="/home/u",
+                user="u",
+                ensure_dirs=[str(toolchain)],
+                runner=self.probe_runner("/usr/local/bin:/usr/bin"),
+            )
+            self.assertTrue(env["PATH"].startswith(str(toolchain) + ":"))
+            self.assertTrue(env["PATH"].endswith("/usr/local/bin:/usr/bin"))
+
+    def test_node_guard_passes_via_ensure_dirs_when_probe_lacks_node(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            toolchain = self.make_toolchain(raw)
+            env = sync.probe_login_env(
+                shell="/bin/bash",
+                home="/home/u",
+                user="u",
+                ensure_dirs=[str(toolchain)],
+                runner=self.probe_runner("/home/u/.local/bin:/usr/bin"),
+            )
+            self.assertTrue(env["PATH"].startswith(str(toolchain) + ":"))
+
+    def test_ensure_dirs_apply_to_emit_env(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            toolchain = self.make_toolchain(raw)
+            original = sync.default_runner
+            sync.default_runner = self.probe_runner("/usr/bin")
+            try:
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    rc = sync.main(
+                        ["--emit-env", "PATH", "--ensure-path-dir", str(toolchain), "--dest", "/nonexistent"]
+                    )
+                self.assertEqual(rc, 0)
+                self.assertEqual(buf.getvalue().strip(), f"{toolchain}:/usr/bin")
+            finally:
+                sync.default_runner = original
+
+
+class ServiceEnvProbeTest(unittest.TestCase):
+    """The interactive login probe must fill in what the plain login probe
+    misses behind ~/.bashrc's interactive guard (the sparse-snapshot case on
+    hosts with Debian-style dotfiles)."""
+
+    def make_toolchain(self, raw: str) -> Path:
+        toolchain = Path(raw) / "nvm-bin"
+        toolchain.mkdir(parents=True)
+        node = toolchain / "node"
+        node.write_text("#!/bin/sh\n", encoding="utf-8")
+        node.chmod(0o755)
+        return toolchain
+
+    def dual_runner(self, base_env: dict[str, str], inter_env: dict[str, str] | None):
+        def runner(argv: list[str], timeout: float) -> subprocess.CompletedProcess[bytes]:
+            del timeout
+            payload = inter_env if ("-i" in argv and inter_env is not None) else base_env
+            if payload is None:
+                return subprocess.CompletedProcess(args=[], returncode=1, stdout=b"", stderr=b"boom")
+            blob = "".join(f"{k}={v}\0" for k, v in payload.items()).encode()
+            return subprocess.CompletedProcess(args=[], returncode=0, stdout=blob, stderr=b"")
+
+        return runner
+
+    def test_interactive_probe_fills_guarded_exports_and_wins(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            toolchain = self.make_toolchain(raw)
+            base = {"PATH": "/home/u/.local/bin:/usr/bin", "HOME": "/home/u"}
+            inter = {
+                "PATH": f"{toolchain}:/home/u/.local/bin:/usr/bin",
+                "NVM_DIR": "/home/u/.nvm",
+                "HF_ENDPOINT": "https://hf.example",
+                "XAUTHORITY": "/tmp/should-be-dropped",
+            }
+            env = sync.probe_service_env(
+                shell="/bin/bash",
+                home="/home/u",
+                user="u",
+                runner=self.dual_runner(base, inter),
+            )
+            self.assertEqual(env["PATH"].split(":")[0], str(toolchain))
+            self.assertEqual(env["NVM_DIR"], "/home/u/.nvm")
+            self.assertEqual(env["HF_ENDPOINT"], "https://hf.example")
+            self.assertNotIn("XAUTHORITY", env)
+
+    def test_falls_back_to_plain_probe_when_interactive_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            toolchain = self.make_toolchain(raw)
+            base = {"PATH": "/usr/bin", "HOME": "/home/u"}
+            env = sync.probe_service_env(
+                shell="/bin/bash",
+                home="/home/u",
+                user="u",
+                ensure_dirs=[str(toolchain)],
+                runner=self.dual_runner(base, None),
+            )
+            self.assertEqual(env["PATH"], f"{toolchain}:/usr/bin")
+
+    def test_raises_when_neither_probe_has_node(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = {"PATH": "/home/u/.local/bin", "HOME": "/home/u"}
+            with self.assertRaises(sync.ProbeError):
+                sync.probe_service_env(
+                    shell="/bin/bash",
+                    home="/home/u",
+                    user="u",
+                    runner=self.dual_runner(base, dict(base)),
+                )
+
+    def test_login_interactive_wins_over_non_login_interactive(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            toolchain = self.make_toolchain(raw)
+            path = f"{toolchain}:/usr/bin"
+            base = {"PATH": path, "HOME": "/home/u", "K": "base"}
+            non_login = {"PATH": path, "K": "nonlogin"}
+            login = {"PATH": path, "K": "login"}
+
+            def runner(argv: list[str], timeout: float) -> subprocess.CompletedProcess[bytes]:
+                del timeout
+                if "-i" not in argv:
+                    payload = base
+                elif "-l" in argv:
+                    payload = login
+                else:
+                    payload = non_login
+                blob = "".join(f"{k}={v}\0" for k, v in payload.items()).encode()
+                return subprocess.CompletedProcess(args=[], returncode=0, stdout=blob, stderr=b"")
+
+            env = sync.probe_service_env(shell="/bin/bash", home="/home/u", user="u", runner=runner)
+            self.assertEqual(env["K"], "login")
+
+    def test_base_without_node_does_not_fail_when_interactive_has_it(self) -> None:
+        # The whole point of the interactive probes: the plain login probe can
+        # lack node (nvm lives behind the bashrc guard) while the interactive
+        # probes supply it. The node guard must run on the merged PATH only.
+        with tempfile.TemporaryDirectory() as raw:
+            toolchain = self.make_toolchain(raw)
+            base = {"PATH": "/home/u/.local/bin", "HOME": "/home/u"}
+            inter = {"PATH": f"{toolchain}:/usr/bin", "NVM_DIR": "/home/u/.nvm"}
+
+            def runner(argv: list[str], timeout: float) -> subprocess.CompletedProcess[bytes]:
+                del timeout
+                payload = base if "-i" not in argv else inter
+                blob = "".join(f"{k}={v}\0" for k, v in payload.items()).encode()
+                return subprocess.CompletedProcess(args=[], returncode=0, stdout=blob, stderr=b"")
+
+            env = sync.probe_service_env(shell="/bin/bash", home="/home/u", user="u", runner=runner)
+            self.assertTrue(env["PATH"].startswith(str(toolchain)))
+            self.assertEqual(env["NVM_DIR"], "/home/u/.nvm")
+
+
+class FakeShellProbeTest(unittest.TestCase):
+    """End-to-end through the real subprocess: the fake shell plays the
+    role of bash, including the ~/.bashrc interactive guard, so no real
+    dotfiles or toolchains are involved."""
+
+    FAKE_SHELL = """#!/bin/sh
+printf '%s\\n' "$*" >> {log}
+out='PATH={toolchain_bin}:/usr/bin:/bin\\0HOME=/home/u\\0BASE_EXPORT=1\\0'
+case " $* " in
+  *" -l "*) out="$out"'LOGIN_SEEN=1\\0' ;;
+esac
+case " $* " in
+  *" -i "*) out="$out"'GUARDED_EXPORT=visible\\0' ;;
+esac
+printf '%b' "$out"
+"""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.log = self.root / "argv.log"
+        toolchain_bin = self.root / "toolchain" / "bin"
+        toolchain_bin.mkdir(parents=True)
+        node = toolchain_bin / "node"
+        node.write_text("#!/bin/sh\n", encoding="utf-8")
+        node.chmod(0o755)
+        shell = self.root / "fake-shell"
+        shell.write_text(self.FAKE_SHELL.format(log=self.log, toolchain_bin=toolchain_bin), encoding="utf-8")
+        shell.chmod(0o755)
+        self.shell = shell
+
+    def tearDown(self) -> None:
+        self.tmp.cleanup()
+
+    def test_three_probes_hit_the_fake_shell_and_bypass_the_guard(self) -> None:
+        env = sync.probe_service_env(shell=str(self.shell), home="/home/u", user="u")
+        self.assertEqual(env["BASE_EXPORT"], "1")
+        self.assertEqual(env["LOGIN_SEEN"], "1")
+        self.assertEqual(env["GUARDED_EXPORT"], "visible")
+
+        calls = self.log.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(calls), 3)
+        self.assertIn("-l -c env -0", calls)
+        self.assertIn("-i -c env -0", calls)
+        self.assertIn("-l -i -c env -0", calls)
+        self.assertFalse(any("--login" in call for call in calls))
+
+    def test_soft_probe_failure_falls_back(self) -> None:
+        toolchain_bin = self.root / "toolchain" / "bin"
+        guarded = self.root / "guarded-shell"
+        guarded.write_text(
+            "#!/bin/sh\n"
+            "case \" $* \" in *\" -i \"*) exit 1;; esac\n"
+            f"printf 'PATH={toolchain_bin}:/usr/bin:/bin\\0HOME=/home/u\\0BASE_EXPORT=1\\0'\n",
+            encoding="utf-8",
+        )
+        guarded.chmod(0o755)
+        env = sync.probe_service_env(shell=str(guarded), home="/home/u", user="u")
+        self.assertEqual(env["BASE_EXPORT"], "1")
 
 
 if __name__ == "__main__":
