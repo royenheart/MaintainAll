@@ -316,6 +316,25 @@ class ServiceEnvProbeTest(unittest.TestCase):
             env = sync.probe_service_env(shell="/bin/bash", home="/home/u", user="u", runner=runner)
             self.assertEqual(env["K"], "login")
 
+    def test_base_without_node_does_not_fail_when_interactive_has_it(self) -> None:
+        # The whole point of the interactive probes: the plain login probe can
+        # lack node (nvm lives behind the bashrc guard) while the interactive
+        # probes supply it. The node guard must run on the merged PATH only.
+        with tempfile.TemporaryDirectory() as raw:
+            toolchain = self.make_toolchain(raw)
+            base = {"PATH": "/home/u/.local/bin", "HOME": "/home/u"}
+            inter = {"PATH": f"{toolchain}:/usr/bin", "NVM_DIR": "/home/u/.nvm"}
+
+            def runner(argv: list[str], timeout: float) -> subprocess.CompletedProcess[bytes]:
+                del timeout
+                payload = base if "-i" not in argv else inter
+                blob = "".join(f"{k}={v}\0" for k, v in payload.items()).encode()
+                return subprocess.CompletedProcess(args=[], returncode=0, stdout=blob, stderr=b"")
+
+            env = sync.probe_service_env(shell="/bin/bash", home="/home/u", user="u", runner=runner)
+            self.assertTrue(env["PATH"].startswith(str(toolchain)))
+            self.assertEqual(env["NVM_DIR"], "/home/u/.nvm")
+
 
 class FakeShellProbeTest(unittest.TestCase):
     """End-to-end through the real subprocess: the fake shell plays the

@@ -57,20 +57,27 @@ supervisor."). Only a full restart of `paseo.service` refreshes it.
 1. `paseo.service` must be active — a stopped daemon is never started.
 2. The installed package must be newer than the running supervisor process
    (newest `package.json` mtime under the `@getpaseo` scope vs. the
-   supervisor's `/proc` start time), so unrelated touches and reinstalls
-   that predate the supervisor are no-ops.
+   supervisor's start time from `/proc/<pid>/stat` field 22 plus `/proc/stat`
+   `btime`), so unrelated touches and reinstalls that predate the supervisor
+   are no-ops.
 3. The daemon must be **quiescent** — no `npm install` inside the service
    cgroup (the GUI "update daemon" flow runs its install there) and a worker
    that has been up for at least a minute (the update flow restarts the
    worker right after installing; restarting the service inside either
    window breaks the update). The watcher waits, bounded (20 minutes; the
-   oneshot unit gets a matching `TimeoutStartSec`), then proceeds, so a
+   oneshot unit gets a matching `TimeoutStartSec=1500`), then proceeds, so a
    successful self-update still ends with a refreshed supervisor.
 4. No agent may be `running` or `initializing` — restarting the daemon
    kills the worker and its child agent processes. When the agent list
    cannot be fetched, the refresh is skipped too; the next package change
    retries. Idle agents do not block the restart; their sessions are
    terminated and can be resumed afterwards.
+
+The installer also runs the guarded check once at install time — `PathModified`
+only reports changes that happen after the watcher exists, so an update that
+predates the watcher would otherwise sit unrefreshed — and retires (stops,
+disables, removes) a watcher from an earlier installation when it can no
+longer derive the package scope, instead of leaving it pointed at an old path.
 
 Trigger a check manually at any time:
 

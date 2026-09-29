@@ -195,6 +195,7 @@ def probe_login_env(
     ensure_dirs: Sequence[str] = (),
     login: bool = True,
     interactive: bool = False,
+    require_node: bool = True,
     runner: Runner | None = None,
     timeout: float = PROBE_TIMEOUT_SEC,
 ) -> dict[str, str]:
@@ -205,6 +206,10 @@ def probe_login_env(
     ``case $- in *i*)`` in ~/.bashrc pass. TERM is a regular terminal type
     because some rc files return early on ``TERM=dumb``; HISTFILE is
     /dev/null so an interactive probe can never touch the real history.
+
+    ``require_node`` guards this probe's PATH; probe_service_env disables it
+    per-probe and checks the merged PATH once, so one probe without node
+    cannot hide another probe's exports or fail the whole snapshot.
     """
     if runner is None:
         runner = default_runner
@@ -238,7 +243,7 @@ def probe_login_env(
     selected = select_env(parse_env0(completed.stdout))
     if ensure_dirs:
         selected["PATH"] = merge_path(selected.get("PATH", ""), ensure_dirs)
-    if not path_has_executable(selected.get("PATH", ""), "node"):
+    if require_node and not path_has_executable(selected.get("PATH", ""), "node"):
         raise ProbeError(
             "login shell PATH does not contain node. "
             "Paseo's shebang is /usr/bin/env node, so the user manager PATH must include it."
@@ -273,13 +278,19 @@ def probe_service_env(
     """
     runner = runner or default_runner
     base = probe_login_env(
-        shell=shell, home=home, user=user, ensure_dirs=ensure_dirs, runner=runner, timeout=timeout
+        shell=shell,
+        home=home,
+        user=user,
+        ensure_dirs=ensure_dirs,
+        require_node=False,
+        runner=runner,
+        timeout=timeout,
     )
 
     def soft_probe(**variants: bool) -> dict[str, str]:
         try:
             return probe_login_env(
-                shell=shell, home=home, user=user, runner=runner, timeout=timeout, **variants
+                shell=shell, home=home, user=user, require_node=False, runner=runner, timeout=timeout, **variants
             )
         except ProbeError:
             return {}

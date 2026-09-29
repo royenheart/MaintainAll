@@ -131,6 +131,40 @@ class CollectBusyIdsTest(unittest.TestCase):
         self.assertIsNone(refresh.collect_busy_ids("paseo", runner=runner))
 
 
+class ProcessStartEpochTest(unittest.TestCase):
+    """start time must come from /proc/<pid>/stat field 22 + /proc/stat btime:
+    the /proc/<pid> directory mtime is lazy and can postdate the real start."""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.proc_root = Path(self.tmp.name) / "proc"
+
+    def tearDown(self) -> None:
+        self.tmp.cleanup()
+
+    def write_stat(self, pid: int, comm: str, start_ticks: int, btime: int | None = 1_000) -> None:
+        proc_dir = self.proc_root / str(pid)
+        proc_dir.mkdir(parents=True, exist_ok=True)
+        fields = ["S"] + ["0"] * 49
+        fields[19] = str(start_ticks)
+        (proc_dir / "stat").write_text(f"{pid} ({comm}) {' '.join(fields)}\n", encoding="ascii")
+        if btime is not None:
+            (self.proc_root / "stat").write_text(f"btime {btime}\n", encoding="ascii")
+
+    def test_start_epoch_from_ticks_and_btime(self) -> None:
+        self.write_stat(42, "node", start_ticks=234_000, btime=1_000_000)
+        self.assertAlmostEqual(refresh.process_start_epoch(42, self.proc_root), 1_002_340.0)
+
+    def test_comm_with_spaces_and_parentheses(self) -> None:
+        self.write_stat(42, "my proc (forked)", start_ticks=100, btime=1_000)
+        self.assertAlmostEqual(refresh.process_start_epoch(42, self.proc_root), 1_001.0)
+
+    def test_missing_btime_or_stat_returns_none(self) -> None:
+        self.write_stat(42, "node", start_ticks=100, btime=None)
+        self.assertIsNone(refresh.process_start_epoch(42, self.proc_root))
+        self.assertIsNone(refresh.process_start_epoch(999, self.proc_root))
+
+
 class MainTest(unittest.TestCase):
     def make_stale_scope(self, home: Path) -> Path:
         scope = home / "scope"
@@ -284,6 +318,8 @@ class SelfUpdateDetectionTest(unittest.TestCase):
 
 
 class WaitForQuiescenceTest(unittest.TestCase):
+    BTIME = 500  # /proc/stat btime for the fake proc root
+
     def setUp(self) -> None:
         self.tmp = tempfile.TemporaryDirectory()
         self.root = Path(self.tmp.name)
@@ -296,16 +332,23 @@ class WaitForQuiescenceTest(unittest.TestCase):
         proc_dir = self.proc_root / "101"
         proc_dir.mkdir(parents=True)
         (proc_dir / "cmdline").write_bytes(b"npm\0install\0-g\0x\0")
-        # Worker 201 started long ago.
-        worker_dir = self.proc_root / "201"
-        worker_dir.mkdir(parents=True)
-        (worker_dir / "cmdline").write_bytes(b"node\0paseo\0")
-        import os
-
-        os.utime(worker_dir, (1_000.0, 1_000.0))
+        # Worker 201 started at epoch 1000 (starttime = (start - btime) * 100 ticks).
+        self.write_stat(201, start_epoch=1_000.0)
+        (self.proc_root / "201" / "cmdline").write_bytes(b"node\0paseo\0")
 
     def tearDown(self) -> None:
         self.tmp.cleanup()
+
+    def write_stat(self, pid: int, start_epoch: float) -> None:
+        proc_dir = self.proc_root / str(pid)
+        proc_dir.mkdir(parents=True, exist_ok=True)
+        start_ticks = int((start_epoch - self.BTIME) * 100)
+        fields = ["S"] + ["0"] * 49
+        fields[19] = str(start_ticks)  # field 22 (starttime), index 19 after comm
+        (proc_dir / "stat").write_text(f"{pid} (proc) {' '.join(fields)}\n", encoding="ascii")
+        (self.proc_root / "stat").write_text(
+            f"cpu 0 0 0 0 0 0 0\nbtime {self.BTIME}\n", encoding="ascii"
+        )
 
     def runner(self, cmd, timeout, status_payload='{"workerPid": 201}'):
         import subprocess
@@ -344,10 +387,8 @@ class WaitForQuiescenceTest(unittest.TestCase):
         )
 
     def test_not_quiescent_while_worker_young(self) -> None:
-        import os
-
         (self.proc_root / "101" / "cmdline").write_bytes(b"node\0daemon\0")
-        os.utime(self.proc_root / "201", (1_990.0, 1_990.0))  # 10s ago
+        self.write_stat(201, start_epoch=1_990.0)  # 10s before `now`
         self.assertFalse(
             refresh.daemon_quiescent(
                 "paseo.service",

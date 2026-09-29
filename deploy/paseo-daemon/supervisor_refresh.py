@@ -78,11 +78,39 @@ def pid_alive(pid: int) -> bool:
 
 
 def process_start_epoch(pid: int, proc_root: Path = PROC_ROOT) -> float | None:
-    """Approximate process start time: the mtime of the /proc entry."""
+    """Process start time as epoch seconds.
+
+    Computed from field 22 (starttime, clock ticks since boot) of
+    /proc/<pid>/stat plus btime from /proc/stat. The /proc/<pid> directory
+    mtime is NOT reliable: procfs creates those inodes lazily on first
+    access, so the timestamp can postdate the real start and reset later.
+    """
     try:
-        return os.stat(proc_root / str(pid)).st_mtime
+        stat_text = (proc_root / str(pid) / "stat").read_text(encoding="ascii")
     except OSError:
         return None
+    # comm (field 2) may contain spaces or parentheses; fields resume after
+    # the last ')'. starttime is field 22 overall, index 19 in the remainder.
+    try:
+        rest = stat_text[stat_text.rindex(")") + 2 :]
+        start_ticks = int(rest.split()[19])
+    except (ValueError, IndexError):
+        return None
+    try:
+        btime = None
+        for line in (proc_root / "stat").read_text(encoding="ascii").splitlines():
+            if line.startswith("btime "):
+                btime = int(line.split()[1])
+                break
+    except OSError:
+        btime = None
+    if btime is None:
+        return None
+    try:
+        ticks_per_second = os.sysconf("SC_CLK_TCK")
+    except (ValueError, OSError, AttributeError):
+        ticks_per_second = 100
+    return btime + start_ticks / ticks_per_second
 
 
 def installed_package_mtime(scope_dir: Path) -> float | None:

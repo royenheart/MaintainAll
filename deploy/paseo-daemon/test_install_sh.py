@@ -85,5 +85,26 @@ class DiscoverPaseoTest(unittest.TestCase):
             self.assertNotEqual(proc.returncode, 0)
 
 
+class SystemdQuoteTest(unittest.TestCase):
+    """Dynamic unit arguments must stay single arguments when paths contain
+    spaces, and unencodable values (CR/LF, trailing backslash) are rejected
+    instead of writing a malformed unit."""
+
+    def quote(self, value: str) -> subprocess.CompletedProcess[str]:
+        return run_function("systemd_quote", [value], {"PATH": "/usr/bin:/bin"})
+
+    def test_plain_and_space_paths_are_single_quoted_arguments(self) -> None:
+        self.assertEqual(self.quote("/usr/bin/paseo").stdout.strip(), '"/usr/bin/paseo"')
+        self.assertEqual(self.quote("/opt/my dir/paseo").stdout.strip(), '"/opt/my dir/paseo"')
+
+    def test_backslash_and_quote_are_escaped(self) -> None:
+        self.assertEqual(self.quote('/a"b').stdout.strip(), '"/a\\"b"')
+        self.assertEqual(self.quote("/a/b").stdout.strip(), '"/a/b"')
+
+    def test_unencodable_values_are_rejected(self) -> None:
+        self.assertNotEqual(self.quote("/a/b\\").returncode, 0)  # trailing backslash
+        self.assertNotEqual(self.quote("/a/b\n").returncode, 0)  # CR/LF
+
+
 if __name__ == "__main__":
     unittest.main()
