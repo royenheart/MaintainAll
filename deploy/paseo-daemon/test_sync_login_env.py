@@ -222,5 +222,75 @@ class EnsurePathDirTest(unittest.TestCase):
                 sync.default_runner = original
 
 
+class ServiceEnvProbeTest(unittest.TestCase):
+    """The interactive login probe must fill in what the plain login probe
+    misses behind ~/.bashrc's interactive guard (the sparse-snapshot case on
+    hosts with Debian-style dotfiles)."""
+
+    def make_toolchain(self, raw: str) -> Path:
+        toolchain = Path(raw) / "nvm-bin"
+        toolchain.mkdir(parents=True)
+        node = toolchain / "node"
+        node.write_text("#!/bin/sh\n", encoding="utf-8")
+        node.chmod(0o755)
+        return toolchain
+
+    def dual_runner(self, base_env: dict[str, str], inter_env: dict[str, str] | None):
+        def runner(argv: list[str], timeout: float) -> subprocess.CompletedProcess[bytes]:
+            del timeout
+            payload = inter_env if ("-i" in argv and inter_env is not None) else base_env
+            if payload is None:
+                return subprocess.CompletedProcess(args=[], returncode=1, stdout=b"", stderr=b"boom")
+            blob = "".join(f"{k}={v}\0" for k, v in payload.items()).encode()
+            return subprocess.CompletedProcess(args=[], returncode=0, stdout=blob, stderr=b"")
+
+        return runner
+
+    def test_interactive_probe_fills_guarded_exports_and_wins(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            toolchain = self.make_toolchain(raw)
+            base = {"PATH": "/home/u/.local/bin:/usr/bin", "HOME": "/home/u"}
+            inter = {
+                "PATH": f"{toolchain}:/home/u/.local/bin:/usr/bin",
+                "NVM_DIR": "/home/u/.nvm",
+                "HF_ENDPOINT": "https://hf.example",
+                "XAUTHORITY": "/tmp/should-be-dropped",
+            }
+            env = sync.probe_service_env(
+                shell="/bin/bash",
+                home="/home/u",
+                user="u",
+                runner=self.dual_runner(base, inter),
+            )
+            self.assertEqual(env["PATH"].split(":")[0], str(toolchain))
+            self.assertEqual(env["NVM_DIR"], "/home/u/.nvm")
+            self.assertEqual(env["HF_ENDPOINT"], "https://hf.example")
+            self.assertNotIn("XAUTHORITY", env)
+
+    def test_falls_back_to_plain_probe_when_interactive_fails(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            toolchain = self.make_toolchain(raw)
+            base = {"PATH": "/usr/bin", "HOME": "/home/u"}
+            env = sync.probe_service_env(
+                shell="/bin/bash",
+                home="/home/u",
+                user="u",
+                ensure_dirs=[str(toolchain)],
+                runner=self.dual_runner(base, None),
+            )
+            self.assertEqual(env["PATH"], f"{toolchain}:/usr/bin")
+
+    def test_raises_when_neither_probe_has_node(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            base = {"PATH": "/home/u/.local/bin", "HOME": "/home/u"}
+            with self.assertRaises(sync.ProbeError):
+                sync.probe_service_env(
+                    shell="/bin/bash",
+                    home="/home/u",
+                    user="u",
+                    runner=self.dual_runner(base, dict(base)),
+                )
+
+
 if __name__ == "__main__":
     unittest.main()

@@ -3,9 +3,12 @@
 
 systemd user services do not read shell startup files. This probe runs the
 login shell once, with a clean environment, and writes the resulting
-assignments to ``60-paseo.conf``. The unit no longer sets ``PATH``, so later
-``systemctl --user daemon-reload`` exports this snapshot to services started
-afterwards, including paseo.
+assignments to ``60-paseo.conf``. Because a non-interactive login shell
+never gets past the interactive guard in ~/.bashrc (Debian/Ubuntu dotfiles
+source it from ~/.profile behind `case $- in *i*)`), an interactive login
+shell is probed too and merged in — see ``probe_service_env``. The unit no
+longer sets ``PATH``, so later ``systemctl --user daemon-reload`` exports
+this snapshot to services started afterwards, including paseo.
 """
 
 from __future__ import annotations
@@ -190,9 +193,13 @@ def probe_login_env(
     home: str,
     user: str,
     ensure_dirs: Sequence[str] = (),
+    interactive: bool = False,
     runner: Runner | None = None,
     timeout: float = PROBE_TIMEOUT_SEC,
 ) -> dict[str, str]:
+    """One login-shell probe. With ``interactive=True`` bash is also given
+    ``-i`` so that ~/.bashrc's usual ``case $- in *i*)`` guard passes and
+    exports placed after it become visible."""
     if runner is None:
         runner = default_runner
     argv = [
@@ -206,9 +213,10 @@ def probe_login_env(
         "TERM=dumb",
         shell,
         "--login",
-        "-c",
-        "env -0",
     ]
+    if interactive:
+        argv.append("-i")
+    argv += ["-c", "env -0"]
     try:
         completed = runner(argv, timeout)
     except subprocess.TimeoutExpired as error:
@@ -230,11 +238,50 @@ def probe_login_env(
     return selected
 
 
+def probe_service_env(
+    *,
+    shell: str,
+    home: str,
+    user: str,
+    ensure_dirs: Sequence[str] = (),
+    runner: Runner | None = None,
+    timeout: float = PROBE_TIMEOUT_SEC,
+) -> dict[str, str]:
+    """Environment snapshot for user services.
+
+    A non-interactive login shell skips most of ~/.bashrc — Debian/Ubuntu
+    dotfiles source it from ~/.profile behind a `case $- in *i*)` guard, so
+    everything exported after the guard (nvm, PATH additions, API tokens)
+    stays invisible to the plain probe. Probe an interactive login shell as
+    well and merge it in, letting it win on conflicts: that is the
+    environment the user's own shell actually has. When the interactive
+    probe fails, fall back to the plain result instead of aborting.
+    """
+    base = probe_login_env(
+        shell=shell, home=home, user=user, ensure_dirs=ensure_dirs, runner=runner, timeout=timeout
+    )
+    try:
+        inter = probe_login_env(
+            shell=shell, home=home, user=user, interactive=True, runner=runner, timeout=timeout
+        )
+    except ProbeError:
+        inter = {}
+    merged = {**base, **inter}
+    if ensure_dirs:
+        merged["PATH"] = merge_path(merged.get("PATH", ""), ensure_dirs)
+    if not path_has_executable(merged.get("PATH", ""), "node"):
+        raise ProbeError(
+            "merged login-shell PATH does not contain node. "
+            "Paseo's shebang is /usr/bin/env node, so the user manager PATH must include it."
+        )
+    return merged
+
+
 def sync(*, dest: Path, dry_run: bool, ensure_dirs: Sequence[str] = ()) -> int:
     home = str(Path.home())
     user = os.environ.get("USER") or pwd.getpwuid(os.getuid()).pw_name
     shell = login_shell()
-    env = probe_login_env(shell=shell, home=home, user=user, ensure_dirs=ensure_dirs)
+    env = probe_service_env(shell=shell, home=home, user=user, ensure_dirs=ensure_dirs)
     print(f"login shell: {shell}")
     print(f"variables: {len(env)}")
     print(f"environment.d: {dest}")
@@ -263,7 +310,7 @@ def emit_env(*, key: str, ensure_dirs: Sequence[str] = ()) -> int:
     home = str(Path.home())
     user = os.environ.get("USER") or pwd.getpwuid(os.getuid()).pw_name
     shell = login_shell()
-    env = probe_login_env(shell=shell, home=home, user=user, ensure_dirs=ensure_dirs)
+    env = probe_service_env(shell=shell, home=home, user=user, ensure_dirs=ensure_dirs)
     if key not in env:
         print(f"error: {key} not found in the login-shell environment", file=sys.stderr)
         return 1

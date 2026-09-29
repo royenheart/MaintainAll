@@ -147,15 +147,21 @@ python3 -m unittest test_sync_login_env test_supervisor_refresh test_install_sh 
   `paseo.service` in this directory is only an example). `PATH` is not written
   into the unit: `Environment=PATH=...` would replace the user manager's whole
   `PATH`, and `$PATH` is not expanded in a unit.
-- **Login-shell snapshot.** `sync_login_env.py` runs
-  `env -i $SHELL --login -c 'env -0'` and writes the result to
-  `~/.config/environment.d/60-paseo.conf` (mode `0600`). An existing file is
-  first copied to `60-paseo.conf.bak` (not a `.conf`, so systemd ignores it).
-  After `daemon-reload`, **every user service started afterwards** inherits
-  this snapshot, not only `paseo.service`. Already-running processes are not
+- **Login-shell snapshot.** `sync_login_env.py` runs the login shell with a
+  clean environment (`env -i $SHELL --login -c 'env -0'`) and writes the
+  result to `~/.config/environment.d/60-paseo.conf` (mode `0600`). A plain
+  non-interactive login shell stops at the `case $- in *i*)` guard at the
+  top of `~/.bashrc` (Debian/Ubuntu dotfiles source it from `~/.profile`), so
+  everything exported after the guard — nvm, PATH additions, API tokens —
+  would stay invisible; the probe therefore runs an *interactive* login
+  shell as well and merges it in (interactive wins on conflicts; on failure
+  it falls back to the plain result). An existing file is first copied to
+  `60-paseo.conf.bak` (not a `.conf`, so systemd ignores it). After
+  `daemon-reload`, **every user service started afterwards** inherits this
+  snapshot, not only `paseo.service`. Already-running processes are not
   affected. Re-run `./install.sh` after changing `~/.bashrc` /
-  `~/.bash_profile` to refresh the snapshot. One caveat: `daemon-reload` does
-  **not** override variables the user manager already holds — `PATH` is
+  `~/.bash_profile` to refresh the snapshot. One caveat: `daemon-reload`
+  does **not** override variables the user manager already holds — `PATH` is
   pinned when the user manager starts (at boot/login), long before this file
   exists. The installer therefore pushes the freshly probed PATH into the
   manager itself with `systemctl --user set-environment PATH=…` after the
