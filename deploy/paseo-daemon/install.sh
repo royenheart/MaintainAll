@@ -67,6 +67,30 @@ resolve_bin() {
   readlink -f "$p" 2>/dev/null || realpath "$p" 2>/dev/null || printf '%s\n' "$p"
 }
 
+# paseo may be installed under an nvm version that is not active: a system
+# node shadows nvm on PATH, or the nvm default points elsewhere. The package
+# is on disk but `command -v paseo` fails. Fall back to the newest nvm
+# version that provides a paseo shim.
+discover_paseo() {
+  local found=""
+  found="$(command -v paseo 2>/dev/null || true)"
+  if [[ -n "$found" ]]; then
+    printf '%s\n' "$found"
+    return 0
+  fi
+  local versions_dir="${NVM_DIR:-$HOME/.nvm}/versions/node"
+  [[ -d "$versions_dir" ]] || return 1
+  local version candidate
+  while IFS= read -r version; do
+    candidate="$versions_dir/$version/bin/paseo"
+    if [[ -x "$candidate" ]]; then
+      printf '%s\n' "$candidate"
+      return 0
+    fi
+  done < <(ls -1 "$versions_dir" 2>/dev/null | sort -rV)
+  return 1
+}
+
 # Non-interactive environments often lack npm on PATH (nvm); fall back to
 # sourcing nvm when node/npm are missing.
 ensure_nvm() {
@@ -411,12 +435,13 @@ if [[ "$DRY_RUN" -eq 1 ]]; then
   else
     echo "skipping login-shell sniff (--no-systemd inherits this terminal)"
   fi
-  PASEO_BIN="$(resolve_bin paseo 2>/dev/null || true)"
-  if [[ -z "$PASEO_BIN" ]]; then
+  PASEO_ENTRY="$(discover_paseo 2>/dev/null || true)"
+  if [[ -z "$PASEO_ENTRY" ]]; then
     echo "planned: npm install -g @getpaseo/cli"
     echo "(run --dry-run again once paseo is installed to preview the unit)"
     exit 0
   fi
+  PASEO_BIN="$(resolve_bin paseo 2>/dev/null || readlink -f "$PASEO_ENTRY" 2>/dev/null || printf '%s\n' "$PASEO_ENTRY")"
   echo "paseo (real): $PASEO_BIN"
   echo "ensure path dirs: ${SYNC_EXTRA_ARGS[*]:-(none - paseo or node not on this shell PATH)}"
   if [[ "$DO_SYSTEMD" -eq 1 ]]; then
@@ -453,15 +478,20 @@ fi
 # ---- real flow ----
 ensure_nvm || die "node/npm not on PATH (this script tried sourcing \$NVM_DIR/nvm.sh). First: source ~/.nvm/nvm.sh"
 
-if resolve_bin paseo >/dev/null 2>&1; then
-  step "paseo already installed: $(command -v paseo)"
-elif [[ "$DO_INSTALL" -eq 0 ]]; then
-  die "--no-install given but paseo is not on PATH"
-else
+PASEO_ENTRY=""
+if ! PASEO_ENTRY="$(discover_paseo)"; then
+  if [[ "$DO_INSTALL" -eq 0 ]]; then
+    die "--no-install given but paseo is not on PATH and not found under any nvm version"
+  fi
   install_cli
+  PASEO_ENTRY="$(discover_paseo)" || die "paseo still not found after npm install -g @getpaseo/cli"
 fi
-
-PASEO_BIN="$(resolve_bin paseo)" || die "cannot find the paseo executable"
+step "paseo: $PASEO_ENTRY"
+# Make the discovered toolchain visible to the rest of the script: the env
+# snapshot, the watcher --paseo-bin, and every status probe must use the
+# same node/npm pairing that owns this install.
+export PATH="$(dirname "$PASEO_ENTRY"):$PATH"
+PASEO_BIN="$(resolve_bin paseo)" || die "cannot resolve the paseo executable"
 compute_sync_extra_args
 
 if [[ "$DO_SYSTEMD" -eq 1 ]]; then

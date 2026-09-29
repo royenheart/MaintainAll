@@ -137,7 +137,7 @@ systemctl --user daemon-reload
 ./install.sh --no-systemd   # only step 1 + `paseo daemon start` (detached; no boot autostart)
 ./install.sh --no-install   # skip npm install (paseo must already be on PATH)
 ./install.sh --dry-run      # sniff and print the generated unit / commands; write nothing, start nothing
-python3 -m unittest test_sync_login_env test_supervisor_refresh   # in this directory; no real login shell or daemon is touched
+python3 -m unittest test_sync_login_env test_supervisor_refresh test_install_sh   # in this directory; synthetic inputs only, no real login shell or daemon is touched
 ```
 
 ## Notes
@@ -170,7 +170,11 @@ python3 -m unittest test_sync_login_env test_supervisor_refresh   # in this dire
   installed with npm -g on this host" — its `npm -g ls @getpaseo/cli` then
   probes the global prefix of the wrong npm, which does not own the
   install. Re-run `./install.sh` after switching node versions so the
-  snapshot tracks the new toolchain.
+  snapshot tracks the new toolchain. The installer also *discovers* paseo
+  when it is not on PATH at all — installed under an nvm version that is not
+  the nvm default, or shadowed by a system node — by scanning the nvm
+  versions directory, and deploys with the newest toolchain that provides
+  it.
 - **The snapshot contains secrets exported by the shell.** A login shell
   sources `~/.bash_profile` (which on this machine sources `~/.bashrc`), so any
   token `export`ed there lands in `60-paseo.conf` and is visible via

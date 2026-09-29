@@ -13,6 +13,7 @@ Pin the toolchain the installer actually verified:
 - `install.sh` computes the bin directories of `command -v paseo` (the npm global shim location) and `command -v node` and passes them to `sync_login_env.py` as repeated `--ensure-path-dir DIR`.
 - `sync_login_env.py` merges them into the probed PATH with a pure `merge_path` function: extra dirs first, de-duplicated, empty entries dropped; applied both to the written `60-paseo.conf` and to `--emit-env PATH` (the value pushed into the user manager). The node guard runs against the merged PATH, so a probe that lacks node entirely now still exports a usable one.
 - No behavior change on hosts where the probe already has the same dirs first (the common nvm case): the merge is a no-op there.
+- The deploy first has to *find* paseo. `install.sh` checks PATH and then scans the nvm versions directory (`~/.nvm/versions/node/*/bin/paseo`, newest version first), because hosts exist where paseo is installed under an nvm version that is not active — a system node satisfies `ensure_nvm` and the nvm default points elsewhere, so `command -v paseo` fails while the package is on disk. The discovered toolchain's bin directory is prepended to PATH for the rest of the deploy, so the snapshot, the watcher `--paseo-bin`, and every status probe use the same pairing.
 
 ## Alternatives considered
 
