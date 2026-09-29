@@ -69,9 +69,12 @@ class ProbeTest(unittest.TestCase):
 
             def runner(argv: list[str], timeout: float) -> subprocess.CompletedProcess[bytes]:
                 del timeout
-                self.assertIn("--login", argv)
-                self.assertEqual(argv[0], "env")
+                self.assertIn("-l", argv)  # short flag: ksh/mksh lack --login
+                self.assertNotIn("--login", argv)
                 self.assertIn("PATH=/usr/bin:/bin", argv)
+                self.assertIn("TERM=xterm", argv)
+                self.assertIn("HISTFILE=/dev/null", argv)
+                self.assertIn("env", argv[0])
                 stdout = f"PATH={raw}\0DISPLAY=:1\0NVM_DIR=/nvm\0".encode()
                 return subprocess.CompletedProcess(args=[], returncode=0, stdout=stdout, stderr=b"")
 
@@ -290,6 +293,89 @@ class ServiceEnvProbeTest(unittest.TestCase):
                     user="u",
                     runner=self.dual_runner(base, dict(base)),
                 )
+
+    def test_login_interactive_wins_over_non_login_interactive(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            toolchain = self.make_toolchain(raw)
+            path = f"{toolchain}:/usr/bin"
+            base = {"PATH": path, "HOME": "/home/u", "K": "base"}
+            non_login = {"PATH": path, "K": "nonlogin"}
+            login = {"PATH": path, "K": "login"}
+
+            def runner(argv: list[str], timeout: float) -> subprocess.CompletedProcess[bytes]:
+                del timeout
+                if "-i" not in argv:
+                    payload = base
+                elif "-l" in argv:
+                    payload = login
+                else:
+                    payload = non_login
+                blob = "".join(f"{k}={v}\0" for k, v in payload.items()).encode()
+                return subprocess.CompletedProcess(args=[], returncode=0, stdout=blob, stderr=b"")
+
+            env = sync.probe_service_env(shell="/bin/bash", home="/home/u", user="u", runner=runner)
+            self.assertEqual(env["K"], "login")
+
+
+class FakeShellProbeTest(unittest.TestCase):
+    """End-to-end through the real subprocess: the fake shell plays the
+    role of bash, including the ~/.bashrc interactive guard, so no real
+    dotfiles or toolchains are involved."""
+
+    FAKE_SHELL = """#!/bin/sh
+printf '%s\\n' "$*" >> {log}
+out='PATH={toolchain_bin}:/usr/bin:/bin\\0HOME=/home/u\\0BASE_EXPORT=1\\0'
+case " $* " in
+  *" -l "*) out="$out"'LOGIN_SEEN=1\\0' ;;
+esac
+case " $* " in
+  *" -i "*) out="$out"'GUARDED_EXPORT=visible\\0' ;;
+esac
+printf '%b' "$out"
+"""
+
+    def setUp(self) -> None:
+        self.tmp = tempfile.TemporaryDirectory()
+        self.root = Path(self.tmp.name)
+        self.log = self.root / "argv.log"
+        toolchain_bin = self.root / "toolchain" / "bin"
+        toolchain_bin.mkdir(parents=True)
+        node = toolchain_bin / "node"
+        node.write_text("#!/bin/sh\n", encoding="utf-8")
+        node.chmod(0o755)
+        shell = self.root / "fake-shell"
+        shell.write_text(self.FAKE_SHELL.format(log=self.log, toolchain_bin=toolchain_bin), encoding="utf-8")
+        shell.chmod(0o755)
+        self.shell = shell
+
+    def tearDown(self) -> None:
+        self.tmp.cleanup()
+
+    def test_three_probes_hit_the_fake_shell_and_bypass_the_guard(self) -> None:
+        env = sync.probe_service_env(shell=str(self.shell), home="/home/u", user="u")
+        self.assertEqual(env["BASE_EXPORT"], "1")
+        self.assertEqual(env["LOGIN_SEEN"], "1")
+        self.assertEqual(env["GUARDED_EXPORT"], "visible")
+
+        calls = self.log.read_text(encoding="utf-8").splitlines()
+        self.assertEqual(len(calls), 3)
+        self.assertIn("-l -c env -0", calls)
+        self.assertIn("-i -c env -0", calls)
+        self.assertIn("-l -i -c env -0", calls)
+        self.assertFalse(any("--login" in call for call in calls))
+
+    def test_soft_probe_failure_falls_back(self) -> None:
+        toolchain_bin = self.root / "toolchain" / "bin"
+        guarded = self.root / "guarded-shell"
+        guarded.write_text(
+            "#!/bin/sh\n"
+            "case \" $* \" in *\" -i \"*) exit 1;; esac\n"
+            f"printf 'PATH={toolchain_bin}:/usr/bin:/bin\\0HOME=/home/u\\0BASE_EXPORT=1\\0'\n",
+            encoding="utf-8",
+        )
+        guarded.chmod(0o755)
+        env = sync.probe_service_env(shell=str(guarded), home="/home/u", user="u")
+        self.assertEqual(env["BASE_EXPORT"], "1")
 
 
 if __name__ == "__main__":

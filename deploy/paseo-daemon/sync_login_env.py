@@ -193,13 +193,19 @@ def probe_login_env(
     home: str,
     user: str,
     ensure_dirs: Sequence[str] = (),
+    login: bool = True,
     interactive: bool = False,
     runner: Runner | None = None,
     timeout: float = PROBE_TIMEOUT_SEC,
 ) -> dict[str, str]:
-    """One login-shell probe. With ``interactive=True`` bash is also given
-    ``-i`` so that ~/.bashrc's usual ``case $- in *i*)`` guard passes and
-    exports placed after it become visible."""
+    """One shell probe under a clean environment.
+
+    ``-l`` (not ``--login``) keeps this portable beyond bash — ksh/mksh only
+    accept the short form. ``interactive=True`` adds ``-i`` so guards like
+    ``case $- in *i*)`` in ~/.bashrc pass. TERM is a regular terminal type
+    because some rc files return early on ``TERM=dumb``; HISTFILE is
+    /dev/null so an interactive probe can never touch the real history.
+    """
     if runner is None:
         runner = default_runner
     argv = [
@@ -210,10 +216,12 @@ def probe_login_env(
         f"LOGNAME={user}",
         f"SHELL={shell}",
         "PATH=/usr/bin:/bin",
-        "TERM=dumb",
+        "TERM=xterm",
+        "HISTFILE=/dev/null",
         shell,
-        "--login",
     ]
+    if login:
+        argv.append("-l")
     if interactive:
         argv.append("-i")
     argv += ["-c", "env -0"]
@@ -250,23 +258,35 @@ def probe_service_env(
     """Environment snapshot for user services.
 
     A non-interactive login shell skips most of ~/.bashrc — Debian/Ubuntu
-    dotfiles source it from ~/.profile behind a `case $- in *i*)` guard, so
-    everything exported after the guard (nvm, PATH additions, API tokens)
-    stays invisible to the plain probe. Probe an interactive login shell as
-    well and merge it in, letting it win on conflicts: that is the
-    environment the user's own shell actually has. When the interactive
-    probe fails, fall back to the plain result instead of aborting.
+    dotfiles source it from ~/.profile behind a `case $- in *i*)` guard, and
+    custom ~/.bash_profile files may not source it at all — so toolchain
+    and exports placed there stay invisible to the plain probe. Three probes
+    run, each isolated so one failing rc cannot take down the others:
+
+    1. login, non-interactive (the base; its failure is a hard error),
+    2. non-login, interactive (reads ~/.bashrc directly),
+    3. login, interactive (the full login context; wins on conflicts).
+
+    Later results override earlier ones, and a failing soft probe is
+    skipped. Session/bookkeeping keys are filtered inside every probe, and
+    the node guard plus the --ensure-path-dir merge run on the final PATH.
     """
+    runner = runner or default_runner
     base = probe_login_env(
         shell=shell, home=home, user=user, ensure_dirs=ensure_dirs, runner=runner, timeout=timeout
     )
-    try:
-        inter = probe_login_env(
-            shell=shell, home=home, user=user, interactive=True, runner=runner, timeout=timeout
-        )
-    except ProbeError:
-        inter = {}
-    merged = {**base, **inter}
+
+    def soft_probe(**variants: bool) -> dict[str, str]:
+        try:
+            return probe_login_env(
+                shell=shell, home=home, user=user, runner=runner, timeout=timeout, **variants
+            )
+        except ProbeError:
+            return {}
+
+    merged = dict(base)
+    merged.update(soft_probe(login=False, interactive=True))
+    merged.update(soft_probe(login=True, interactive=True))
     if ensure_dirs:
         merged["PATH"] = merge_path(merged.get("PATH", ""), ensure_dirs)
     if not path_has_executable(merged.get("PATH", ""), "node"):

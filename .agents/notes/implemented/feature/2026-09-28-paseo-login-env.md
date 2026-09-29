@@ -10,8 +10,8 @@ Status: implemented — `deploy/paseo-daemon/install.sh` no longer pins `PATH` i
 
 Keep the installer in user config only. On each systemd install:
 
-- Run `$SHELL --login` under `env -i` (home, user, and a minimal `PATH` only) and capture `env -0`.
-- Run the same probe again with `-i` (interactive) and merge: a plain non-interactive login shell never gets past the `case $- in *i*)` guard at the top of `~/.bashrc` (Debian/Ubuntu dotfiles source it from `~/.profile`), so without this second probe everything exported after the guard — nvm, PATH additions, API tokens — stays missing from the snapshot (on nebusec-dev: 9 variables instead of 17, no `NVM_DIR`). The interactive result wins on conflicts; if it fails, fall back to the plain result.
+- Probe `$SHELL -l` (the short flag: ksh/mksh lack `--login`) under `env -i` (home, user, a minimal `PATH`, `TERM=xterm` — some rc files return early on `TERM=dumb` — and `HISTFILE=/dev/null` so an interactive probe cannot touch the real history) and capture `env -0`.
+- Probe twice more, each in its own shell so one failing rc cannot take down the others: non-login interactive (`$SHELL -i`, reads ~/.bashrc directly, covering dotfiles where ~/.bash_profile does not source it) and login interactive (`$SHELL -l -i`, the full login context). Merge into the plain result with the login interactive probe winning on conflicts; a failing soft probe is skipped. Without these, a plain non-interactive login shell never gets past the `case $- in *i*)` guard at the top of `~/.bashrc` (Debian/Ubuntu dotfiles source it from `~/.profile`), and everything exported after the guard — nvm, PATH additions, API tokens — stays missing from the snapshot (on nebusec-dev: 9 variables instead of 17, no `NVM_DIR`).
 - Drop session variables (`DISPLAY`, `XDG_RUNTIME_DIR`, `DBUS_SESSION_BUS_ADDRESS`, and the rest of that set) and shell bookkeeping.
 - Escape `$` and `\` so `environment.d` does not expand or line-continue them.
 - If `60-paseo.conf` already exists, copy it to `60-paseo.conf.bak` (not a `.conf`, so the generator ignores it), then atomically replace the file mode `0600`.
@@ -26,7 +26,11 @@ Keep the installer in user config only. On each systemd install:
 - `ExecStart=/bin/bash -lc 'exec paseo …'`. That re-reads the shell on every start, including `Restart=on-failure`, and a prompt or a failing `bashrc` takes the service down with it.
 - A user environment generator under `/etc/systemd/user-environment-generators`. That is system configuration, runs for every user, and a bad stdout can fail the user manager on its next cold start.
 - Prepend only `~/.kimi-code/bin` in `environment.d`. That fixes one binary and leaves later shell exports (and non-`PATH` variables the shell sets) out until someone edits the file again.
-- Tell users to "export things before the `.bashrc` guard". Dotfile layout is out of the deploy's control; the dual probe gets the same result without touching user files.
+- Tell users to "export things before the `.bashrc` guard". Dotfile layout is out of the deploy's control; the multi-probe merge gets the same result without touching user files.
+- Probe with `bash -l -i` only. That covers the Debian `~/.profile` → `~/.bashrc` chain, but not hosts whose custom `~/.bash_profile` never sources `~/.bashrc`; the non-login interactive probe reads it directly.
+- Force-source `~/.bashrc` from the probe command (`bash -c '. ~/.bashrc; env -0'`). The same `case $-` guard still returns early in a non-interactive shell, so this buys nothing without `-i`.
+- Run the interactive probes with `TERM=dumb`. Some rc files return early on `TERM=dumb`, so a regular terminal type is set instead; stray stdout would be discarded by the `env -0` parser anyway, and job-control chatter goes to stderr.
+- Let an interactive probe use the real `HISTFILE`. `bash -i` may save history on exit; pointing `HISTFILE` at `/dev/null` makes that a no-op.
 
 ## Consequences
 

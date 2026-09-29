@@ -147,15 +147,20 @@ python3 -m unittest test_sync_login_env test_supervisor_refresh test_install_sh 
   `paseo.service` in this directory is only an example). `PATH` is not written
   into the unit: `Environment=PATH=...` would replace the user manager's whole
   `PATH`, and `$PATH` is not expanded in a unit.
-- **Login-shell snapshot.** `sync_login_env.py` runs the login shell with a
-  clean environment (`env -i $SHELL --login -c 'env -0'`) and writes the
-  result to `~/.config/environment.d/60-paseo.conf` (mode `0600`). A plain
+- **Login-shell snapshot.** `sync_login_env.py` probes the configured login
+  shell with a clean environment (`env -i $SHELL -l -c 'env -0'`; the short
+  `-l` because ksh/mksh lack `--login`) and writes the result to
+  `~/.config/environment.d/60-paseo.conf` (mode `0600`). A plain
   non-interactive login shell stops at the `case $- in *i*)` guard at the
-  top of `~/.bashrc` (Debian/Ubuntu dotfiles source it from `~/.profile`), so
-  everything exported after the guard — nvm, PATH additions, API tokens —
-  would stay invisible; the probe therefore runs an *interactive* login
-  shell as well and merges it in (interactive wins on conflicts; on failure
-  it falls back to the plain result). An existing file is first copied to
+  top of `~/.bashrc` (Debian/Ubuntu dotfiles source it from `~/.profile`, and
+  custom `~/.bash_profile` files may not source it at all), so everything
+  exported there — nvm, PATH additions, API tokens — would stay invisible.
+  Three probes therefore run, each in its own shell so one failing rc cannot
+  take down the others: login non-interactive (the base; its failure is a
+  hard error), non-login interactive, and login interactive (which wins on
+  conflicts). The probes use `TERM=xterm` (some rc files return early on
+  `TERM=dumb`) and `HISTFILE=/dev/null` (an interactive probe must never
+  touch the real shell history). An existing file is first copied to
   `60-paseo.conf.bak` (not a `.conf`, so systemd ignores it). After
   `daemon-reload`, **every user service started afterwards** inherits this
   snapshot, not only `paseo.service`. Already-running processes are not
