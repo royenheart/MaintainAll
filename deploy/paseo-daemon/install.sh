@@ -1,6 +1,9 @@
 #!/usr/bin/env bash
 # Paseo daemon one-shot deploy: install the CLI -> systemd --user service
-# (enabled at boot) -> verify.
+# (enabled at boot) -> verify. Also installs a supervisor-refresh watcher:
+# a .path unit on the installed @getpaseo package + an oneshot that restarts
+# paseo.service after an update (skipping while agents are busy), because an
+# updated package alone never refreshes the running supervisor process.
 #
 # Background: the Paseo GUI's Remote/SSH only connects to a daemon that is
 # already running; it never installs, starts, or configures one remotely, and
@@ -21,6 +24,10 @@ SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 UNIT_NAME="paseo.service"
 UNIT_DIR="${XDG_CONFIG_HOME:-$HOME/.config}/systemd/user"
 UNIT_PATH="$UNIT_DIR/$UNIT_NAME"
+REFRESH_SERVICE_NAME="paseo-supervisor-refresh.service"
+REFRESH_PATH_NAME="paseo-supervisor-refresh.path"
+REFRESH_SCRIPT="$SCRIPT_DIR/supervisor_refresh.py"
+PKG_SCOPE_DIR="" # resolved from PASEO_BIN by resolve_pkg_scope()
 PASEO_HOME="${PASEO_HOME:-$HOME/.paseo}"
 PID_FILE="$PASEO_HOME/paseo.pid"
 LOG_FILE="$PASEO_HOME/daemon.log"
@@ -138,12 +145,92 @@ WantedBy=default.target
 EOF
 }
 
+# --- supervisor auto-refresh units -----------------------------------------
+# The daemon is two processes: a long-lived supervisor and a worker. Updating
+# the npm package on disk only restarts the worker; the supervisor keeps its
+# original in-memory code until its launcher (paseo.service) replaces the
+# whole process. The .path unit watches the installed @getpaseo npm scope
+# directory; when an update rewrites it, the oneshot service restarts
+# paseo.service via supervisor_refresh.py, which skips the restart while any
+# agent is running or initializing (restarting kills the worker and its
+# child agent processes).
+resolve_pkg_scope() {
+  local bin_dir pkg_dir
+  bin_dir="$(dirname "$PASEO_BIN")"     # .../@getpaseo/cli/bin
+  pkg_dir="$(dirname "$bin_dir")"       # .../@getpaseo/cli
+  PKG_SCOPE_DIR="$(dirname "$pkg_dir")" # .../node_modules/@getpaseo
+  [[ "$(basename "$pkg_dir")" == "cli" && "$(basename "$PKG_SCOPE_DIR")" == "@getpaseo" ]]
+}
+
+refresh_path_body() {
+  cat <<EOF
+[Unit]
+Description=Watch the installed @getpaseo npm package for Paseo updates
+
+[Path]
+PathModified=$PKG_SCOPE_DIR
+Unit=$REFRESH_SERVICE_NAME
+
+[Install]
+WantedBy=default.target
+EOF
+}
+
+refresh_service_body() {
+  cat <<EOF
+[Unit]
+Description=Restart $UNIT_NAME when the installed @getpaseo package is newer than the running supervisor
+
+[Service]
+Type=oneshot
+# Above the quiescence wait budget in supervisor_refresh.py: the default 90s
+# would kill the oneshot while it legitimately waits for the daemon's npm
+# install (node-pty build) or its post-install worker restart.
+TimeoutStartSec=1500
+ExecStart=$PYTHON_BIN $REFRESH_SCRIPT --home $PASEO_HOME --watch-dir $PKG_SCOPE_DIR --paseo-bin $PASEO_BIN --service $UNIT_NAME
+EOF
+}
+
+# Write $1 with content $2; sets UNIT_WROTE=1 when the file changed, 0 when
+# identical, so a re-run never restarts a healthy daemon for no reason.
+write_unit() {
+  local path="$1" content="$2" existing=""
+  UNIT_WROTE=0
+  if [[ -f "$path" ]]; then
+    existing="$(cat "$path")"
+  fi
+  if [[ "$existing" == "$content" ]]; then
+    return 0
+  fi
+  printf '%s\n' "$content" >"$path"
+  UNIT_WROTE=1
+}
+
 sync_login_env() {
   local -a args=()
   if [[ "$DRY_RUN" -eq 1 ]]; then
     args+=(--dry-run)
   fi
-  python3 "$SCRIPT_DIR/sync_login_env.py" "${args[@]}"
+  python3 "$SCRIPT_DIR/sync_login_env.py" "${SYNC_EXTRA_ARGS[@]}" "${args[@]}"
+}
+
+# Bin directories of the toolchain that owns the resolved paseo install.
+# The daemon's self-update runs `npm -g ls @getpaseo/cli` with its own PATH;
+# it must resolve to the npm whose global prefix owns @getpaseo/cli. A bare
+# login-shell probe can miss these dirs entirely or see a different node
+# first (a system node in /usr/bin), which fails the check with
+# "@getpaseo/cli is not installed with npm -g on this host".
+compute_sync_extra_args() {
+  SYNC_EXTRA_ARGS=()
+  local entry
+  entry="$(command -v paseo 2>/dev/null || true)"
+  if [[ -n "$entry" ]]; then
+    SYNC_EXTRA_ARGS+=(--ensure-path-dir "$(dirname "$entry")")
+  fi
+  entry="$(command -v node 2>/dev/null || true)"
+  if [[ -n "$entry" ]]; then
+    SYNC_EXTRA_ARGS+=(--ensure-path-dir "$(dirname "$entry")")
+  fi
 }
 
 show_status() {
@@ -185,7 +272,7 @@ run_systemctl() {
 push_manager_path() {
   step "Refreshing the user manager PATH from the login shell"
   local probed
-  if ! probed="$(python3 "$SCRIPT_DIR/sync_login_env.py" --emit-env PATH 2>/dev/null)"; then
+  if ! probed="$(python3 "$SCRIPT_DIR/sync_login_env.py" "${SYNC_EXTRA_ARGS[@]}" --emit-env PATH 2>/dev/null)"; then
     warn "login-shell PATH probe failed; leaving the user manager PATH untouched"
     return 0
   fi
@@ -201,18 +288,41 @@ push_manager_path() {
 }
 
 systemd_install() {
-  step "Generate $UNIT_PATH"
+  step "Generate units in $UNIT_DIR"
   mkdir -p "$UNIT_DIR"
-  printf '%s\n' "$(unit_body)" >"$UNIT_PATH"
-  ok "unit written"
+
+  write_unit "$UNIT_PATH" "$(unit_body)"
+  local main_wrote=$UNIT_WROTE
+  if [[ "$main_wrote" -eq 1 ]]; then
+    ok "$UNIT_NAME written"
+  else
+    ok "$UNIT_NAME unchanged"
+  fi
+
+  local refresh_units=0
+  if resolve_pkg_scope && [[ -f "$REFRESH_SCRIPT" ]]; then
+    PYTHON_BIN="/usr/bin/python3"
+    [[ -x "$PYTHON_BIN" ]] || PYTHON_BIN="$(command -v python3)"
+    write_unit "$UNIT_DIR/$REFRESH_PATH_NAME" "$(refresh_path_body)"
+    if [[ "$UNIT_WROTE" -eq 1 ]]; then ok "$REFRESH_PATH_NAME written"; else ok "$REFRESH_PATH_NAME unchanged"; fi
+    write_unit "$UNIT_DIR/$REFRESH_SERVICE_NAME" "$(refresh_service_body)"
+    if [[ "$UNIT_WROTE" -eq 1 ]]; then ok "$REFRESH_SERVICE_NAME written"; else ok "$REFRESH_SERVICE_NAME unchanged"; fi
+    refresh_units=1
+  else
+    warn "cannot derive the @getpaseo package scope from $PASEO_BIN (or $REFRESH_SCRIPT missing); skipping $REFRESH_PATH_NAME"
+  fi
 
   step "systemctl --user daemon-reload"
   run_systemctl daemon-reload
   push_manager_path
 
   if systemctl --user is-active --quiet "$UNIT_NAME" 2>/dev/null; then
-    step "paseo.service is active -> restart"
-    run_systemctl restart "$UNIT_NAME"
+    if [[ "$main_wrote" -eq 1 ]]; then
+      step "paseo.service is active and the unit changed -> restart"
+      run_systemctl restart "$UNIT_NAME"
+    else
+      ok "paseo.service is active and the unit is unchanged; leaving it running"
+    fi
   else
     local pid
     pid="$(daemon_pid)"
@@ -224,6 +334,11 @@ systemd_install() {
     fi
     step "systemctl --user enable --now $UNIT_NAME"
     run_systemctl enable --now "$UNIT_NAME"
+  fi
+
+  if [[ "$refresh_units" -eq 1 ]]; then
+    step "enable --now $REFRESH_PATH_NAME (supervisor refresh watcher)"
+    run_systemctl enable --now "$REFRESH_PATH_NAME"
   fi
 }
 
@@ -263,10 +378,14 @@ Installed. Common commands:
   paseo daemon status                         # the daemon's own view
   systemctl --user status $UNIT_NAME          # systemd's view
   systemctl --user restart $UNIT_NAME         # restart manually
+  systemctl --user start $REFRESH_SERVICE_NAME  # refresh the supervisor now (safe: skips busy agents)
   journalctl --user -u $UNIT_NAME -f          # systemd journal
   tail -f $LOG_FILE                            # daemon log
   # Login-shell snapshot: ~/.config/environment.d/60-paseo.conf
   # Re-run this script after changing ~/.bashrc / ~/.bash_profile, then restart paseo.service
+
+Updates: $REFRESH_PATH_NAME watches the installed @getpaseo package and
+restarts $UNIT_NAME after an update, unless an agent is running.
 
 The GUI/SSH transport only connects to a daemon that is already running; it does
 not install or start one. As long as the local daemon runs, remote connects work.
@@ -287,6 +406,7 @@ done
 # ---- dry-run: print only; write nothing, start nothing ----
 if [[ "$DRY_RUN" -eq 1 ]]; then
   if [[ "$DO_SYSTEMD" -eq 1 ]]; then
+    compute_sync_extra_args
     sync_login_env
   else
     echo "skipping login-shell sniff (--no-systemd inherits this terminal)"
@@ -298,19 +418,31 @@ if [[ "$DRY_RUN" -eq 1 ]]; then
     exit 0
   fi
   echo "paseo (real): $PASEO_BIN"
+  echo "ensure path dirs: ${SYNC_EXTRA_ARGS[*]:-(none - paseo or node not on this shell PATH)}"
   if [[ "$DO_SYSTEMD" -eq 1 ]]; then
     echo "unit path : $UNIT_PATH"
     echo "---- unit ----"
     unit_body
+    if resolve_pkg_scope && [[ -f "$REFRESH_SCRIPT" ]]; then
+      PYTHON_BIN="/usr/bin/python3"
+      [[ -x "$PYTHON_BIN" ]] || PYTHON_BIN="$(command -v python3)"
+      echo "---- $REFRESH_PATH_NAME ----"
+      refresh_path_body
+      echo "---- $REFRESH_SERVICE_NAME ----"
+      refresh_service_body
+    else
+      echo "(supervisor refresh units skipped: cannot derive the @getpaseo scope from $PASEO_BIN)"
+    fi
     echo "---- planned commands ----"
     echo "systemctl --user daemon-reload"
-    probed_path="$(python3 "$SCRIPT_DIR/sync_login_env.py" --emit-env PATH 2>/dev/null)" || probed_path=""
+    probed_path="$(python3 "$SCRIPT_DIR/sync_login_env.py" "${SYNC_EXTRA_ARGS[@]}" --emit-env PATH 2>/dev/null)" || probed_path=""
     if [[ -n "$probed_path" ]]; then
       echo "systemctl --user set-environment PATH=$probed_path"
     else
       echo "systemctl --user set-environment PATH=<probe failed; will be skipped at runtime>"
     fi
     echo "systemctl --user enable --now $UNIT_NAME"
+    echo "systemctl --user enable --now $REFRESH_PATH_NAME"
     echo "loginctl enable-linger \"$USER\""
   else
     echo "planned: $PASEO_BIN daemon start && $PASEO_BIN daemon status"
@@ -330,6 +462,7 @@ else
 fi
 
 PASEO_BIN="$(resolve_bin paseo)" || die "cannot find the paseo executable"
+compute_sync_extra_args
 
 if [[ "$DO_SYSTEMD" -eq 1 ]]; then
   step "Sniffing the login shell; writing environment.d"

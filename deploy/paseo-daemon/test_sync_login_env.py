@@ -134,5 +134,93 @@ class EmitEnvTest(unittest.TestCase):
             sync.default_runner = original
 
 
+class MergePathTest(unittest.TestCase):
+    def test_prepends_missing_dirs_and_deduplicates(self) -> None:
+        # Extra dirs keep their relative order and claim their slots up
+        # front; entries already in the probe move up, not duplicate.
+        merged = sync.merge_path(
+            "/home/u/.local/bin:/usr/local/bin:/usr/bin",
+            ["/nvm/bin", "/usr/bin", "/nvm/bin"],
+        )
+        self.assertEqual(merged, "/nvm/bin:/usr/bin:/home/u/.local/bin:/usr/local/bin")
+
+    def test_preserves_probe_order_and_drops_empty_entries(self) -> None:
+        merged = sync.merge_path("/a::/b:", [])
+        self.assertEqual(merged, "/a:/b")
+        merged = sync.merge_path("", ["/x", "", "/x", "/y"])
+        self.assertEqual(merged, "/x:/y")
+
+    def test_existing_front_entry_stays_put(self) -> None:
+        # When the toolchain dir is already first, the PATH must not change.
+        merged = sync.merge_path("/nvm/bin:/usr/bin", ["/nvm/bin"])
+        self.assertEqual(merged, "/nvm/bin:/usr/bin")
+
+
+class EnsurePathDirTest(unittest.TestCase):
+    """Regression for the daemon self-update failure on hosts where the
+    login-shell probe sees a different node than the install (e.g. a system
+    node in /usr/bin while paseo lives under nvm): the snapshot PATH must
+    pin the install-time toolchain dirs, so `npm -g ls @getpaseo/cli` in the
+    daemon resolves the owning prefix."""
+
+    def make_toolchain(self, raw: str) -> Path:
+        toolchain = Path(raw) / "toolchain" / "bin"
+        toolchain.mkdir(parents=True)
+        for name in ("node", "npm", "paseo"):
+            shim = toolchain / name
+            shim.write_text("#!/bin/sh\n", encoding="utf-8")
+            shim.chmod(0o755)
+        return toolchain
+
+    def probe_runner(self, probed_path: str):
+        def runner(argv: list[str], timeout: float) -> subprocess.CompletedProcess[bytes]:
+            del argv, timeout
+            stdout = f"PATH={probed_path}\0HOME=/home/u\0".encode()
+            return subprocess.CompletedProcess(args=[], returncode=0, stdout=stdout, stderr=b"")
+
+        return runner
+
+    def test_ensure_dirs_are_prepended_even_when_probe_has_system_node(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            toolchain = self.make_toolchain(raw)
+            env = sync.probe_login_env(
+                shell="/bin/bash",
+                home="/home/u",
+                user="u",
+                ensure_dirs=[str(toolchain)],
+                runner=self.probe_runner("/usr/local/bin:/usr/bin"),
+            )
+            self.assertTrue(env["PATH"].startswith(str(toolchain) + ":"))
+            self.assertTrue(env["PATH"].endswith("/usr/local/bin:/usr/bin"))
+
+    def test_node_guard_passes_via_ensure_dirs_when_probe_lacks_node(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            toolchain = self.make_toolchain(raw)
+            env = sync.probe_login_env(
+                shell="/bin/bash",
+                home="/home/u",
+                user="u",
+                ensure_dirs=[str(toolchain)],
+                runner=self.probe_runner("/home/u/.local/bin:/usr/bin"),
+            )
+            self.assertTrue(env["PATH"].startswith(str(toolchain) + ":"))
+
+    def test_ensure_dirs_apply_to_emit_env(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            toolchain = self.make_toolchain(raw)
+            original = sync.default_runner
+            sync.default_runner = self.probe_runner("/usr/bin")
+            try:
+                buf = io.StringIO()
+                with contextlib.redirect_stdout(buf):
+                    rc = sync.main(
+                        ["--emit-env", "PATH", "--ensure-path-dir", str(toolchain), "--dest", "/nonexistent"]
+                    )
+                self.assertEqual(rc, 0)
+                self.assertEqual(buf.getvalue().strip(), f"{toolchain}:/usr/bin")
+            finally:
+                sync.default_runner = original
+
+
 if __name__ == "__main__":
     unittest.main()
