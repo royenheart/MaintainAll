@@ -101,8 +101,7 @@ daemon 每轮重新 `load_settings()`，因此改 `trusted_dirs` 或 mission 的
 |---|---|
 | **`apps/`** | 独立小工具 / 应用工程（自包含代码与说明），与集群或日常工作流配套，但不属于通用部署清单。 |
 | **`deploy/`** | 服务与基础设施的部署资产：compose、配置片段、systemd unit 等，用于把组件落到机器或集群上。 |
-| **`maintaince/`** | 主机侧维护脚本（目录名为历史拼写）。偏账号与权限等运维操作，供人工或 Agent 按白名单调用。 |
-| **`scripts/`** | 通用运维与辅助脚本集合（含模块化子目录），覆盖打包、环境、模块文件管理等可复用能力。 |
+| **`scripts/`** | 通用运维与辅助脚本集合（含模块化子目录），覆盖打包、环境、模块文件管理、网络诊断等可复用能力。账号管理统一入口为 `scripts/usermgr.py`（create / list / show / modify / passwd / lock / unlock / move-home / delete / group / sudo），其中 `sudo grant|revoke|list` 提供由 systemd timer 自动收回的临时 sudo。 |
 | **`stow-configs/`** | 以 [GNU Stow](https://www.gnu.org/software/stow/) 管理的 dotfile / 用户级配置包，按包链接到 `$HOME`。 |
 | **`templates/`** | 可填充的配置与 modulefile 等模板，供生成正式配置或由 Agent / 脚本实例化。 |
 

@@ -1,22 +1,23 @@
 #!/usr/bin/env python3
 """
-manage_modules.py — Environment Modules 配置文件管理工具
+manage_modules.py — Environment Modules modulefile manager
 
-功能：
-    - 扫描软件安装目录，自动解析软件名/版本，批量生成 modulefile
-    - 手动指定软件信息，生成单个 modulefile
-    - 列出 / 删除已管理的 modulefile
-    - 暴露 PLUGIN_META 接口供 maintain.py TUI 动态加载
+Features:
+    - Scan a software install root, infer name/version from each directory,
+      and generate modulefiles in bulk
+    - Generate a single modulefile from manually supplied details
+    - List / delete managed modulefiles
+    - Expose a PLUGIN_META interface for dynamic loading by the maintain.py TUI
 
-独立运行：
-    python manage_modules.py                    # 交互式菜单
-    python manage_modules.py scan <dir>         # 扫描目录批量生成
+Standalone usage:
+    python manage_modules.py                    # interactive menu
+    python manage_modules.py scan <dir>         # scan a directory, generate in bulk
     python manage_modules.py add <name> <ver> <path>
     python manage_modules.py list
     python manage_modules.py delete <name> <ver>
     python manage_modules.py --help
 
-模板位置：<repo>/templates/modulefiles/{generic,devel,custom}.tcl
+Templates: <repo>/templates/modulefiles/{generic,devel,custom}.tcl
 """
 
 from __future__ import annotations
@@ -28,8 +29,8 @@ import shutil
 from pathlib import Path
 from typing import Any
 
-# ── 路径定位 ──────────────────────────────────────────────────
-# 本脚本位于 scripts/modulefiles/，仓库根为上上层目录
+# ── Paths ───────────────────────────────────────────────────
+# This script lives in scripts/modulefiles/; the repo root is two levels up
 _SCRIPT_DIR = Path(__file__).parent.resolve()
 _REPO_ROOT = _SCRIPT_DIR.parent.parent
 TEMPLATES_DIR = _REPO_ROOT / "templates" / "modulefiles"
@@ -40,20 +41,20 @@ TEMPLATE_FILES = {
     "custom":  TEMPLATES_DIR / "custom.tcl",
 }
 
-# ── 目录名解析正则 ────────────────────────────────────────────
-# 支持分隔符：- 或 _
-# 版本号：数字开头，含 . / - / _ 的组合，可选 v 前缀
+# ── Directory-name regex ────────────────────────────────────
+# Separator: '-' or '_'
+# Version: starts with a digit, may contain . / - / _, optional 'v' prefix
 _VERSION_RE = re.compile(
-    r"^(?P<name>[a-zA-Z][a-zA-Z0-9+._-]*?)"   # 软件名（至少一个字母开头）
-    r"[-_]"                                    # 分隔符
-    r"v?(?P<version>\d[\w.\-]*)$"              # 版本号（可选 v 前缀）
+    r"^(?P<name>[a-zA-Z][a-zA-Z0-9+._-]*?)"   # software name (must start with a letter)
+    r"[-_]"                                    # separator
+    r"v?(?P<version>\d[\w.\-]*)$"              # version (optional 'v' prefix)
 )
 
 
-# ── 核心数据结构 ──────────────────────────────────────────────
+# ── Core data structures ────────────────────────────────────
 
 class SoftwareInfo:
-    """单个软件的元信息。"""
+    """Metadata for a single software package."""
 
     def __init__(
         self,
@@ -69,13 +70,13 @@ class SoftwareInfo:
         self.install_path = install_path
         self.module_type = module_type
         self.gen_devel = gen_devel
-        self.extra_entries = extra_entries  # 仅 custom 模式使用
+        self.extra_entries = extra_entries  # only used by the custom template
 
 
-# ── MODULEPATH 处理 ───────────────────────────────────────────
+# ── MODULEPATH handling ─────────────────────────────────────
 
 def get_modulepath() -> list[Path]:
-    """读取 $MODULEPATH，返回路径列表（过滤不存在的路径）。"""
+    """Read $MODULEPATH and return its entries, dropping paths that do not exist."""
     raw = os.environ.get("MODULEPATH", "")
     if not raw:
         return []
@@ -94,13 +95,13 @@ def choose_output_dir(
     provided: str | None = None,
 ) -> Path | None:
     """
-    选择 modulefile 输出目录。
+    Choose the modulefile output directory.
 
-    优先级：
-      1. provided 不为空 → 直接使用（不存在则创建）
-      2. modulepath 中第一个位于 $HOME 下的路径
-      3. 交互模式：列出全部 modulepath 让用户选择，或手动输入
-      4. 非交互模式：返回 None（调用方处理）
+    Priority:
+      1. `provided` is non-empty → use it as-is (created if missing)
+      2. the first MODULEPATH entry under $HOME
+      3. interactive mode: list all MODULEPATH entries to pick from, or enter one
+      4. non-interactive mode: return None (caller decides)
     """
     home = Path.home()
 
@@ -109,7 +110,7 @@ def choose_output_dir(
         p.mkdir(parents=True, exist_ok=True)
         return p
 
-    # 找第一个在家目录下的路径
+    # First entry under the home directory
     for p in modulepath:
         try:
             p.relative_to(home)
@@ -117,7 +118,7 @@ def choose_output_dir(
         except ValueError:
             continue
 
-    # 没有家目录路径
+    # No entry under the home directory
     if not interactive:
         return None
 
@@ -154,11 +155,11 @@ def choose_output_dir(
         return p
 
 
-# ── 目录名解析 ────────────────────────────────────────────────
+# ── Directory-name parsing ──────────────────────────────────
 
 def parse_dir_name(dirname: str) -> tuple[str, str, str]:
     """
-    解析目录名，返回 (name, version, confidence)。
+    Parse a directory name into (name, version, confidence).
     confidence: "high" | "low"
     """
     m = _VERSION_RE.match(dirname)
@@ -167,7 +168,7 @@ def parse_dir_name(dirname: str) -> tuple[str, str, str]:
         version = m.group("version")
         return name, version, "high"
 
-    # 多个 `-` 分隔的情况，尝试最后一段为版本号
+    # Several '-' separators: try the last segment as the version
     parts = dirname.replace("_", "-").split("-")
     if len(parts) >= 2:
         candidate_ver = parts[-1].lstrip("v")
@@ -175,7 +176,7 @@ def parse_dir_name(dirname: str) -> tuple[str, str, str]:
             name = "-".join(parts[:-1])
             return name, candidate_ver, "low"
 
-    # 完全无法解析版本
+    # Version could not be parsed at all
     return dirname, "", "low"
 
 
@@ -186,8 +187,8 @@ def _confirm_software_info(
     confidence: str,
 ) -> tuple[str, str] | None:
     """
-    交互式确认软件名/版本。
-    返回 (name, version) 或 None（用户跳过）。
+    Interactively confirm the software name/version.
+    Return (name, version), or None if the user skips.
     """
     if confidence == "high":
         return name, version
@@ -218,10 +219,10 @@ def _confirm_software_info(
         return None
 
 
-# ── 模板加载与渲染 ────────────────────────────────────────────
+# ── Template loading and rendering ──────────────────────────
 
 def load_template(template_type: str) -> str:
-    """从 templates/modulefiles/ 加载对应 .tcl 文件内容。"""
+    """Load the matching .tcl template from templates/modulefiles/."""
     tpl_path = TEMPLATE_FILES.get(template_type)
     if tpl_path is None:
         raise ValueError(f"未知模板类型: {template_type!r}，可选: {list(TEMPLATE_FILES)}")
@@ -232,14 +233,14 @@ def load_template(template_type: str) -> str:
 
 def _parse_kvlist(raw: str) -> list[tuple[str, str]]:
     """
-    解析 kvlist 字符串为 (operation, content) 列表。
+    Parse a kvlist string into a list of (operation, content) tuples.
 
-    支持格式（每行一条）：
+    Supported formats (one per line):
         VAR=/some/path              → prepend-path VAR /some/path
         prepend VAR=/some/path      → prepend-path VAR /some/path
         setenv VAR=value            → setenv VAR value
         append VAR=/some/path       → append-path VAR /some/path
-        # 注释行（忽略）
+        # comment line (ignored)
     """
     result = []
     for raw_line in raw.splitlines():
@@ -274,7 +275,7 @@ def _parse_kvlist(raw: str) -> list[tuple[str, str]]:
 
 
 def _build_custom_entries(kvlist_raw: str) -> str:
-    """将 kvlist 原始文本转换为 Tcl modulefile 语句块。"""
+    """Convert raw kvlist text into a block of Tcl modulefile statements."""
     pairs = _parse_kvlist(kvlist_raw)
     lines = []
     for op, content in pairs:
@@ -286,7 +287,7 @@ def render_modulefile(
     template_type: str,
     info: SoftwareInfo,
 ) -> str:
-    """渲染模板，返回最终 Tcl 文件内容。"""
+    """Render a template and return the final Tcl file content."""
     tpl = load_template(template_type)
     install_path = str(info.install_path)
 
@@ -301,7 +302,7 @@ def render_modulefile(
     return tpl
 
 
-# ── 文件写入 / 删除 / 列举 ────────────────────────────────────
+# ── Write / delete / list files ─────────────────────────────
 
 def write_modulefile(
     output_dir: Path,
@@ -313,12 +314,12 @@ def write_modulefile(
     interactive: bool = True,
 ) -> Path | None:
     """
-    将 modulefile 内容写入 <output_dir>/<name>/<version>。
+    Write modulefile content to <output_dir>/<name>/<version>.
 
-    若文件已存在：
-        interactive=True  → 询问是否覆盖
-        interactive=False → 根据 overwrite_ok 决定
-    返回写入路径，或 None（跳过）。
+    If the file already exists:
+        interactive=True  → ask whether to overwrite
+        interactive=False → follow overwrite_ok
+    Return the written path, or None if skipped.
     """
     module_dir = output_dir / name
     module_dir.mkdir(parents=True, exist_ok=True)
@@ -339,8 +340,8 @@ def write_modulefile(
 
 def list_modulefiles(output_dir: Path) -> list[dict[str, str]]:
     """
-    列出 output_dir 下所有已管理的 modulefile。
-    返回 [{"name": ..., "version": ..., "path": ...}, ...]
+    List all managed modulefiles under output_dir.
+    Return [{"name": ..., "version": ..., "path": ...}, ...]
     """
     results = []
     if not output_dir.exists():
@@ -367,8 +368,8 @@ def delete_modulefile(
     interactive: bool = True,
 ) -> tuple[list[Path], list[Path]]:
     """
-    删除 <output_dir>/<name>/<version>（及可选的 <version>-devel）。
-    返回 (deleted_paths, not_found_paths)。
+    Delete <output_dir>/<name>/<version> (and optionally <version>-devel).
+    Return (deleted_paths, not_found_paths).
     """
     deleted: list[Path] = []
     not_found: list[Path] = []
@@ -388,7 +389,7 @@ def delete_modulefile(
                 continue
         target.unlink()
         deleted.append(target)
-        # 若目录为空则删除目录
+        # Remove the directory if it is now empty
         parent = target.parent
         if parent.exists() and not any(parent.iterdir()):
             parent.rmdir()
@@ -404,13 +405,13 @@ def action_scan_and_generate(
     interactive: bool = False,
 ) -> dict[str, Any]:
     """
-    扫描软件安装根目录，为每个子目录生成 modulefile。
+    Scan a software install root and generate a modulefile per subdirectory.
 
     fields:
-        software_dir:  软件安装根目录路径（str）
-        module_type:   模板类型（generic/devel/custom），默认 generic
-        gen_devel:     是否同时生成 -devel 模块（bool），默认 True
-        output_dir:    输出目录（str，留空自动选）
+        software_dir:  software install root (str)
+        module_type:   template type (generic/devel/custom), default generic
+        gen_devel:     also generate a -devel module (bool), default True
+        output_dir:    output directory (str; empty = auto-select)
     """
     software_dir = Path(fields.get("software_dir", "")).expanduser().resolve()
     module_type  = fields.get("module_type", "generic")
@@ -422,13 +423,13 @@ def action_scan_and_generate(
     if not software_dir.is_dir():
         return {"success": False, "message": f"路径不是目录: {software_dir}", "data": None}
 
-    # 确定输出目录
+    # Resolve the output directory
     modulepath = get_modulepath()
     output_dir = choose_output_dir(modulepath, interactive=interactive, provided=out_provided)
     if output_dir is None:
         return {"success": False, "message": "未能确定输出目录，操作取消。", "data": None}
 
-    # 扫描子目录
+    # Scan subdirectories
     subdirs = sorted(
         p for p in software_dir.iterdir() if p.is_dir()
     )
@@ -449,12 +450,12 @@ def action_scan_and_generate(
                 continue
             name, version = result
         else:
-            # 非交互模式：低置信度时跳过并报告
+            # Non-interactive: skip and report low-confidence parses
             if confidence == "low" and not version:
                 skipped.append(f"{dirname}（无法解析版本号）")
                 continue
             elif confidence == "low":
-                # 低置信度但有候选版本，直接使用
+                # Low confidence but a candidate version exists: use it
                 pass
 
         info = SoftwareInfo(
@@ -465,7 +466,7 @@ def action_scan_and_generate(
             gen_devel=gen_devel,
         )
 
-        # 生成主 modulefile
+        # Generate the main modulefile
         try:
             content = render_modulefile(module_type, info)
             dest = write_modulefile(
@@ -478,7 +479,7 @@ def action_scan_and_generate(
             skipped.append(f"{dirname}（生成失败: {e}）")
             continue
 
-        # 生成 -devel modulefile
+        # Generate the -devel modulefile
         if gen_devel:
             try:
                 devel_content = render_modulefile("devel", info)
@@ -507,16 +508,16 @@ def action_single_generate(
     interactive: bool = False,
 ) -> dict[str, Any]:
     """
-    手动指定软件信息，生成单个 modulefile（及可选 -devel）。
+    Generate a single modulefile (and optionally -devel) from manual input.
 
     fields:
-        name:          软件名
-        version:       版本号
-        install_path:  安装路径
-        module_type:   模板类型（generic/devel/custom），默认 generic
-        gen_devel:     是否同时生成 -devel（bool），默认 True
-        extra_entries: 自定义环境变量（kvlist，custom 模式使用）
-        output_dir:    输出目录（留空自动选）
+        name:          software name
+        version:       version
+        install_path:  install path
+        module_type:   template type (generic/devel/custom), default generic
+        gen_devel:     also generate -devel (bool), default True
+        extra_entries: custom environment variables (kvlist, custom template only)
+        output_dir:    output directory (empty = auto-select)
     """
     name         = fields.get("name", "").strip()
     version      = fields.get("version", "").strip()
@@ -589,10 +590,10 @@ def action_list_modules(
     interactive: bool = False,
 ) -> dict[str, Any]:
     """
-    列出指定目录（或 MODULEPATH 首个家目录路径）下所有 modulefile。
+    List all modulefiles in the given directory (or the first MODULEPATH entry under $HOME).
 
     fields:
-        output_dir: 目录（留空自动选）
+        output_dir: directory (empty = auto-select)
     """
     out_provided = fields.get("output_dir", "").strip() or None
 
@@ -625,13 +626,13 @@ def action_delete_module(
     interactive: bool = False,
 ) -> dict[str, Any]:
     """
-    删除指定 modulefile（及可选 -devel）。
+    Delete the given modulefile (and optionally -devel).
 
     fields:
-        name:       软件名
-        version:    版本号
-        del_devel:  是否同时删除 -devel（bool），默认 True
-        output_dir: 目录（留空自动选）
+        name:       software name
+        version:    version
+        del_devel:  also delete -devel (bool), default True
+        output_dir: directory (empty = auto-select)
     """
     name         = fields.get("name", "").strip()
     version      = fields.get("version", "").strip()
@@ -673,7 +674,7 @@ def action_delete_module(
     }
 
 
-# ── 插件元数据接口（供 maintain.py TUI 动态加载）──────────────
+# ── Plugin metadata (loaded dynamically by the maintain.py TUI) ───
 
 PLUGIN_META: dict[str, Any] = {
     "name": "Environment Modules 管理",
@@ -819,10 +820,10 @@ PLUGIN_META: dict[str, Any] = {
 }
 
 
-# ── 交互式命令行入口 ──────────────────────────────────────────
+# ── Interactive CLI entry points ────────────────────────────
 
 def _interactive_scan() -> None:
-    """交互式扫描目录批量生成。"""
+    """Interactive: scan a directory and generate in bulk."""
     software_dir = input("软件安装根目录路径: ").strip()
     if not software_dir:
         print("未输入路径，取消。")
@@ -851,7 +852,7 @@ def _interactive_scan() -> None:
 
 
 def _interactive_single() -> None:
-    """交互式生成单个 modulefile。"""
+    """Interactive: generate a single modulefile."""
     name         = input("软件名: ").strip()
     version      = input("版本号: ").strip()
     install_path = input("安装路径: ").strip()
@@ -893,14 +894,14 @@ def _interactive_single() -> None:
 
 
 def _interactive_list() -> None:
-    """交互式列出 modulefile。"""
+    """Interactive: list modulefiles."""
     out_dir = input("目录（留空自动选）: ").strip() or ""
     result = action_list_modules({"output_dir": out_dir}, interactive=True)
     print("\n" + result["message"])
 
 
 def _interactive_delete() -> None:
-    """交互式删除 modulefile。"""
+    """Interactive: delete a modulefile."""
     name    = input("软件名: ").strip()
     version = input("版本号: ").strip()
     del_devel_ans = input("同时删除 -devel 模块？[Y/n]: ").strip().lower()
@@ -914,7 +915,7 @@ def _interactive_delete() -> None:
 
 
 def interactive_cli() -> None:
-    """命令行交互式菜单入口。"""
+    """Entry point for the interactive CLI menu."""
     print("=" * 50)
     print("  Environment Modules 管理工具")
     print("=" * 50)

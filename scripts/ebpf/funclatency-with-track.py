@@ -1,7 +1,7 @@
 #!/usr/bin/python3
 # Edit from BCC project's funclatency
-# 1. 统计每个函数的执行时间统计
-# 2. 跟踪每个函数的执行时间在时间点上的分布
+# 1. Aggregate execution-time statistics per function
+# 2. Track how each function's execution time is distributed over time
 # @lint-avoid-python-3-compatibility-imports
 #
 # funclatency   Time functions and print latency as a histogram.
@@ -133,10 +133,10 @@ typedef struct hist_key {
     u64 slot;
 } hist_key_t;
 
-// 定义溢出事件结构体
+// Overflow event struct
 struct overflow_event {
-    ip_pid_t key;       // 函数标识
-    prev_slot_t history; // 记录
+    ip_pid_t key;       // function identifier
+    prev_slot_t history; // recorded history
 };
 
 TYPEDEF
@@ -147,7 +147,7 @@ FUNCTION
 
 // BPF_HASH(history, ip_pid_t, call_history_t);
 BPF_PERCPU_HASH(history, ip_pid_t, prev_slot_t);
-// 发送 track 数据，使用 4MB 缓冲区
+// Send track data through a 4 MB buffer
 BPF_RINGBUF_OUTPUT(overflow, 1 << 12);
 
 int trace_func_entry(struct pt_regs *ctx)
@@ -454,7 +454,7 @@ def print_track_event(ip, pid, slot, count):
         low -= 1
     print(f"F={get_section((ip, pid))},S:{low}->{high} {label},count:{count}")
 
-# 处理 track 日志
+# Handle track logs
 def parse_track_event(ctx, data, size):
     event = ctypes.cast(data, ctypes.POINTER(OverflowEvent)).contents
     slot = event.history.slot
@@ -528,12 +528,12 @@ async def hist_count(b: BPF):
             print("hist count done")
 
 async def main(b: BPF):
-    # 启动两个独立协程
+    # Start two independent coroutines
     hist_task = asyncio.create_task(hist_count(b))
     poll_task = asyncio.create_task(ring_buff_poll_loop(b))
 
     try:
-        # 等待所有任务完成或被取消
+        # Wait until all tasks finish or are cancelled
         await asyncio.gather(hist_task, poll_task)
     except asyncio.CancelledError:
         print("all tasks done, cleaning up...")
