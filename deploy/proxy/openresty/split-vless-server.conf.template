@@ -3,7 +3,8 @@
 # 删除/停用任一块互不影响（两者仍共享 openresty 进程与 443 端口）。
 # 证书：可与订阅同证书多域名（SAN 包含两个名字），或各自证书。
 server {
-    listen 443 ssl;
+    listen __TLS_PORT__ ssl;
+__IPV6_LISTEN_LINE__
     server_name __VLESS_DOMAIN__;
 
     ssl_certificate     __TLS_CERT_PATH__;
