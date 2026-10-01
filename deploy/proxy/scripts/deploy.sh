@@ -24,14 +24,19 @@
 #   --vless-port N       TCP port sing-box listens on 127.0.0.1 (default 8443)
 #   --tls-port N         Public TCP TLS port for the nginx/openresty vless link
 #                        (default 443)
+#   --ipv6               Also bind IPv6. Hysteria2 listens on :: (dual-stack when
+#                        net.ipv6.bindv6only=0). OpenResty gains
+#                        listen [::]:<tls-port> ssl. nginx defaults that socket to
+#                        ipv6only, so it can be repeated across server blocks.
+#                        Default is IPv4 only. The host must have IPv6 enabled.
 #   --version V          sing-box version to install (default 1.14.0)
 #   --install            Upload config + service and install sing-box on remote
 #   --dry-run            Alias for default (generate + print only)
 #
 # Everything above can also be set via environment variables:
 #   SSH_HOST, REMOTE_IP, SNI_DOMAIN, CERT_DIR, HYSTERIA_PORT, VLESS_PORT,
-#   TLS_PORT, SING_BOX_VERSION, SSH_ARGS, BIN_DIR, CONFIG_DIR, TLS_DIR,
-#   MASQUERADE_URL, CERTBOT_HOOK_DIR
+#   TLS_PORT, ENABLE_IPV6, SING_BOX_VERSION, SSH_ARGS, BIN_DIR, CONFIG_DIR,
+#   TLS_DIR, MASQUERADE_URL, CERTBOT_HOOK_DIR
 
 set -euo pipefail
 
@@ -49,6 +54,7 @@ SING_BOX_VERSION="${SING_BOX_VERSION:-1.14.0}"
 HYSTERIA_PORT="${HYSTERIA_PORT:-443}"
 VLESS_PORT="${VLESS_PORT:-8443}"
 TLS_PORT="${TLS_PORT:-443}"
+ENABLE_IPV6="${ENABLE_IPV6:-0}"
 BIN_DIR="${BIN_DIR:-/usr/local/bin}"
 CONFIG_DIR="${CONFIG_DIR:-/etc/sing-box}"
 TLS_DIR="${TLS_DIR:-${CONFIG_DIR}/tls}"
@@ -58,8 +64,8 @@ CERTBOT_HOOK_DIR="${CERTBOT_HOOK_DIR:-}"
 INSTALL=0
 while [[ $# -gt 0 ]]; do
     case "$1" in
-        --install) INSTALL=1 ;;
-        --dry-run) INSTALL=0 ;;
+        --install) INSTALL=1; shift ;;
+        --dry-run) INSTALL=0; shift ;;
         --host) SSH_HOST="${2:-}"; shift 2 ;;
         --host=*) SSH_HOST="${1#*=}"; shift 1 ;;
         --ip) REMOTE_IP="${2:-}"; shift 2 ;;
@@ -74,19 +80,36 @@ while [[ $# -gt 0 ]]; do
         --vless-port=*) VLESS_PORT="${1#*=}"; shift 1 ;;
         --tls-port) TLS_PORT="${2:-}"; shift 2 ;;
         --tls-port=*) TLS_PORT="${1#*=}"; shift 1 ;;
+        --ipv6) ENABLE_IPV6=1; shift 1 ;;
         --version) SING_BOX_VERSION="${2:-}"; shift 2 ;;
         --version=*) SING_BOX_VERSION="${1#*=}"; shift 1 ;;
         --help|-h)
-            sed -n '2,32p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            sed -n '2,39p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *)
             echo "unknown option: $1" >&2
-            sed -n '2,32p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
+            sed -n '2,39p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
             exit 1
             ;;
     esac
 done
+
+case "${ENABLE_IPV6}" in
+    1|true|TRUE|yes|YES) ENABLE_IPV6=1 ;;
+    0|false|FALSE|no|NO) ENABLE_IPV6=0 ;;
+    *)
+        echo "error: ENABLE_IPV6 must be 0 or 1 (or pass --ipv6)" >&2
+        exit 1
+        ;;
+esac
+if [[ "${ENABLE_IPV6}" == "1" ]]; then
+    HY2_LISTEN="::"
+    IPV6_LISTEN_LINE="    listen [::]:${TLS_PORT} ssl;"
+else
+    HY2_LISTEN="0.0.0.0"
+    IPV6_LISTEN_LINE=""
+fi
 
 # ── secrets ────────────────────────────────────────────────────────────────
 VLESS_UUID="$(cat /proc/sys/kernel/random/uuid 2>/dev/null || python3 -c 'import uuid; print(uuid.uuid4())')"
@@ -122,6 +145,8 @@ render() {
     TLS_PORT="${TLS_PORT}" \
     SERVER_NAME="${SERVER_NAME}" \
     DOMAIN="${DOMAIN}" \
+    HY2_LISTEN="${HY2_LISTEN}" \
+    IPV6_LISTEN_LINE="${IPV6_LISTEN_LINE}" \
     HY2_CERT_PATH="${HY2_CERT_PATH}" \
     HY2_KEY_PATH="${HY2_KEY_PATH}" \
     MASQUERADE_URL="${MASQUERADE_URL}" \
@@ -139,6 +164,8 @@ subs = {
     "__TLS_PORT__": os.environ["TLS_PORT"],
     "__SERVER_NAME__": os.environ["SERVER_NAME"],
     "__DOMAIN__": os.environ["DOMAIN"],
+    "__HY2_LISTEN__": os.environ["HY2_LISTEN"],
+    "__IPV6_LISTEN_LINE__": os.environ["IPV6_LISTEN_LINE"],
     "__TLS_CERT_PATH__": os.environ["HY2_CERT_PATH"],
     "__TLS_KEY_PATH__": os.environ["HY2_KEY_PATH"],
     "__HY2_CERT_PATH__": os.environ["HY2_CERT_PATH"],
@@ -152,10 +179,12 @@ with open(dst, "w", encoding="utf-8") as f:
 ' "${src}" "${dst}"
 }
 
+DOMAIN="${SNI_DOMAIN:-__DOMAIN__}"
 render "${TEMPLATE_DIR}/config.json.template" "${TMPDIR}/config.json"
 render "${NGINX_DIR}/proxy-location.conf.template" "${TMPDIR}/proxy-location.conf"
-DOMAIN="${SNI_DOMAIN:-__DOMAIN__}"
 render "${ORESTY_DIR}/tls-server.conf.template" "${TMPDIR}/openresty-server.conf"
+render "${ORESTY_DIR}/split-vless-server.conf.template" "${TMPDIR}/openresty-vless-server.conf"
+render "${ORESTY_DIR}/split-sub-server.conf.template" "${TMPDIR}/openresty-sub-server.conf"
 cp "${TEMPLATE_DIR}/sing-box.service" "${TMPDIR}/sing-box.service"
 
 # ── import links ───────────────────────────────────────────────────────────
@@ -185,6 +214,11 @@ VLESS_LINK="vless://${VLESS_UUID}@${ADDR}:${TLS_PORT}?${VLESS_QUERY}#proxy-vless
 
 # ── output ─────────────────────────────────────────────────────────────────
 echo
+if [[ "${ENABLE_IPV6}" == "1" ]]; then
+    echo "Listen mode: IPv4+IPv6. Hysteria2 binds :: (needs net.ipv6.bindv6only=0 so IPv4 still works). OpenResty also listens on [::]:${TLS_PORT}."
+else
+    echo "Listen mode: IPv4 only. Pass --ipv6 to also bind IPv6."
+fi
 echo "=== rendered sing-box config (${TMPDIR}/config.json) ==="
 cat "${TMPDIR}/config.json"
 echo
@@ -193,6 +227,12 @@ cat "${TMPDIR}/proxy-location.conf"
 echo
 echo "=== OpenResty — 完整 TLS server 块（VLESS WS + 订阅，同一域名证书; 填好 __SUB_PATH__/__SUB_FILE__ 后 drop into http{}) ==="
 cat "${TMPDIR}/openresty-server.conf"
+echo
+echo "=== OpenResty split — VLESS server (fill __VLESS_DOMAIN__/__SUB_PATH__ placeholders) ==="
+cat "${TMPDIR}/openresty-vless-server.conf"
+echo
+echo "=== OpenResty split — subscription server (fill __SUB_DOMAIN__/__SUB_PATH__/__SUB_FILE__) ==="
+cat "${TMPDIR}/openresty-sub-server.conf"
 echo
 echo "=== import links (fill __SERVER_IP__/host/sni if still placeholders) ==="
 echo "${HY2_LINK}"

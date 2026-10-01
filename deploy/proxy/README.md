@@ -202,6 +202,32 @@ OpenResty master 以 root 读取，无需改属主。
 避免暴露默认欢迎页/被扫描（`location =` 精确匹配优先，不影响 VLESS 路径）。
 
 > 公网侧请确认安全组放行 TCP `<--tls-port>`（默认 443）与 UDP `<--hysteria-port>`。
+> 开启 `--ipv6` 时，同样放行这些端口的 IPv6。
+
+### 可选 IPv6
+
+默认只监听 IPv4：Hysteria2 绑 `0.0.0.0`，OpenResty 只有 `listen <tls-port> ssl`。
+VLESS 回环入站始终是 `127.0.0.1`，IPv6 客户端停在 OpenResty，再由它转到回环。
+
+主机已经有全局 IPv6 地址时：
+
+```bash
+./scripts/deploy.sh --ipv6 --sni <域名> --ip <公网IPv4>
+```
+
+`ENABLE_IPV6=1` 等价于 `--ipv6`。
+
+这时 Hysteria2 改为监听 `::`。在 Linux 上这是双栈套接字，前提是
+`net.ipv6.bindv6only=0`（发行版默认），否则 IPv4 的 UDP 443 会消失。
+OpenResty 额外得到一行 `listen [::]:<tls-port> ssl;`，和原来的 IPv4
+`listen` 并存。nginx 对 `[::]` 默认 `ipv6only`，所以多个 server 块可以各写一行，
+不会和 IPv4 的 `listen` 抢端口，也不会报 duplicate listen options。
+
+脚本仍然不改远端的 OpenResty。把打印出的 `listen [::]:...` 放进已经在跑的
+server 块，`openresty -t` 后 reload；sing-box 的 `listen` 改成 `::` 后重启进程。
+DNS 用灰云 AAAA 指向这台机器的公网 IPv6。不要开橙云：它转发不了 Hysteria2 的 UDP。
+
+内核没开 IPv6 时不要加 `--ipv6`，`::` 会绑定失败。
 
 ## 把两个私有节点合成一个订阅（无需面板）
 

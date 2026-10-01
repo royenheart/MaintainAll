@@ -12,7 +12,8 @@
 # "文件级独立"；若要分离，请用不同子域名拆成两个 server 块（见历史做法）。
 
 server {
-    listen 443 ssl;
+    listen __TLS_PORT__ ssl;
+__IPV6_LISTEN_LINE__
     server_name __DOMAIN__;
 
     ssl_certificate     /etc/letsencrypt/live/__DOMAIN__/fullchain.pem;

@@ -7,7 +7,7 @@
     {
       "type": "hysteria2",
       "tag": "hysteria2-in",
-      "listen": "0.0.0.0",
+      "listen": "__HY2_LISTEN__",
       "listen_port": __HYSTERIA_PORT__,
       "users": [
         {
