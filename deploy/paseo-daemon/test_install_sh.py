@@ -106,5 +106,37 @@ class SystemdQuoteTest(unittest.TestCase):
         self.assertNotEqual(self.quote("/a/b\n").returncode, 0)  # CR/LF
 
 
+class ValidatePortValueTest(unittest.TestCase):
+    """--port / PASEO_PORT validation: plain integers in 1-65535 only.
+    The extracted function calls die(), which the extraction would not carry
+    over, so the runner defines a local stand-in first."""
+
+    def run_validate(self, value: str) -> subprocess.CompletedProcess[str]:
+        script = (
+            "set -euo pipefail\n"
+            "die() { printf '%s\\n' \"$*\" >&2; exit 1; }\n"
+            f"{extract_function('validate_port_value')}\n"
+            "validate_port_value \"$@\""
+        )
+        return subprocess.run(
+            ["bash", "-c", script, "validate_port_value", value],
+            capture_output=True,
+            text=True,
+            env={"PATH": "/usr/bin:/bin"},
+        )
+
+    def test_accepts_valid_ports(self) -> None:
+        for value in ("1", "6767", "6800", "65535"):
+            with self.subTest(value=value):
+                proc = self.run_validate(value)
+                self.assertEqual(proc.returncode, 0, proc.stderr)
+                self.assertEqual(proc.stdout.strip(), value)
+
+    def test_rejects_out_of_range_and_non_numeric(self) -> None:
+        for value in ("0", "65536", "-1", "67.67", "abc", ""):
+            with self.subTest(value=value):
+                self.assertNotEqual(self.run_validate(value).returncode, 0)
+
+
 if __name__ == "__main__":
     unittest.main()

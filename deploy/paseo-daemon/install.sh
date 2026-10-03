@@ -1,9 +1,22 @@
 #!/usr/bin/env bash
-# Paseo daemon one-shot deploy: install the CLI -> systemd --user service
+# Paseo daemon one-shot deploy: install the CLI -> harden the persisted config
+# (loopback-only listen + mandatory password) -> systemd --user service
 # (enabled at boot) -> verify. Also installs a supervisor-refresh watcher:
 # a .path unit on the installed @getpaseo package + an oneshot that restarts
 # paseo.service after an update (skipping while agents are busy), because an
 # updated package alone never refreshes the running supervisor process.
+#
+# Hardening, in one paragraph: without a password every connection admitted by
+# the daemon is the "owner" principal (see Paseo session-admission-auth), and
+# 127.0.0.1 is host-wide, so on a multi-user machine every local user can
+# control the daemon. This installer therefore always writes
+# daemon.listen=127.0.0.1:<port> (a non-loopback persisted value is reset,
+# never propagated; there is intentionally no way to deploy 0.0.0.0 here) and
+# always ends with a password set. The plaintext is never persisted: the
+# interactive path reads it from /dev/tty, the unattended path generates a
+# random one and prints it exactly once (never to a file, unit, or env dump);
+# only the bcrypt hash lands in ~/.paseo/config.json. Rotate later with
+# `paseo daemon set-password`.
 #
 # Background: the Paseo GUI's Remote/SSH only connects to a daemon that is
 # already running; it never installs, starts, or configures one remotely, and
@@ -15,8 +28,10 @@
 # MaintainAll daemon): hand the daemon to systemd --user plus
 # `loginctl enable-linger`, so crashes and reboots bring it back automatically.
 #
-# Env: PASEO_HOME (default ~/.paseo), PASEO_LISTEN_ADDR (default 127.0.0.1),
-#      and PASEO_PORT (default 6767) override the readiness probe target.
+# Env: PASEO_HOME (default ~/.paseo), PASEO_PORT or --port (default 6767 or the
+#      port already persisted in ~/.paseo/config.json),
+#      PASEO_DEPLOY_PASSWORD (unattended password input; otherwise the script
+#      prompts on /dev/tty and generates a random password on empty input).
 
 set -euo pipefail
 
@@ -27,28 +42,40 @@ UNIT_PATH="$UNIT_DIR/$UNIT_NAME"
 REFRESH_SERVICE_NAME="paseo-supervisor-refresh.service"
 REFRESH_PATH_NAME="paseo-supervisor-refresh.path"
 REFRESH_SCRIPT="$SCRIPT_DIR/supervisor_refresh.py"
+HARDEN_PY="$SCRIPT_DIR/harden_daemon_config.py"
 PKG_SCOPE_DIR="" # resolved from PASEO_BIN by resolve_pkg_scope()
 PASEO_HOME="${PASEO_HOME:-$HOME/.paseo}"
 PID_FILE="$PASEO_HOME/paseo.pid"
 LOG_FILE="$PASEO_HOME/daemon.log"
-LISTEN_ADDR="${PASEO_LISTEN_ADDR:-127.0.0.1}"
-LISTEN_PORT="${PASEO_PORT:-6767}"
+LISTEN_ADDR="127.0.0.1"          # hard policy: this deploy is loopback-only
+LISTEN_PORT="6767"               # readiness probe target; reset by harden_daemon_config
 
 DO_INSTALL=1    # 0 = --no-install
 DO_SYSTEMD=1    # 0 = --no-systemd
 DRY_RUN=0
+PORT=""         # --port / PASEO_PORT; empty = keep the persisted port, else 6767
+CONFIG_HARDENED=0 # 1 = config.json changed; force a daemon (re)start
 
 usage() {
   cat <<'EOF'
 Usage:
-  ./install.sh                  # npm i -g if paseo is missing; sniff the login shell;
-                                # write ~/.config/environment.d/60-paseo.conf;
+  ./install.sh                  # npm i -g if paseo is missing; harden the config
+                                # (loopback listen + mandatory password); sniff the
+                                # login shell; write ~/.config/environment.d/60-paseo.conf;
                                 # generate and enable paseo.service
+  ./install.sh --port 6800      # bind 127.0.0.1:6800 (loopback only; 0.0.0.0 is refused)
   ./install.sh --no-install     # skip npm install (paseo must already be on PATH)
-  ./install.sh --no-systemd     # no unit, no sniffing: only npm i -g + `paseo daemon start`
+  ./install.sh --no-systemd     # no unit, no sniffing: only npm i -g + hardened
+                                # config + `paseo daemon start`
                                 #   (detached; inherits this terminal; no boot autostart)
   ./install.sh --dry-run        # sniff and print the unit / commands; write nothing
   ./install.sh -h | --help
+
+Password input, in priority order:
+  1. PASEO_DEPLOY_PASSWORD env var (unattended/agent deploys)
+  2. interactive prompt on /dev/tty (empty input = auto-generate)
+  3. auto-generate a random one and print it exactly once (never saved)
+The plaintext is never written to disk; only its bcrypt hash is stored.
 EOF
   exit "${1:-0}"
 }
@@ -281,6 +308,198 @@ compute_sync_extra_args() {
   fi
 }
 
+# --- config hardening: loopback listen + mandatory password ------------------
+# Policy lives in two places: this script decides WHAT to enforce (loopback
+# only, password always set, nothing persisted in plaintext), and
+# harden_daemon_config.py does the JSON merge atomically while refusing
+# non-loopback listen targets on its own — so even a careless caller cannot
+# persist a 0.0.0.0 bind through it.
+
+# Echoes the normalized port or dies. Pure (unit-tested via extraction).
+validate_port_value() {
+  local value="$1"
+  [[ "$value" =~ ^[0-9]+$ ]] || die "port must be a positive integer, got: '$value'"
+  (( value >= 1 && value <= 65535 )) || die "port out of range 1-65535: $value"
+  printf '%s\n' "$value"
+}
+
+# Effective port: --port > PASEO_PORT > the port already persisted (so a
+# re-run without flags keeps the previous choice) > 6767.
+resolve_effective_port() {
+  if [[ -n "$PORT" ]]; then
+    validate_port_value "$PORT"
+    return
+  fi
+  if [[ -n "${PASEO_PORT:-}" ]]; then
+    validate_port_value "$PASEO_PORT"
+    return
+  fi
+  local persisted=""
+  persisted="$(python3 "$HARDEN_PY" --home "$PASEO_HOME" get-listen 2>/dev/null || true)"
+  local persisted_port=""
+  persisted_port="$(python3 - "$persisted" <<'PY' || true
+import sys
+value = sys.argv[1].strip()
+tail = value.rsplit("]:", 1) if value.startswith("[") else value.rsplit(":", 1)
+print(tail[1] if len(tail) == 2 and tail[1].isdigit() else "")
+PY
+)"
+  if [[ -n "$persisted_port" ]]; then
+    validate_port_value "$persisted_port"
+  else
+    printf '6767\n'
+  fi
+}
+
+# Hash a password with the installed CLI's own bcryptjs (same cost as
+# DAEMON_PASSWORD_BCRYPT_COST). Plaintext arrives on stdin and never touches
+# argv or a file; the bcrypt hash goes to stdout. Resolution order: hoisted
+# next to the @getpaseo scope, then the global npm root, then a bounded find.
+hash_password() {
+  local scope_parent="" candidates=() found="" node_bin=""
+  if resolve_pkg_scope 2>/dev/null; then
+    scope_parent="$(dirname "$PKG_SCOPE_DIR")"
+    candidates+=("$scope_parent/bcryptjs")
+  fi
+  local npm_root=""
+  npm_root="$(npm root -g 2>/dev/null || true)"
+  [[ -n "$npm_root" ]] && candidates+=("$npm_root/bcryptjs")
+  local candidate
+  for candidate in "${candidates[@]}"; do
+    if [[ -f "$candidate/package.json" ]]; then
+      found="$candidate"
+      break
+    fi
+  done
+  if [[ -z "$found" && -n "$scope_parent" ]]; then
+    found="$(find "$scope_parent" -maxdepth 4 -type d -name bcryptjs -print -quit 2>/dev/null || true)"
+  fi
+  [[ -n "$found" ]] || die "cannot locate bcryptjs next to the installed @getpaseo packages; set the password manually with 'paseo daemon set-password'"
+  node_bin="$(dirname "$PASEO_BIN")/node"
+  [[ -x "$node_bin" ]] || node_bin="$(command -v node 2>/dev/null || true)"
+  [[ -n "$node_bin" ]] || die "node not found; needed to hash the daemon password"
+  "$node_bin" -e 'const bcrypt = require(process.argv[1]);
+let input = "";
+process.stdin.on("data", (chunk) => { input += chunk; });
+process.stdin.on("end", () => process.stdout.write(bcrypt.hashSync(input.replace(/\s+$/, ""), 12)));' "$found"
+}
+
+# True only when /dev/tty can actually be opened — a plain -r/-w test is not
+# enough: /dev/tty is a world-writable device node, so the test passes even
+# for a process with no controlling terminal (cron, CI, agent shells), whose
+# open then fails with ENXIO.
+have_tty() { ( exec 9<>/dev/tty ) 2>/dev/null; }
+
+# Reads a secret from /dev/tty without echo; returns nonzero when no tty is
+# available so callers can fall back to generation. $1 = prompt.
+read_secret() {
+  local prompt="$1" value
+  have_tty || return 1
+  # shellcheck disable=SC2162 # -r is given; the space in IFS trim is intended
+  IFS= read -r -s -p "$prompt" value </dev/tty || return 1
+  printf '\n' >/dev/tty
+  printf '%s' "$value"
+}
+
+print_generated_password() {
+  local password="$1" interactive="$2"
+  # Never let xtrace capture the plaintext even when the script runs under
+  # `bash -x` — `set +x` inside the script wins for everything after it.
+  case "$-" in
+    *x*) set +x ;;
+  esac
+  if [[ "$interactive" -eq 1 ]]; then
+    {
+      printf '\n\033[1;33m==============================================================\n'
+      printf 'AUTO-GENERATED DAEMON PASSWORD — shown ONCE, never saved anywhere.\n\n'
+      printf '    %s\n\n' "$password"
+      printf 'Copy it into your password manager, then press Enter to hide it.\n'
+      printf 'If lost: re-run this script or `paseo daemon set-password`.\n'
+      printf '==============================================================\033[0m\n'
+    } >/dev/tty
+    IFS= read -r -s -p "Copied? Press Enter to clear the screen." _ </dev/tty || true
+    printf '\n' >/dev/tty
+    clear >/dev/tty 2>&1 || true
+  else
+    # Unattended deploy (agent/CI): stdout is the only channel the operator
+    # sees, so print plainly and say so.
+    printf '\nAUTO-GENERATED DAEMON PASSWORD (printed once; not saved anywhere):\n\n    %s\n\nStore it now; this is the only copy. Rotate with `paseo daemon set-password`.\n' "$password"
+  fi
+}
+
+# Always runs. Writes daemon.listen=127.0.0.1:<port> and daemon.auth.password
+# (bcrypt) into config.json, then flags CONFIG_HARDENED so the daemon is
+# (re)started once with the new config. Plaintext password handling:
+# PASEO_DEPLOY_PASSWORD > /dev/tty prompt > random generation (printed once).
+harden_daemon_config() {
+  step "Hardening daemon config: loopback listen + password"
+  EFFECTIVE_PORT="$(resolve_effective_port)"
+  LISTEN_PORT="$EFFECTIVE_PORT"
+  local target_listen="$LISTEN_ADDR:$EFFECTIVE_PORT"
+
+  local summary previous previous_loopback
+  summary="$(python3 "$HARDEN_PY" --home "$PASEO_HOME" set-listen "$target_listen")" \
+    || die "failed to write listen target $target_listen (refusing non-loopback is intentional)"
+  previous="$(python3 - "$summary" <<'PY'
+import json, sys
+print(json.loads(sys.argv[1])["previous"] or "")
+PY
+)"
+  previous_loopback="$(python3 - "$summary" <<'PY'
+import json, sys
+print(json.loads(sys.argv[1])["previous_loopback"])
+PY
+)"
+  if [[ "$previous_loopback" == "False" ]]; then
+    warn "previous bind was non-loopback ($previous); reset to $target_listen."
+    warn "Direct mobile/LAN access is not supported by this deploy — use relay pairing."
+  elif [[ -n "$previous" && "$previous" != "$target_listen" ]]; then
+    ok "listen: $previous -> $target_listen"
+  else
+    ok "listen: $target_listen (unchanged)"
+  fi
+
+  local password="" generated=0 interactive=0
+  if [[ -n "${PASEO_DEPLOY_PASSWORD:-}" ]]; then
+    password="$PASEO_DEPLOY_PASSWORD"
+    ok "password: taken from PASEO_DEPLOY_PASSWORD"
+  elif have_tty; then
+    interactive=1
+    printf '\033[1mA daemon password is mandatory.\033[0m Without one, every connection\n' >/dev/tty
+    printf 'admitted by the daemon is the owner principal (Paseo session-admission-auth),\n' >/dev/tty
+    printf 'and 127.0.0.1 is host-wide, so every local user could control your daemon.\n' >/dev/tty
+    local first second
+    first="$(read_secret "Daemon password [empty = auto-generate]")" || first=""
+    if [[ -n "$first" ]]; then
+      second="$(read_secret "Confirm password")" || die "could not read password confirmation"
+      [[ "$first" == "$second" ]] || die "passwords do not match"
+      password="$first"
+    fi
+    unset first second
+  fi
+  if [[ -z "$password" ]]; then
+    password="$(python3 -c 'import secrets; print(secrets.token_urlsafe(24))')"
+    generated=1
+  fi
+
+  local hash
+  hash="$(printf '%s' "$password" | hash_password)" \
+    || die "failed to hash the daemon password"
+  python3 "$HARDEN_PY" --home "$PASEO_HOME" set-password-hash "$hash" \
+    || die "failed to persist the password hash"
+
+  if [[ "$generated" -eq 1 ]]; then
+    # Shown exactly once here, then dropped: nothing on disk, in any unit, or
+    # in the environment snapshot ever carries the plaintext.
+    print_generated_password "$password" "$interactive"
+  else
+    ok "password: stored as bcrypt hash in $PASEO_HOME/config.json"
+    warn "restart is required — applied when the service starts below."
+  fi
+  unset password hash
+  CONFIG_HARDENED=1
+}
+
 show_status() {
   "$PASEO_BIN" daemon status --no-color 2>&1 || true
   echo
@@ -297,7 +516,16 @@ start_detached() {
   local pid
   pid="$(daemon_pid)"
   if [[ -n "$pid" ]] && kill -0 "$pid" 2>/dev/null; then
-    warn "daemon already running (PID $pid); skipping start"
+    if [[ "${CONFIG_HARDENED:-0}" -eq 1 ]]; then
+      step "config changed -> restarting the detached daemon (PID $pid)"
+      "$PASEO_BIN" daemon stop || true
+      wait_port_closed 10 \
+        || warn "old daemon may still be listening; if the new instance fails to start, see the tail of $LOG_FILE"
+      step "paseo daemon start (detached)"
+      "$PASEO_BIN" daemon start
+    else
+      warn "daemon already running (PID $pid); skipping start"
+    fi
   else
     step "paseo daemon start (detached)"
     "$PASEO_BIN" daemon start
@@ -369,6 +597,9 @@ systemd_install() {
     if [[ "$main_wrote" -eq 1 ]]; then
       step "paseo.service is active and the unit changed -> restart"
       run_systemctl restart "$UNIT_NAME"
+    elif [[ "${CONFIG_HARDENED:-0}" -eq 1 ]]; then
+      step "unit unchanged but the hardened config needs a reload -> restart"
+      run_systemctl restart "$UNIT_NAME"
     else
       ok "paseo.service is active and the unit is unchanged; leaving it running"
     fi
@@ -439,6 +670,21 @@ Installed. Common commands:
   # Login-shell snapshot: ~/.config/environment.d/60-paseo.conf
   # Re-run this script after changing ~/.bashrc / ~/.bash_profile, then restart paseo.service
 
+Security posture (enforced by this installer):
+  - Binds $LISTEN_ADDR:$LISTEN_PORT only. The listen address lives in
+    $PASEO_HOME/config.json (daemon.listen); a non-loopback value is reset
+    on every run. There is no supported way to deploy 0.0.0.0 here.
+  - A password is set (bcrypt hash under daemon.auth.password). Local CLI and
+    desktop clients authenticate automatically via $PASEO_HOME/local-credential;
+    everyone else — other OS users, mobile apps — must provide it. Rotate with:
+      paseo daemon set-password && systemctl --user restart $UNIT_NAME
+  - If the password was auto-generated, it exists only where you copied it;
+    the installer kept no copy. Lost it = run set-password.
+  - Relay pairing (paseo daemon pair) for mobile is still available and is
+    the supported remote path; keep the pairing link private (it grants access
+    like a password; current daemon builds still admit credential-less relay
+    clients during a compat window).
+
 Updates: $REFRESH_PATH_NAME watches the installed @getpaseo package and
 restarts $UNIT_NAME after an update, unless an agent is running.
 
@@ -453,6 +699,10 @@ while [[ $# -gt 0 ]]; do
     --no-install) DO_INSTALL=0; shift ;;
     --no-systemd) DO_SYSTEMD=0; shift ;;
     --dry-run) DRY_RUN=1; shift ;;
+    --port)
+      [[ $# -ge 2 ]] || die "--port needs a value"
+      PORT="$(validate_port_value "$2")"
+      shift 2 ;;
     -h|--help) usage 0 ;;
     *) echo "unknown option: $1" >&2; usage 1 ;;
   esac
@@ -474,6 +724,15 @@ if [[ "$DRY_RUN" -eq 1 ]]; then
     sync_login_env
   else
     echo "skipping login-shell sniff (--no-systemd inherits this terminal)"
+  fi
+  EFFECTIVE_PORT="$(resolve_effective_port)"
+  echo "planned listen : $LISTEN_ADDR:$EFFECTIVE_PORT (loopback only; non-loopback persisted values are reset)"
+  if [[ -n "${PASEO_DEPLOY_PASSWORD:-}" ]]; then
+    echo "planned password: taken from PASEO_DEPLOY_PASSWORD"
+  elif have_tty; then
+    echo "planned password: interactive prompt (empty input = auto-generate, printed once)"
+  else
+    echo "planned password: auto-generate random and print once (no tty for prompting)"
   fi
   PASEO_ENTRY="$(discover_paseo 2>/dev/null || true)"
   if [[ -z "$PASEO_ENTRY" ]]; then
@@ -534,6 +793,8 @@ step "paseo: $PASEO_ENTRY"
 export PATH="$(dirname "$PASEO_ENTRY"):$PATH"
 PASEO_BIN="$(resolve_bin paseo)" || die "cannot resolve the paseo executable"
 compute_sync_extra_args
+
+harden_daemon_config
 
 if [[ "$DO_SYSTEMD" -eq 1 ]]; then
   step "Sniffing the login shell; writing environment.d"
