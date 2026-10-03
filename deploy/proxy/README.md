@@ -223,11 +223,25 @@ OpenResty 额外得到一行 `listen [::]:<tls-port> ssl;`，和原来的 IPv4
 `listen` 并存。nginx 对 `[::]` 默认 `ipv6only`，所以多个 server 块可以各写一行，
 不会和 IPv4 的 `listen` 抢端口，也不会报 duplicate listen options。
 
-脚本仍然不改远端的 OpenResty。把打印出的 `listen [::]:...` 放进已经在跑的
-server 块，`openresty -t` 后 reload；sing-box 的 `listen` 改成 `::` 后重启进程。
-DNS 用灰云 AAAA 指向这台机器的公网 IPv6。不要开橙云：它转发不了 Hysteria2 的 UDP。
+脚本不改远端的 OpenResty、不写订阅文件、不改 DNS。下面三步用现成模板手工做完即可。
+
+1. **OpenResty IPv6 监听。** 模板已经有：`openresty/tls-server.conf.template`（方案 A），以及 `split-vless-server.conf.template` 和 `split-sub-server.conf.template`（方案 B）。`./scripts/deploy.sh --ipv6` 会把 `__IPV6_LISTEN_LINE__` 渲染成 `listen [::]:<tls-port> ssl;`。把渲染结果放进 `conf.d`，`openresty -t` 后 reload。不要在多个 server 块上再写 `ipv6only=on`（nginx 对 `[::]` 默认开启，重复会报 duplicate listen options）。VLESS 回环保持 `127.0.0.1`。
+2. **订阅文件。** 用 [sub/README.md](sub/README.md)：`make-subscription.sh` 把 `import-links.txt` 做成 base64，再挂到模板里的 `location = __SUB_PATH__`（`alias __SUB_FILE__`）。Hysteria2 链接由 `deploy.sh` 带上 `cc_override=bbr3`。改完静态文件后，在 daed 里对同一订阅 URL 点 Update，不要手改节点。
+3. **DNS。** 没有单独的 DNS 模板。给 VLESS 用的名字、Hysteria2 的 SNI、订阅用的名字各加一条灰云 A（公网 IPv4）和一条灰云 AAAA（该主机的全局 IPv6，形如 `ip -6 addr show scope global`）。不要开橙云：Cloudflare 代理转发不了 Hysteria2 的 UDP，也会拆掉自有证书。安全组同时放行 TCP 443 和 UDP `<hysteria-port>` 的 IPv6。
 
 内核没开 IPv6 时不要加 `--ipv6`，`::` 会绑定失败。
+
+### 拥塞控制
+
+生成的 Hysteria2 链接带 `cc_override=bbr3`，服务器入站设置
+`ignore_client_bandwidth: true`。两边都用 BBR，按路径上实际能通过的速率发送。
+
+链接里的 `up` / `upmbps` 是客户端申报的上行（家里发往服务器），`down` / `downmbps`
+是申报的下行（服务器发回家里）。写了这两个数就会启用 Brutal：按该速率发送，丢包不减速。
+本脚本不写它们。家里的线路速率不放进部署配置；dae 若在全局配置了带宽，没有
+`cc_override` 的 hy2 节点仍会改用 Brutal。
+
+已导入 daed 的旧链接不会自动变。在原链接的查询串加上 `cc_override=bbr3`，密码、地址和端口保持不变，然后重新加载该节点。
 
 ## 把两个私有节点合成一个订阅（无需面板）
 

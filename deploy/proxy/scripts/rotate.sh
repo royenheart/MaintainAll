@@ -73,6 +73,7 @@ d=json.load(open(f))
 for i in d.get("inbounds",[]):
     t=i.get("type")
     if t=="hysteria2":
+        i["ignore_client_bandwidth"]=True
         for x in i.get("users",[]): x["password"]=p
     elif t=="vless":
         for x in i.get("users",[]): x["uuid"]=u
@@ -92,7 +93,24 @@ else
     printf '# deploy/proxy import links for daed (rotated %s)\n' "$(date +%F)" > "$LINKS"
     for line in "${OLD[@]}"; do
         case "$line" in
-            hysteria2://*) sed "s#^hysteria2://[^@]*@#hysteria2://${PW}@#" <<<"$line" >> "$LINKS" ;;
+            hysteria2://*)
+                newline="$(sed "s#^hysteria2://[^@]*@#hysteria2://${PW}@#" <<<"$line")"
+                if [[ "${newline}" != *cc_override=* ]]; then
+                    base="${newline}"
+                    frag=""
+                    if [[ "${newline}" == *"#"* ]]; then
+                        base="${newline%%#*}"
+                        frag="#${newline#*#}"
+                    fi
+                    if [[ "${base}" == *"?"* ]]; then
+                        base="${base}&cc_override=bbr3"
+                    else
+                        base="${base}?cc_override=bbr3"
+                    fi
+                    newline="${base}${frag}"
+                fi
+                printf '%s\n' "${newline}" >> "$LINKS"
+                ;;
             vless://*)     sed "s#^vless://[^@]*@#vless://${UU}@#"     <<<"$line" >> "$LINKS" ;;
         esac
     done

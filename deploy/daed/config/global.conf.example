@@ -5,11 +5,11 @@
 tproxy_port: "12345"
 tproxy_port_protect: "true"
 log_level: "info"
-# IPv4-only health checks: IPv6 probe targets mark tcp6 dialers NOT ALIVE and
-# then break IPv4 GitHub traffic with "proxy (tcp6): no alive dialer".
-tcp_check_url: "http://cp.cloudflare.com,1.1.1.1"
+# Include one IPv4 and one IPv6 address. A list with only IPv4 leaves tcp6,
+# tcp6(DNS) and udp6(DNS) at NOT ALIVE, and dae does not retry those families.
+tcp_check_url: "http://cp.cloudflare.com,1.1.1.1,2606:4700:4700::1111"
 tcp_check_http_method: "HEAD"
-udp_check_dns: "dns.google:53,8.8.8.8"
+udp_check_dns: "dns.google:53,8.8.8.8,2001:4860:4860::8888"
 check_interval: "60s"
 check_tolerance: "500ms"
 lan_interface: "<YOUR_LAN_INTERFACE>"

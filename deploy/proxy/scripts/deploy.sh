@@ -202,6 +202,14 @@ else
         HY2_QUERY="?insecure=1"
     fi
 fi
+# BBR3 probes the path. Do not emit up/down: those enable Hysteria2 Brutal at a
+# fixed rate and ignore loss. cc_override keeps a client global bandwidth pair
+# from turning this node into Brutal.
+if [[ -z "${HY2_QUERY}" ]]; then
+    HY2_QUERY="?cc_override=bbr3"
+else
+    HY2_QUERY="${HY2_QUERY}&cc_override=bbr3"
+fi
 HY2_LINK="hysteria2://${HY2_PASSWORD}@${ADDR}:${HYSTERIA_PORT}/${HY2_QUERY}#proxy-hysteria2"
 
 VLESS_QUERY="encryption=none&security=tls&type=ws&host=${HOST_VALUE}&path=${WS_PATH_ENCODED}"

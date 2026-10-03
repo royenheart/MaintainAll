@@ -34,8 +34,11 @@ certbot certonly --dns-cloudflare \
   --dns-cloudflare-credentials /root/.secrets/certbot/cloudflare.ini \
   -d <域名> [-d <另一个域名>]
 # 2.2 按所选方案生成 conf.d 里的 server 块（填 __WS_PATH__/__VLESS_PORT__/
-#     __SUB_PATH__/__SUB_FILE__ 等占位符），reload：
+#     __SUB_PATH__/__SUB_FILE__ 等占位符）。需要 IPv6 时用 deploy.sh --ipv6
+#     渲染出的 listen [::]:… 行，不要手写 ipv6only=on。然后：
 openresty -t && systemctl reload openresty   # 或 nginx 对应服务
+# 2.2b DNS：订阅子域、VLESS 名、Hysteria2 SNI 各一条灰云 A + 灰云 AAAA
+#      （AAAA = 该主机全局 IPv6）。不要开橙云。
 # 2.3 安装续期 hook（证书轮换后自动 reload 反代 + 重启 sing-box）
 install -Dm755 deploy/proxy/nginx/certbot-restart-sing-box.sh \
   /etc/letsencrypt/renewal-hooks/deploy/restart-sing-box.sh

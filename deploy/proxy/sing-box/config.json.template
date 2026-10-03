@@ -9,6 +9,7 @@
       "tag": "hysteria2-in",
       "listen": "__HY2_LISTEN__",
       "listen_port": __HYSTERIA_PORT__,
+      "ignore_client_bandwidth": true,
       "users": [
         {
           "name": "daed",

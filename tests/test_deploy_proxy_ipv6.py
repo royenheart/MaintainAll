@@ -36,3 +36,14 @@ def test_ipv6_flag_adds_dual_stack_listeners():
     assert "listen [::]:8443 ssl;" in out
     assert "ipv6only" not in out
     assert "Listen mode: IPv4+IPv6" in out
+
+
+def test_hysteria2_uses_bbr_without_a_fixed_rate():
+    out = render("--sni", "example.com", "--ip", "203.0.113.10")
+    assert '"ignore_client_bandwidth": true' in out
+    assert "cc_override=bbr3" in out
+    assert "upmbps=" not in out
+    assert "downmbps=" not in out
+
+    unsigned = render("--ip", "203.0.113.10")
+    assert "insecure=1&cc_override=bbr3" in unsigned or "cc_override=bbr3&insecure=1" in unsigned
