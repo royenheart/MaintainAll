@@ -153,5 +153,52 @@ class SetPasswordHashTest(unittest.TestCase):
             self.assertEqual(run_cli(home, "get-listen").returncode, 1)
 
 
+class RemoveCorsOriginTest(unittest.TestCase):
+    def test_removes_only_the_target_origin(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            home = Path(raw)
+            seed_config(
+                home,
+                {"daemon": {"cors": {"allowedOrigins": ["https://app.paseo.sh", "https://ui.example.com"]}}},
+            )
+            proc = run_cli(home, "remove-cors-origin", "https://app.paseo.sh")
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            summary = json.loads(proc.stdout)
+            self.assertTrue(summary["removed"])
+            self.assertEqual(summary["remaining"], ["https://ui.example.com"])
+            stored = json.loads((home / "config.json").read_text(encoding="utf-8"))
+            self.assertEqual(stored["daemon"]["cors"]["allowedOrigins"], ["https://ui.example.com"])
+
+    def test_idempotent_when_origin_absent(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            home = Path(raw)
+            seed_config(home, {"daemon": {"cors": {"allowedOrigins": ["https://ui.example.com"]}}})
+            proc = run_cli(home, "remove-cors-origin", "https://app.paseo.sh")
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            self.assertFalse(json.loads(proc.stdout)["removed"])
+
+    def test_empty_list_is_kept_as_explicit_deny(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            home = Path(raw)
+            seed_config(home, {"daemon": {"cors": {"allowedOrigins": ["https://app.paseo.sh"]}}})
+            self.assertEqual(run_cli(home, "remove-cors-origin", "https://app.paseo.sh").returncode, 0)
+            stored = json.loads((home / "config.json").read_text(encoding="utf-8"))
+            self.assertEqual(stored["daemon"]["cors"]["allowedOrigins"], [])
+            # And the policy stays stable on a second run (no key resurrection).
+            self.assertEqual(run_cli(home, "remove-cors-origin", "https://app.paseo.sh").returncode, 0)
+            stored = json.loads((home / "config.json").read_text(encoding="utf-8"))
+            self.assertEqual(stored["daemon"]["cors"]["allowedOrigins"], [])
+
+    def test_missing_cors_section_is_a_noop(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            home = Path(raw)
+            seed_config(home, {"daemon": {"listen": "127.0.0.1:6767"}})
+            proc = run_cli(home, "remove-cors-origin", "https://app.paseo.sh")
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            self.assertFalse(json.loads(proc.stdout)["removed"])
+            stored = json.loads((home / "config.json").read_text(encoding="utf-8"))
+            self.assertNotIn("cors", stored["daemon"])
+
+
 if __name__ == "__main__":
     unittest.main()

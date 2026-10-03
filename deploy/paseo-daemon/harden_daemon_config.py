@@ -14,6 +14,7 @@ Subcommands:
   get-listen                      print the current daemon.listen (may be empty)
   set-listen HOST:PORT            enforce loopback, write, print JSON summary
   set-password-hash BCRYPT_HASH   merge daemon.auth.password
+  remove-cors-origin ORIGIN       drop ORIGIN from daemon.cors.allowedOrigins
 """
 
 from __future__ import annotations
@@ -172,6 +173,39 @@ def cmd_set_password_hash(args: argparse.Namespace) -> None:
     print(json.dumps({"password": "set"}))
 
 
+def cmd_remove_cors_origin(args: argparse.Namespace) -> None:
+    """Drop one origin from daemon.cors.allowedOrigins, preserving the rest.
+
+    An emptied list is kept as an explicit deny of all cross-origin browser
+    access; native clients send no Origin header and are unaffected.
+    """
+    home = Path(args.home)
+    config = load_config(home)
+    daemon = daemon_section(config)
+    cors = daemon.get("cors")
+    removed = False
+    remaining: list[str] = []
+    if isinstance(cors, dict):
+        origins = cors.get("allowedOrigins")
+        if isinstance(origins, list):
+            remaining = [o for o in origins if isinstance(o, str) and o != args.origin]
+            removed = len(remaining) != len(origins)
+            if removed:
+                cors["allowedOrigins"] = remaining
+                daemon["cors"] = cors
+                config["daemon"] = daemon
+                save_config(home, config)
+    print(
+        json.dumps(
+            {
+                "origin": args.origin,
+                "removed": removed,
+                "remaining": remaining,
+            }
+        )
+    )
+
+
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--home", default=os.path.expanduser("~/.paseo"))
@@ -181,11 +215,16 @@ def main(argv: list[str] | None = None) -> int:
     set_listen.add_argument("listen", metavar="HOST:PORT")
     set_hash = subcommands.add_parser("set-password-hash", help="store a bcrypt password hash")
     set_hash.add_argument("bcrypt_hash", metavar="BCRYPT_HASH")
+    remove_origin = subcommands.add_parser(
+        "remove-cors-origin", help="drop an origin from daemon.cors.allowedOrigins"
+    )
+    remove_origin.add_argument("origin", metavar="ORIGIN")
     args = parser.parse_args(argv)
     handlers = {
         "get-listen": cmd_get_listen,
         "set-listen": cmd_set_listen,
         "set-password-hash": cmd_set_password_hash,
+        "remove-cors-origin": cmd_remove_cors_origin,
     }
     try:
         handlers[args.command](args)

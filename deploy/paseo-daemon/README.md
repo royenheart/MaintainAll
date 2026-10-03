@@ -59,23 +59,29 @@ machine, gets full control. This installer therefore enforces, on every run:
    behind an Enter-to-clear screen. Lost it? `paseo daemon set-password`.
 3. **Restart on change.** The daemon is restarted whenever the hardened
    config changed, even when the unit file is unchanged — "the old process
-   never reloaded it" is not a loophole.
+   never reloaded it" is not a loophole. (Paseo only reloads config on demand
+   or at process start; there is no file watcher, so a restart is the
+   reliable way to make a persisted change effective.)
+4. **No hosted-web-app origin.** `https://app.paseo.sh` under
+   `daemon.cors.allowedOrigins` is Paseo's shipped default so the hosted web
+   app can drive the daemon from a browser. This deployment does not extend
+   that trust: the origin is stripped on every run (an emptied list stays
+   empty — an explicit deny of all cross-origin browser access). Native
+   clients (CLI, desktop, mobile, relay) send no `Origin` header and are
+   unaffected. If you ever want the hosted web UI back, re-add the origin by
+   hand; the next installer run removes it again.
 
-Local clients (CLI, desktop app) keep working without typing the password —
-they authenticate via `~/.paseo/local-credential` (mode 0600). Everyone else
-— other OS users, mobile apps — must provide it.
+One thing this script does **not** manage, on purpose:
 
-Two things this script does **not** manage, on purpose:
-
-- **CORS.** `https://app.paseo.sh` under `daemon.cors.allowedOrigins` is
-  Paseo's own shipped default, so the hosted web app can talk to the daemon
-  from a browser. Keep it if you use the hosted web UI; delete the key if you
-  never do. The daemon password still gates what such a page can execute.
 - **Relay pairing.** `paseo daemon pair` stays available and is the supported
   mobile path. Treat the pairing link like a password — any holder can
   connect — and note that current daemon builds still admit credential-less
   relay clients during a compatibility window; password enforcement for relay
   tightens in a future Paseo release.
+
+Local clients (CLI, desktop app) keep working without typing the password —
+they authenticate via `~/.paseo/local-credential` (mode 0600). Everyone else
+— other OS users, mobile apps — must provide it.
 
 ## Supervisor auto-refresh on update
 

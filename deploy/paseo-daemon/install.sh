@@ -11,12 +11,14 @@
 # 127.0.0.1 is host-wide, so on a multi-user machine every local user can
 # control the daemon. This installer therefore always writes
 # daemon.listen=127.0.0.1:<port> (a non-loopback persisted value is reset,
-# never propagated; there is intentionally no way to deploy 0.0.0.0 here) and
-# always ends with a password set. The plaintext is never persisted: the
-# interactive path reads it from /dev/tty, the unattended path generates a
-# random one and prints it exactly once (never to a file, unit, or env dump);
-# only the bcrypt hash lands in ~/.paseo/config.json. Rotate later with
-# `paseo daemon set-password`.
+# never propagated; there is intentionally no way to deploy 0.0.0.0 here),
+# always ends with a password set, and always strips the hosted-web-app origin
+# https://app.paseo.sh from daemon.cors.allowedOrigins (we do not extend trust
+# to that deployment; native clients are unaffected). The plaintext is never
+# persisted: the interactive path reads it from /dev/tty, the unattended path
+# generates a random one and prints it exactly once (never to a file, unit,
+# or env dump); only the bcrypt hash lands in ~/.paseo/config.json. Rotate
+# later with `paseo daemon set-password`.
 #
 # Background: the Paseo GUI's Remote/SSH only connects to a daemon that is
 # already running; it never installs, starts, or configures one remotely, and
@@ -497,6 +499,27 @@ PY
     warn "restart is required — applied when the service starts below."
   fi
   unset password hash
+
+  # The hosted web app origin is Paseo's shipped default. We do not extend
+  # trust to that deployment: a page served from it must not be able to
+  # drive this daemon from any browser that can reach the machine. Native
+  # clients (CLI, desktop, mobile, relay) send no Origin header and are
+  # unaffected. Stripped on every run; re-adding it by hand lasts only until
+  # the next run.
+  local cors_summary cors_removed
+  cors_summary="$(python3 "$HARDEN_PY" --home "$PASEO_HOME" remove-cors-origin "https://app.paseo.sh")" \
+    || die "failed to strip the hosted-web-app origin from cors.allowedOrigins"
+  cors_removed="$(python3 - "$cors_summary" <<'PY'
+import json, sys
+print(json.loads(sys.argv[1])["removed"])
+PY
+)"
+  if [[ "$cors_removed" == "True" ]]; then
+    ok "cors: removed https://app.paseo.sh (hosted web app can no longer reach this daemon)"
+  else
+    ok "cors: https://app.paseo.sh not present (unchanged)"
+  fi
+
   CONFIG_HARDENED=1
 }
 
@@ -678,6 +701,11 @@ Security posture (enforced by this installer):
     desktop clients authenticate automatically via $PASEO_HOME/local-credential;
     everyone else — other OS users, mobile apps — must provide it. Rotate with:
       paseo daemon set-password && systemctl --user restart $UNIT_NAME
+  - https://app.paseo.sh is stripped from daemon.cors.allowedOrigins on every
+    run: the hosted web app is not a trusted client of this deployment.
+    Native clients (CLI/desktop/mobile/relay) send no Origin header and are
+    unaffected. To use the hosted web UI anyway, re-add the origin by hand
+    (it will be stripped again on the next run of this installer).
   - If the password was auto-generated, it exists only where you copied it;
     the installer kept no copy. Lost it = run set-password.
   - Relay pairing (paseo daemon pair) for mobile is still available and is

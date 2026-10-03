@@ -40,11 +40,11 @@ is (re)started:
    settings cannot sit un-loaded by a long-running worker.
 
 Local CLI/desktop clients stay passwordless via `~/.paseo/local-credential`
-(0600). Two adjacent concerns are documented but not managed: the
-`https://app.paseo.sh` CORS entry is Paseo's shipped default for the hosted
-web app, and relay pairing stays enabled as the mobile path (its pairing link
-is a credential; current daemon builds still admit credential-less relay
-clients during a compat window).
+(0600). `https://app.paseo.sh` is stripped from `daemon.cors.allowedOrigins`
+on every run — the hosted web app's deployment is not a trusted client — and
+relay pairing stays enabled as the mobile path (its pairing link is a
+credential; current daemon builds still admit credential-less relay clients
+during a compat window).
 
 ## Alternatives considered
 
@@ -66,6 +66,11 @@ clients during a compat window).
   Remote/SSH transport cannot reach a socket file; TCP on a distinct loopback
   port is the only mode that serves both local multi-user isolation and
   relay-based mobile access.
+- **Keep the `app.paseo.sh` CORS default and rely on the password.**
+  Rejected: it extends trust to a third-party deployment we do not control —
+  a page served from that origin in any reachable browser could drive the
+  daemon. Stripping the origin on every run removes the trust extension; the
+  native clients that matter send no `Origin` header at all.
 
 ## Consequences
 
