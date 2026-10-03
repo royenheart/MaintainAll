@@ -41,6 +41,9 @@ class WizardState:
     http_port: int = 8080
     outbound: str = "socks"  # socks | http
     processes: list[str] = field(default_factory=list)
+    # reject: whitelisted processes' global IPv6 is reset so they use IPv4.
+    # proxy: that IPv6 TCP is sent through SOCKS like IPv4.
+    ipv6_mode: str = "reject"
     enable_tun: bool = False
     enable_auto_launch: bool = True
     upgrade_verge: bool = False
@@ -84,6 +87,8 @@ def load_state() -> WizardState:
         filtered = {k: v for k, v in data.items() if k in WizardState.__dataclass_fields__}
         st = WizardState(**filtered)
         st.processes = [p.strip() for p in st.processes if str(p).strip()]
+        if st.ipv6_mode not in ("reject", "proxy"):
+            st.ipv6_mode = "reject"
         return st
     except (OSError, json.JSONDecodeError, TypeError):
         return WizardState()
@@ -256,24 +261,89 @@ def start_verge(exe: Path) -> None:
     )
 
 
-def _tray_already_running() -> bool:
+def parse_tray_pids(stdout: str, self_pid: int = 0) -> list[int]:
+    """PIDs printed by the tray process query, excluding this installer."""
+    found: list[int] = []
+    for line in (stdout or "").splitlines():
+        text = line.strip()
+        if not text.isdigit():
+            continue
+        pid = int(text)
+        if pid > 0 and pid != self_pid:
+            found.append(pid)
+    return found
+
+
+def _tray_pids() -> list[int]:
     r = subprocess.run(
         [
             "powershell",
             "-NoProfile",
             "-Command",
-            "Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'python' -and $_.CommandLine -match 'tray\\.py' -and $_.CommandLine -notmatch 'Get-CimInstance' } | Measure-Object | Select-Object -ExpandProperty Count",
+            "Get-CimInstance Win32_Process | Where-Object { $_.Name -match 'python' -and $_.CommandLine -match 'tray\\.py' -and $_.CommandLine -notmatch 'Get-CimInstance' } | Select-Object -ExpandProperty ProcessId",
         ],
         capture_output=True,
         text=True,
         encoding="utf-8",
         errors="replace",
         check=False,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
+    return parse_tray_pids(r.stdout or "", os.getpid())
+
+
+def _stop_tray(pids: list[int]) -> None:
+    """End an already running tray so the next start loads the current code."""
+    if not pids:
+        return
+    print("关闭已运行的分应用托盘...")
+    for pid in pids:
+        subprocess.run(
+            ["taskkill", "/PID", str(pid), "/T", "/F"],
+            capture_output=True,
+            check=False,
+            creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+        )
+
+
+def _is_admin() -> bool:
     try:
-        return int((r.stdout or "0").strip() or "0") > 0
-    except ValueError:
+        return bool(ctypes.windll.shell32.IsUserAnAdmin())
+    except (AttributeError, OSError):
         return False
+
+
+def _pythonw() -> Path:
+    py = Path(sys.executable)
+    launcher = py.with_name("pythonw.exe")
+    return launcher if launcher.is_file() else py
+
+
+def tray_launch_command() -> str:
+    return subprocess.list2cmdline([str(_pythonw()), str(ROOT / "tray.py"), "--silent"])
+
+
+def schtasks_create_args() -> list[str]:
+    return [
+        "schtasks",
+        "/Create",
+        "/F",
+        "/SC",
+        "ONLOGON",
+        "/RL",
+        "HIGHEST",
+        "/IT",
+        "/TN",
+        TRAY_RUN_NAME,
+        "/TR",
+        tray_launch_command(),
+    ]
+
+
+def _runas(exe: str, params: str) -> bool:
+    """Show the system UAC dialog. True if the elevated process was started."""
+    rc = int(ctypes.windll.shell32.ShellExecuteW(None, "runas", exe, params, str(ROOT), 1))
+    return rc > 32
 
 
 def start_tray() -> None:
@@ -281,9 +351,9 @@ def start_tray() -> None:
     if not script.is_file():
         print(f"未找到 {script}，跳过托盘。")
         return
-    if _tray_already_running():
-        print("分应用托盘已在运行，不再重复启动。")
-        return
+    running = _tray_pids()
+    if running:
+        _stop_tray(running)
     flags = 0
     if hasattr(subprocess, "CREATE_NEW_PROCESS_GROUP"):
         flags |= subprocess.CREATE_NEW_PROCESS_GROUP
@@ -291,9 +361,9 @@ def start_tray() -> None:
         flags |= subprocess.DETACHED_PROCESS
     if hasattr(subprocess, "CREATE_NO_WINDOW"):
         flags |= subprocess.CREATE_NO_WINDOW
-    print("启动分应用托盘...")
+    print("重新启动分应用托盘..." if running else "启动分应用托盘...")
     subprocess.Popen(
-        [sys.executable, str(script)],
+        [str(_pythonw()), str(script)],
         cwd=str(ROOT),
         stdin=subprocess.DEVNULL,
         stdout=subprocess.DEVNULL,
@@ -303,27 +373,70 @@ def start_tray() -> None:
     )
 
 
-def set_tray_autostart(enabled: bool) -> None:
-    """HKCU Run: 开机用 pythonw 静默拉起 tray.py（不弹勾选窗）。"""
+def _clear_run_key() -> None:
     path = r"Software\Microsoft\Windows\CurrentVersion\Run"
-    key = winreg.CreateKeyEx(winreg.HKEY_CURRENT_USER, path, 0, winreg.KEY_SET_VALUE)
     try:
-        if enabled:
-            py = Path(sys.executable)
-            launcher = py.with_name("pythonw.exe")
-            if not launcher.is_file():
-                launcher = py
-            cmd = f'"{launcher}" "{ROOT / "tray.py"}" --silent'
-            winreg.SetValueEx(key, TRAY_RUN_NAME, 0, winreg.REG_SZ, cmd)
-            print(f"已登记开机启动托盘: {cmd}")
-        else:
-            try:
-                winreg.DeleteValue(key, TRAY_RUN_NAME)
-                print("已取消开机启动托盘。")
-            except FileNotFoundError:
-                pass
+        key = winreg.OpenKey(winreg.HKEY_CURRENT_USER, path, 0, winreg.KEY_SET_VALUE)
+    except OSError:
+        return
+    try:
+        winreg.DeleteValue(key, TRAY_RUN_NAME)
+    except FileNotFoundError:
+        pass
     finally:
         winreg.CloseKey(key)
+
+
+def set_tray_autostart(enabled: bool) -> None:
+    """Logon scheduled task at highest privileges. HKCU Run cannot elevate."""
+    _clear_run_key()
+    if not enabled:
+        subprocess.run(
+            ["schtasks", "/Delete", "/TN", TRAY_RUN_NAME, "/F"],
+            capture_output=True,
+            check=False,
+        )
+        print("已取消开机启动托盘。")
+        return
+    r = subprocess.run(schtasks_create_args(), capture_output=True, text=True, check=False)
+    if r.returncode != 0:
+        detail = ((r.stderr or r.stdout) or "").strip()
+        _die(f"登记开机启动失败: {detail or r.returncode}")
+    print(f"已登记开机启动托盘（管理员）: {tray_launch_command()}")
+
+
+def elevated_helper(*, autostart: bool, clear_autostart: bool, start_tray_now: bool) -> None:
+    if autostart:
+        set_tray_autostart(True)
+    elif clear_autostart:
+        set_tray_autostart(False)
+    if start_tray_now:
+        start_tray()
+
+
+def launch_tray_and_autostart(*, start_now: bool, autostart: bool) -> bool:
+    """Start the tray and/or register logon autostart. Prompts UAC when needed."""
+    if _is_admin():
+        set_tray_autostart(autostart)
+        if start_now:
+            start_tray()
+        return True
+    if not start_now and not autostart:
+        set_tray_autostart(False)
+        return True
+    print("进程转发需要管理员权限。请在系统弹出的窗口中允许，安装会继续，不用另开终端。")
+    flags = ["--elevated-helper"]
+    if autostart:
+        flags.append("--helper-autostart")
+    else:
+        flags.append("--helper-clear-autostart")
+    if start_now:
+        flags.append("--helper-start-tray")
+    params = subprocess.list2cmdline([str(Path(__file__).resolve()), *flags])
+    if not _runas(sys.executable, params):
+        print("未获得管理员权限。托盘未启动。可稍后在本终端重新运行安装，并在系统窗口中允许。")
+        return False
+    return True
 
 
 def disable_windows_system_proxy() -> None:
@@ -584,16 +697,20 @@ def ask(st: WizardState, installed: bool) -> WizardState:
     if outbound is None:
         raise SystemExit(1)
     st.outbound = outbound
+    st.enable_tun = False
 
-    tun = questionary.confirm(
-        "打开 TUN？（勾选应用才能被拦到；会改路由表。"
-        "脚本会关掉 Verge 默认的 DNS 劫持，局域网/Tailscale 不进 TUN。"
-        "浏览器若仍超时就不要开）",
-        default=False,
+    ipv6_default = st.ipv6_mode if st.ipv6_mode in ("reject", "proxy") else "reject"
+    ipv6_mode = questionary.select(
+        "白名单进程的 IPv6",
+        choices=[
+            Choice("拒绝，改走 IPv4", "reject"),
+            Choice("经 SOCKS 代理", "proxy"),
+        ],
+        default=ipv6_default,
     ).ask()
-    if tun is None:
+    if ipv6_mode is None:
         raise SystemExit(1)
-    st.enable_tun = bool(tun)
+    st.ipv6_mode = ipv6_mode
 
     launch = questionary.confirm(
         "开机静默启动 Clash Verge 和分应用托盘？",
@@ -629,10 +746,11 @@ def apply_cli_overrides(st: WizardState, args: argparse.Namespace) -> WizardStat
         st.http_port = args.http_port
     if args.outbound:
         st.outbound = args.outbound
-    if args.tun is True:
-        st.enable_tun = True
-    if args.no_tun:
-        st.enable_tun = False
+    if getattr(args, "ipv6_mode", ""):
+        st.ipv6_mode = args.ipv6_mode if args.ipv6_mode in ("reject", "proxy") else "reject"
+    if args.tun:
+        print("已忽略 --tun。TUN 会把整机 UDP/TCP 收进虚拟网卡，失败重试会打满光猫会话表。")
+    st.enable_tun = False
     if args.auto_launch is True:
         st.enable_auto_launch = True
     if args.no_auto_launch:
@@ -653,10 +771,12 @@ def print_status() -> None:
     st = load_state()
     if st.proxy_host:
         print(f"上次主机:    {st.proxy_host}:{st.socks_port}/{st.http_port}")
+        print(f"上次 IPv6:   {st.ipv6_mode}")
         print(f"上次进程:    {', '.join(st.processes) or '(无)'}")
 
 
 def apply(st: WizardState, *, start_app: bool, start_tray_app: bool = True) -> None:
+    st.enable_tun = False
     if not st.proxy_host or "<" in st.proxy_host:
         _die("缺少有效的代理主机")
     installed = bool(find_verge_exe()) or winget_has(VERGE_WINGET_ID)
@@ -706,19 +826,22 @@ def apply(st: WizardState, *, start_app: bool, start_tray_app: bool = True) -> N
     print("关闭 Windows 系统代理...")
     disable_windows_system_proxy()
 
-    if st.enable_tun:
-        try_install_tun_service(exe)
-
-    set_tray_autostart(st.enable_auto_launch)
+    tray_ok = launch_tray_and_autostart(
+        start_now=start_tray_app,
+        autostart=st.enable_auto_launch,
+    )
 
     print()
     print(f"已写入 profile: {profiles_dir / PROFILE_FILE}")
     print("  系统代理: 关（Verge + WinINET）")
-    print(f"  TUN: {'开' if st.enable_tun else '关'}")
-    if st.enable_tun:
-        print("  TUN DNS 劫持: 关；IPv6: 关（避免 Chrome 被 TUN 的 IPv6 路由粘住）")
-    print(f"  开机启动: {'Verge + 分应用托盘' if st.enable_auto_launch else '关'}")
+    print("  TUN: 关（不接管本机路由；未填写本机代理端口的程序保持直连）")
+    if st.enable_auto_launch and tray_ok:
+        print("  开机启动: Verge + 分应用托盘（管理员，登录时不再询问）")
+    else:
+        print("  开机启动: 关")
+    ipv6_label = "经 SOCKS 代理" if st.ipv6_mode == "proxy" else "拒绝，改走 IPv4"
     print(f"  代理: {st.proxy_host}  socks={st.socks_port}  http={st.http_port}")
+    print(f"  IPv6: {ipv6_label}；白名单进程的 UDP 443 丢弃")
     kept = ", ".join(st.processes) if st.processes else "尚未勾选（托盘里选）"
     print(f"  进程白名单: {kept}")
     print("再运行本脚本可改主机/端口；应用勾选只在托盘里改，不会被向导清空。")
@@ -739,8 +862,6 @@ def apply(st: WizardState, *, start_app: bool, start_tray_app: bool = True) -> N
             print(reload_verge())
         except Exception as ex:  # noqa: BLE001
             print(f"启动后重载未完成（Verge 仍会读已写回的配置）: {ex}")
-    if start_tray_app:
-        start_tray()
 
 
 def parse_args() -> argparse.Namespace:
@@ -751,6 +872,7 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--socks-port", type=int, default=None)
     p.add_argument("--http-port", type=int, default=None)
     p.add_argument("--outbound", choices=("socks", "http"), default="")
+    p.add_argument("--ipv6-mode", choices=("reject", "proxy"), default="", help="白名单进程的 IPv6：reject 或 proxy")
     p.add_argument("--tun", action="store_true", default=None)
     p.add_argument("--no-tun", action="store_true")
     p.add_argument("--auto-launch", action="store_true", default=None)
@@ -758,6 +880,10 @@ def parse_args() -> argparse.Namespace:
     p.add_argument("--upgrade-verge", action="store_true")
     p.add_argument("--no-start", action="store_true", help="写完配置不启动 Verge")
     p.add_argument("--no-tray", action="store_true", help="写完配置不启动分应用托盘")
+    p.add_argument("--elevated-helper", action="store_true", help=argparse.SUPPRESS)
+    p.add_argument("--helper-autostart", action="store_true", help=argparse.SUPPRESS)
+    p.add_argument("--helper-clear-autostart", action="store_true", help=argparse.SUPPRESS)
+    p.add_argument("--helper-start-tray", action="store_true", help=argparse.SUPPRESS)
     return p.parse_args()
 
 
@@ -765,6 +891,13 @@ def main() -> None:
     if os.name != "nt":
         _die("当前向导只支持 Windows")
     args = parse_args()
+    if args.elevated_helper:
+        elevated_helper(
+            autostart=args.helper_autostart,
+            clear_autostart=args.helper_clear_autostart,
+            start_tray_now=args.helper_start_tray,
+        )
+        return
     if args.check:
         print_status()
         return

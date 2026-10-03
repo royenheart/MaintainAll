@@ -49,11 +49,21 @@ def reset_iface_cache() -> None:
 
 
 def _ps(command: str) -> str:
+    kwargs: dict = {
+        "capture_output": True,
+        "text": True,
+        "check": False,
+    }
+    if os.name == "nt":
+        # pythonw has no console. A bare powershell.exe then allocates a
+        # visible window on every call. The tray checks adapters every 2s.
+        kwargs["creationflags"] = getattr(subprocess, "CREATE_NO_WINDOW", 0)
+        startup = subprocess.STARTUPINFO()
+        startup.dwFlags |= subprocess.STARTF_USESHOWWINDOW
+        kwargs["startupinfo"] = startup
     r = subprocess.run(
         ["powershell", "-NoProfile", "-NonInteractive", "-Command", command],
-        capture_output=True,
-        text=True,
-        check=False,
+        **kwargs,
     )
     return r.stdout or ""
 
@@ -255,15 +265,21 @@ def reassert_config_dir(cfg_dir: Path) -> bool:
             profile_procs = process_names_from_rules(profile)
     extra = exclude_cidrs_for_host(host)
 
-    enable: bool | None = None
+    # TUN captures every UDP/TCP session on the machine and re-emits it.
+    # Failed dials retry, which fills a small ONT NAT table. Never turn it on.
+    enable = False
     verge_path = cfg_dir / "verge.yaml"
     if verge_path.is_file():
         raw = verge_path.read_text(encoding="utf-8")
         verge = _load_yaml(verge_path)
-        if "enable_tun_mode" in verge:
-            enable = bool(verge["enable_tun_mode"])
+        verge_dirty = False
+        if verge.get("enable_tun_mode") is not False:
+            verge["enable_tun_mode"] = False
+            verge_dirty = True
         if verge.get("enable_dns_settings") is not False:
             verge["enable_dns_settings"] = False
+            verge_dirty = True
+        if verge_dirty:
             verge_path.write_text(_dump_yaml(verge, _header_of(raw)), encoding="utf-8")
             changed = True
 

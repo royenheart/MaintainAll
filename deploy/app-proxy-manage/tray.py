@@ -30,18 +30,26 @@ def _die(msg: str, code: int = 1) -> None:
 
 
 def ensure_gui_deps() -> None:
-    try:
-        import PIL  # noqa: F401
-        import pystray  # noqa: F401
-        import yaml  # noqa: F401
-    except ImportError:
-        req = ROOT / "requirements.txt"
-        print(f"安装依赖: {sys.executable} -m pip install -r {req}")
-        import subprocess
+    missing = False
+    for mod in ("PIL", "pystray", "yaml"):
+        try:
+            __import__(mod)
+        except ImportError:
+            missing = True
+    if os.name == "nt":
+        try:
+            import pydivert  # noqa: F401
+        except ImportError:
+            missing = True
+    if not missing:
+        return
+    req = ROOT / "requirements.txt"
+    print(f"安装依赖: {sys.executable} -m pip install -r {req}")
+    import subprocess
 
-        r = subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(req)], check=False)
-        if r.returncode != 0:
-            _die("无法安装 pystray / Pillow / PyYAML")
+    r = subprocess.run([sys.executable, "-m", "pip", "install", "-r", str(req)], check=False)
+    if r.returncode != 0:
+        _die("无法安装 pystray / Pillow / PyYAML / pydivert")
 
 
 def _selected_from_state() -> set[str]:
@@ -415,6 +423,7 @@ def _open_picker(root) -> None:
             if also_reload:
                 msg += "\n" + reload_verge()
             status.set(msg.replace("\n", " · "))
+            _notify_backend(names)
             messagebox.showinfo("完成", msg)
         except Exception as ex:  # noqa: BLE001
             status.set(str(ex))
@@ -484,12 +493,28 @@ def _reassert_after_verge() -> None:
         return
 
 
+_BACKEND = None
+
+
+def _notify_backend(names: list[str]) -> None:
+    if _BACKEND is not None:
+        _BACKEND.set_exes(names)
+
+
 def run_tray(*, silent: bool = False) -> int:
     ensure_gui_deps()
     import tkinter as tk
 
     import pystray
     from pystray import MenuItem as Item
+
+    global _BACKEND
+    from redirector import BackendSupervisor
+
+    backend = BackendSupervisor()
+    _BACKEND = backend
+    backend.set_exes(sorted(_selected_from_state()))
+    backend.start()
 
     root = tk.Tk()
     root.withdraw()
@@ -517,6 +542,7 @@ def run_tray(*, silent: bool = False) -> int:
         root.after(0, _go)
 
     def quit_app(icon, item) -> None:
+        backend.stop()
         icon.stop()
         root.after(0, root.destroy)
 
@@ -525,6 +551,7 @@ def run_tray(*, silent: bool = False) -> int:
         _make_icon(),
         "MaintainAll 分应用代理",
         menu=pystray.Menu(
+            Item(lambda _: backend.status, lambda *_a: None, enabled=False),
             Item("应用白名单…", show_picker, default=True),
             Item("刷新 Clash Verge", do_reload),
             Item("退出", quit_app),
@@ -534,7 +561,10 @@ def run_tray(*, silent: bool = False) -> int:
     threading.Thread(target=_reassert_after_verge, daemon=True).start()
     if not silent:
         show_picker()
-    root.mainloop()
+    try:
+        root.mainloop()
+    finally:
+        backend.stop()
     return 0
 
 

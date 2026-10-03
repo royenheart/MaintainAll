@@ -2,3 +2,4 @@ questionary>=2.0
 PyYAML>=6.0
 pystray>=0.19
 Pillow>=10.0
+pydivert>=2.1.0; sys_platform == "win32"

@@ -1,0 +1,4 @@
+# Built by ensure_hook_dll() from connect_hook.c. Do not commit the binary.
+connect_hook.dll
+connect_hook.exp
+connect_hook.lib

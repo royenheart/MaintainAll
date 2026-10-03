@@ -156,6 +156,7 @@ $rows | ConvertTo-Json -Compress -Depth 3 | Set-Content -LiteralPath '{tmp_ps}' 
         capture_output=True,
         timeout=60,
         check=False,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
     )
     if not tmp.is_file():
         return []

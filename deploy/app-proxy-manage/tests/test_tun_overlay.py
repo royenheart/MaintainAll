@@ -113,7 +113,8 @@ tun:
     import yaml
 
     cfg = yaml.safe_load((tmp_path / "config.yaml").read_text(encoding="utf-8"))
-    assert cfg["ipv6"] is False
+    assert cfg["tun"]["enable"] is False
+    assert cfg["ipv6"] is True
     assert "interface-name" not in cfg
     assert cfg["tun"]["auto-detect-interface"] is True
     assert cfg["tun"]["dns-hijack"] == []
@@ -123,7 +124,9 @@ tun:
     assert "fake-ip-range" not in dns["dns"]
     verge = yaml.safe_load((tmp_path / "verge.yaml").read_text(encoding="utf-8"))
     assert verge["enable_dns_settings"] is False
+    assert verge["enable_tun_mode"] is False
     profile = yaml.safe_load((profiles / "LMaintainAll.yaml").read_text(encoding="utf-8"))
+    assert profile["tun"]["enable"] is False
     assert profile["rules"][0] == "GEOSITE,cn,DIRECT"
     assert profile["rules"][1] == "GEOIP,CN,DIRECT,no-resolve"
     assert profile["rules"][-1] == "MATCH,DIRECT"
