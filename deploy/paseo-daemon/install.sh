@@ -863,6 +863,20 @@ verify() {
 }
 
 print_cheatsheet() {
+  local password_note
+  if [[ "$(python3 "$HARDEN_PY" --home "$PASEO_HOME" has-password 2>/dev/null || true)" == "True" ]]; then
+    password_note="  - A password is set (bcrypt hash under daemon.auth.password). Local CLI and
+    desktop clients authenticate automatically via $PASEO_HOME/local-credential;
+    everyone else — other OS users, mobile apps — must provide it. Rotate with:
+      paseo daemon set-password && systemctl --user restart $UNIT_NAME
+  - If the password was auto-generated, it exists only where you copied it;
+    the installer kept no copy. Lost it = run set-password."
+  else
+    password_note="  - No password is set: every connection the daemon admits is the owner
+    principal, and $LISTEN_ADDR is host-wide, so any local user (or anyone who
+    can forward a port) can control the daemon. Set one with:
+      paseo daemon set-password && systemctl --user restart $UNIT_NAME"
+  fi
   cat <<EOF
 
 Installed. Common commands:
@@ -879,17 +893,12 @@ Security posture (enforced by this installer):
   - Binds $LISTEN_ADDR:$LISTEN_PORT only. The listen address lives in
     $PASEO_HOME/config.json (daemon.listen); a non-loopback value is reset
     on every run. There is no supported way to deploy 0.0.0.0 here.
-  - A password is set (bcrypt hash under daemon.auth.password). Local CLI and
-    desktop clients authenticate automatically via $PASEO_HOME/local-credential;
-    everyone else — other OS users, mobile apps — must provide it. Rotate with:
-      paseo daemon set-password && systemctl --user restart $UNIT_NAME
+$password_note
   - https://app.paseo.sh is stripped from daemon.cors.allowedOrigins on every
     run: the hosted web app is not a trusted client of this deployment.
     Native clients (CLI/desktop/mobile/relay) send no Origin header and are
     unaffected. To use the hosted web UI anyway, re-add the origin by hand
     (it will be stripped again on the next run of this installer).
-  - If the password was auto-generated, it exists only where you copied it;
-    the installer kept no copy. Lost it = run set-password.
   - Relay pairing (paseo daemon pair) for mobile is still available and is
     the supported remote path; keep the pairing link private (it grants access
     like a password; current daemon builds still admit credential-less relay

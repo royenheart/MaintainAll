@@ -67,7 +67,25 @@ class ProbeError(RuntimeError):
 
 
 def default_runner(argv: Sequence[str], timeout: float) -> subprocess.CompletedProcess[bytes]:
-    return subprocess.run(argv, capture_output=True, timeout=timeout, check=False)
+    # start_new_session + stdin=DEVNULL, never the inherited terminal: the
+    # interactive probe runs the login shell with -i (so rc-file guards like
+    # `case $- in *i*)` pass). An interactive bash opens /dev/tty for job
+    # control even when stdio is not a tty; inside the installer's session it
+    # would setpgid + tcsetpgrp itself into the foreground, and the next
+    # interactive probe — back in the installer's now-background process
+    # group — runs bash's `tcgetpgrp != getpgrp` guard and calls
+    # kill(0, SIGTTIN), stopping the WHOLE installer group. Seen over SSH as
+    # "[1]+ Stopped ./install.sh" right after the "Sniffing the login shell"
+    # step. A new session has no controlling terminal, so /dev/tty is
+    # unobtainable and bash reports "no job control" and stays harmless.
+    return subprocess.run(
+        argv,
+        capture_output=True,
+        stdin=subprocess.DEVNULL,
+        start_new_session=True,
+        timeout=timeout,
+        check=False,
+    )
 
 
 def parse_env0(blob: bytes) -> dict[str, str]:

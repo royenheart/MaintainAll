@@ -6,6 +6,7 @@ import subprocess
 import tempfile
 import unittest
 from pathlib import Path
+from unittest import mock
 
 import sync_login_env as sync
 
@@ -45,6 +46,22 @@ class WriteTest(unittest.TestCase):
             self.assertEqual(stat.S_IMODE(dest.stat().st_mode), 0o600)
             self.assertEqual(stat.S_IMODE(backup.stat().st_mode), 0o600)
             self.assertFalse((dest.with_name("60-paseo.conf.tmp")).exists())
+
+
+class DefaultRunnerTest(unittest.TestCase):
+    """The login-shell probe must never touch the installer's terminal: an
+    interactive shell (-i) handed a real tty enables job control, grabs the
+    foreground process group, and can get the installer stopped with SIGTTIN
+    on its next tty read (seen as "[1]+ Stopped ./install.sh" over SSH)."""
+
+    def test_runs_probes_with_devnull_stdin(self) -> None:
+        completed = subprocess.CompletedProcess(args=["x"], returncode=0, stdout=b"", stderr=b"")
+        with mock.patch.object(sync.subprocess, "run", return_value=completed) as run:
+            result = sync.default_runner(["env", "-i", "bash", "-l", "-i", "-c", "env -0"], 5.0)
+        self.assertIs(result, completed)
+        _, kwargs = run.call_args
+        self.assertIs(kwargs["stdin"], subprocess.DEVNULL)
+        self.assertTrue(kwargs["capture_output"])
 
 
 class ProbeTest(unittest.TestCase):
