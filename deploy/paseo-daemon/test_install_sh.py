@@ -8,6 +8,7 @@ system toolchain is touched.
 from __future__ import annotations
 
 import re
+import shlex
 import subprocess
 import tempfile
 import unittest
@@ -104,6 +105,94 @@ class SystemdQuoteTest(unittest.TestCase):
     def test_unencodable_values_are_rejected(self) -> None:
         self.assertNotEqual(self.quote("/a/b\\").returncode, 0)  # trailing backslash
         self.assertNotEqual(self.quote("/a/b\n").returncode, 0)  # CR/LF
+
+
+class RefreshPathBodyTest(unittest.TestCase):
+    """[Path] settings take the value literally: systemd does not strip
+    quotes in PathModified, so a quoted path reads as non-absolute and the
+    unit refuses to load. refresh_path_body must write the raw scope dir
+    and reject values the literal syntax cannot carry."""
+
+    def render(self, scope: str) -> subprocess.CompletedProcess[str]:
+        script = (
+            "set -euo pipefail\n"
+            "die() { printf '%s\\n' \"$*\" >&2; exit 1; }\n"
+            f"PKG_SCOPE_DIR={shlex.quote(scope)}\n"
+            "REFRESH_SERVICE_NAME=paseo-supervisor-refresh.service\n"
+            f"{extract_function('validate_path_setting')}"
+            f"{extract_function('refresh_path_body')}\n"
+            "refresh_path_body"
+        )
+        return subprocess.run(
+            ["bash", "-c", script],
+            capture_output=True,
+            text=True,
+            env={"PATH": "/usr/bin:/bin"},
+        )
+
+    def test_path_modified_is_unquoted(self) -> None:
+        scope = "/home/u/.nvm/versions/node/v24.14.0/lib/node_modules/@getpaseo"
+        proc = self.render(scope)
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn(f"PathModified={scope}\n", proc.stdout)
+        self.assertNotIn('PathModified="', proc.stdout)
+
+    def test_internal_space_is_kept_literally(self) -> None:
+        proc = self.render("/opt/my dir/@getpaseo")
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        self.assertIn("PathModified=/opt/my dir/@getpaseo\n", proc.stdout)
+
+    def test_unencodable_scopes_are_rejected(self) -> None:
+        for scope in (
+            "relative/@getpaseo",  # not absolute
+            "/opt/trailing/ ",  # trailing whitespace is trimmed by systemd's parser
+            '/opt/qu"ote/',  # quote
+            "/opt/back\\slash/",  # backslash
+            "/opt/percent%/",  # % is a unit-file specifier
+        ):
+            with self.subTest(scope=scope):
+                self.assertNotEqual(self.render(scope).returncode, 0)
+
+
+class DecidePasswordActionTest(unittest.TestCase):
+    """Password flow decisions are pinned here: setting is the default, an
+    unattended re-run never rotates or clears a hash silently, and the two
+    env vars have a strict precedence (set wins over clear; the combination
+    of both is rejected before this function runs)."""
+
+    def decide(self, existing: int, has_env: int, has_clear: int, has_tty_flag: int) -> str:
+        proc = run_function(
+            "decide_password_action",
+            [str(existing), str(has_env), str(has_clear), str(has_tty_flag)],
+            {"PATH": "/usr/bin:/bin"},
+        )
+        self.assertEqual(proc.returncode, 0, proc.stderr)
+        return proc.stdout.strip()
+
+    def test_env_always_wins(self) -> None:
+        for existing in (0, 1):
+            for has_clear in (0, 1):
+                for has_tty_flag in (0, 1):
+                    with self.subTest(existing=existing, has_clear=has_clear, has_tty_flag=has_tty_flag):
+                        self.assertEqual(self.decide(existing, 1, has_clear, has_tty_flag), "env")
+
+    def test_clear_env_removes_hash(self) -> None:
+        for existing in (0, 1):
+            for has_tty_flag in (0, 1):
+                with self.subTest(existing=existing, has_tty_flag=has_tty_flag):
+                    self.assertEqual(self.decide(existing, 0, 1, has_tty_flag), "clear")
+
+    def test_interactive_existing_offers_keep_reset_disable(self) -> None:
+        self.assertEqual(self.decide(1, 0, 0, 1), "ask")
+
+    def test_interactive_fresh_offers_set_or_none(self) -> None:
+        self.assertEqual(self.decide(0, 0, 0, 1), "ask-fresh")
+
+    def test_unattended_re_run_keeps_existing_hash(self) -> None:
+        self.assertEqual(self.decide(1, 0, 0, 0), "keep")
+
+    def test_unattended_fresh_install_generates(self) -> None:
+        self.assertEqual(self.decide(0, 0, 0, 0), "generate")
 
 
 class ValidatePortValueTest(unittest.TestCase):

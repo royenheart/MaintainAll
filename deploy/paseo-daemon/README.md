@@ -5,8 +5,8 @@ via Remote/SSH from the GUI) and keeps it running **across reboots**.
 
 It follows the "user systemd manages the daemon" approach (the old
 `deploy/systemd/install-user-daemon.sh` was removed together with the old
-MaintainAll daemon). This directory matches the actual environment of this
-machine (ASUS / `RoyenHeartAsus`, bash login shell, node via nvm v24.14.0).
+MaintainAll daemon). This directory matches the actual environment of the
+target machine (single-user Linux desktop, bash login shell, node via nvm).
 
 ## Why this script exists (design background)
 
@@ -47,21 +47,31 @@ machine, gets full control. This installer therefore enforces, on every run:
    `127.0.0.1:<port>` in `~/.paseo/config.json`. A persisted non-loopback
    value (e.g. `0.0.0.0` set by hand) is reported and reset, and
    `harden_daemon_config.py` refuses to write one in the first place. There
-   is deliberately no `--listen` flag. Direct LAN/mobile access is out of
-   scope for this deployment; remote access goes through relay pairing
-   (end-to-end encrypted, outbound-only, no open ports).
-2. **A password is always set.** Input priority: `PASEO_DEPLOY_PASSWORD`
-   (unattended/agent deploys) → interactive prompt on `/dev/tty` (empty input
-   = auto-generate) → auto-generated random password. The plaintext is never
-   written anywhere: not `config.json`, not the unit, not
-   `60-paseo.conf`, not any log. Only its bcrypt hash is stored. An
-   auto-generated password is printed exactly once; interactive runs hide it
-   behind an Enter-to-clear screen. Lost it? `paseo daemon set-password`.
-3. **Restart on change.** The daemon is restarted whenever the hardened
-   config changed, even when the unit file is unchanged — "the old process
-   never reloaded it" is not a loophole. (Paseo only reloads config on demand
-   or at process start; there is no file watcher, so a restart is the
-   reliable way to make a persisted change effective.)
+   is deliberately no `--listen` flag. Port selection: `--port N` /
+   `PASEO_PORT=N` > interactive prompt on `/dev/tty` (Enter keeps the
+   current port) > the port already persisted in `config.json` > 6767 — so a
+   host previously deployed on any port can be moved by answering one
+   prompt. Direct LAN/mobile access is out of scope for this deployment;
+   remote access goes through relay pairing (end-to-end encrypted,
+   outbound-only, no open ports).
+2. **A password is set by default, and can be removed later.** When no hash
+   exists yet you are asked `Set a daemon password? [Y/n]` (Enter → set,
+   empty new-password input auto-generates, `n` → none). When a hash already
+   exists, a re-run never rotates or removes it silently: interactively you
+   get `[k]eep (Enter) / [r]eset / [d]isable`, and unattended runs keep the
+   existing hash — `PASEO_DEPLOY_PASSWORD=<new>` sets/rotates without a
+   prompt, `PASEO_DEPLOY_NO_PASSWORD=1` removes it (mutually exclusive).
+   The plaintext is never written anywhere: not `config.json`, not the
+   unit, not `60-paseo.conf`, not any log. Only its bcrypt hash is stored.
+   An auto-generated password is printed exactly once; interactive runs hide
+   it behind an Enter-to-clear screen. Lost it? `paseo daemon set-password`.
+3. **Restart on change.** The daemon is restarted only when the hardened
+   config actually changed (listen port, rotated password, stripped CORS
+   origin), even when the unit file is unchanged — "the old process never
+   reloaded it" is not a loophole. (Paseo only reloads config on demand or at
+   process start; there is no file watcher, so a restart is the reliable way
+   to make a persisted change effective.) An idle re-run leaves the running
+   daemon alone — restarting kills its agents.
 4. **No hosted-web-app origin.** `https://app.paseo.sh` under
    `daemon.cors.allowedOrigins` is Paseo's shipped default so the hosted web
    app can drive the daemon from a browser. This deployment does not extend
@@ -149,7 +159,7 @@ The script is idempotent; each run does, in order:
 | Step | Equivalent command | Notes |
 | --- | --- | --- |
 | 1 | `npm install -g @getpaseo/cli` | Only when `paseo` is not on PATH |
-| 2 | `harden_daemon_config.py` | Writes `daemon.listen=127.0.0.1:<port>` and a bcrypt password hash into `~/.paseo/config.json`. `--port N` / `PASEO_PORT` pick the port; the password prompts on `/dev/tty` or is auto-generated and printed once. See [Security model](#security-model-enforced-not-optional) |
+| 2 | `harden_daemon_config.py` | Writes `daemon.listen=127.0.0.1:<port>` and manages a bcrypt password hash in `~/.paseo/config.json`. `--port N` / `PASEO_PORT` pick the port (otherwise an interactive prompt offers the current one, Enter keeps). Password: set by default — fresh installs are asked `Set a daemon password? [Y/n]`; existing hashes get `[k]eep / [r]eset / [d]isable`; unattended uses `PASEO_DEPLOY_PASSWORD=<new>` or `PASEO_DEPLOY_NO_PASSWORD=1`. See [Security model](#security-model-enforced-not-optional) |
 | 3 | `sync_login_env.py` | Runs a clean login shell once and writes its environment to `~/.config/environment.d/60-paseo.conf` (an existing file is first copied to `60-paseo.conf.bak`) |
 | 4 | Generate `~/.config/systemd/user/paseo.service` | `ExecStart` uses the resolved real absolute path (nvm symlinks are expanded with `readlink -f`); the unit sets no `PATH`. Re-runs leave an active daemon running when the unit is unchanged |
 | 5 | Generate the supervisor-refresh units + `systemctl --user daemon-reload` + `enable --now paseo-supervisor-refresh.path` | See [Supervisor auto-refresh on update](#supervisor-auto-refresh-on-update); skipped when the `@getpaseo` scope cannot be derived from the resolved binary |
@@ -198,9 +208,10 @@ systemctl --user daemon-reload
 ./install.sh --dry-run      # sniff and print the generated unit / commands; write nothing, start nothing
 
 PASEO_PORT=6800 ./install.sh              # same as --port 6800
-PASEO_DEPLOY_PASSWORD=secret ./install.sh # unattended password input; without it the
-                                          # script prompts on /dev/tty, or auto-generates
-                                          # and prints a random one when there is no tty
+PASEO_DEPLOY_PASSWORD=secret ./install.sh # unattended: set/rotate the password (always wins)
+PASEO_DEPLOY_NO_PASSWORD=1 ./install.sh   # unattended: remove the password hash;
+                                          # mutually exclusive with PASEO_DEPLOY_PASSWORD
+                                          # without either, an existing hash is kept on re-run
 
 python3 -m unittest test_sync_login_env test_supervisor_refresh test_install_sh test_harden_daemon_config   # in this directory; synthetic inputs only, no real login shell or daemon is touched
 ```

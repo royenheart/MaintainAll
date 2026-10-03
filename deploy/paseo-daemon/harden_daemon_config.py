@@ -13,7 +13,9 @@ bcryptjs and passes the bcrypt hash to set-password-hash.
 Subcommands:
   get-listen                      print the current daemon.listen (may be empty)
   set-listen HOST:PORT            enforce loopback, write, print JSON summary
+  has-password                    print True/False: a password hash is set
   set-password-hash BCRYPT_HASH   merge daemon.auth.password
+  clear-password                  remove daemon.auth.password (if present)
   remove-cors-origin ORIGIN       drop ORIGIN from daemon.cors.allowedOrigins
 """
 
@@ -157,6 +159,14 @@ def cmd_set_listen(args: argparse.Namespace) -> None:
     )
 
 
+def cmd_has_password(args: argparse.Namespace) -> None:
+    config = load_config(Path(args.home))
+    daemon = daemon_section(config)
+    auth = daemon.get("auth")
+    password = auth.get("password") if isinstance(auth, dict) else None
+    print(isinstance(password, str) and bool(password))
+
+
 def cmd_set_password_hash(args: argparse.Namespace) -> None:
     if not BCRYPT_HASH_RE.match(args.bcrypt_hash):
         raise HardenError("value does not look like a bcrypt hash")
@@ -171,6 +181,28 @@ def cmd_set_password_hash(args: argparse.Namespace) -> None:
     config["daemon"] = daemon
     save_config(home, config)
     print(json.dumps({"password": "set"}))
+
+
+def cmd_clear_password(args: argparse.Namespace) -> None:
+    """Remove daemon.auth.password; an emptied auth section is dropped.
+
+    Passwords are recommended but optional in this deploy: clearing must
+    leave the config as if none had ever been set.
+    """
+    home = Path(args.home)
+    config = load_config(home)
+    daemon = daemon_section(config)
+    auth = daemon.get("auth")
+    removed = isinstance(auth, dict) and "password" in auth
+    if removed:
+        auth.pop("password", None)
+        if auth:
+            daemon["auth"] = auth
+        else:
+            daemon.pop("auth", None)
+        config["daemon"] = daemon
+        save_config(home, config)
+    print(json.dumps({"password": "cleared" if removed else "absent"}))
 
 
 def cmd_remove_cors_origin(args: argparse.Namespace) -> None:
@@ -211,10 +243,12 @@ def main(argv: list[str] | None = None) -> int:
     parser.add_argument("--home", default=os.path.expanduser("~/.paseo"))
     subcommands = parser.add_subparsers(dest="command", required=True)
     subcommands.add_parser("get-listen", help="print the current daemon.listen")
+    subcommands.add_parser("has-password", help="print True/False: a password hash is set")
     set_listen = subcommands.add_parser("set-listen", help="enforce a loopback listen target")
     set_listen.add_argument("listen", metavar="HOST:PORT")
     set_hash = subcommands.add_parser("set-password-hash", help="store a bcrypt password hash")
     set_hash.add_argument("bcrypt_hash", metavar="BCRYPT_HASH")
+    subcommands.add_parser("clear-password", help="remove daemon.auth.password (if present)")
     remove_origin = subcommands.add_parser(
         "remove-cors-origin", help="drop an origin from daemon.cors.allowedOrigins"
     )
@@ -222,8 +256,10 @@ def main(argv: list[str] | None = None) -> int:
     args = parser.parse_args(argv)
     handlers = {
         "get-listen": cmd_get_listen,
+        "has-password": cmd_has_password,
         "set-listen": cmd_set_listen,
         "set-password-hash": cmd_set_password_hash,
+        "clear-password": cmd_clear_password,
         "remove-cors-origin": cmd_remove_cors_origin,
     }
     try:

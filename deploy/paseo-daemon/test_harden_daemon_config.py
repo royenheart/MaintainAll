@@ -45,6 +45,66 @@ class GetListenTest(unittest.TestCase):
             self.assertEqual(proc.stdout.strip(), "127.0.0.1:6801")
 
 
+class HasPasswordTest(unittest.TestCase):
+    DUMMY_HASH = "$2b$12$" + "a" * 53
+
+    def test_missing_config_prints_false(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            proc = run_cli(Path(raw), "has-password")
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            self.assertEqual(proc.stdout.strip(), "False")
+
+    def test_missing_auth_section_prints_false(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            home = Path(raw)
+            seed_config(home, {"daemon": {"listen": "127.0.0.1:6767"}})
+            self.assertEqual(run_cli(home, "has-password").stdout.strip(), "False")
+
+    def test_hash_is_detected(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            home = Path(raw)
+            seed_config(home, {"daemon": {"auth": {"password": self.DUMMY_HASH}}})
+            proc = run_cli(home, "has-password")
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            self.assertEqual(proc.stdout.strip(), "True")
+
+
+class ClearPasswordTest(unittest.TestCase):
+    DUMMY_HASH = "$2b$12$" + "a" * 53
+
+    def test_removes_hash_and_drops_empty_auth_section(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            home = Path(raw)
+            seed_config(home, {"daemon": {"listen": "127.0.0.1:6767", "auth": {"password": self.DUMMY_HASH}}})
+            proc = run_cli(home, "clear-password")
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            self.assertEqual(json.loads(proc.stdout)["password"], "cleared")
+            stored = json.loads((home / "config.json").read_text(encoding="utf-8"))
+            self.assertNotIn("auth", stored["daemon"])
+            self.assertEqual(stored["daemon"]["listen"], "127.0.0.1:6767")
+
+    def test_noop_and_no_file_when_absent(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            home = Path(raw)
+            proc = run_cli(home, "clear-password")
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            self.assertEqual(json.loads(proc.stdout)["password"], "absent")
+            self.assertFalse((home / "config.json").exists())
+
+    def test_preserves_other_auth_keys(self) -> None:
+        with tempfile.TemporaryDirectory() as raw:
+            home = Path(raw)
+            seed_config(
+                home,
+                {"daemon": {"auth": {"password": self.DUMMY_HASH, "tokens": {"ci": "abc"}}}},
+            )
+            proc = run_cli(home, "clear-password")
+            self.assertEqual(proc.returncode, 0, proc.stderr)
+            stored = json.loads((home / "config.json").read_text(encoding="utf-8"))
+            self.assertNotIn("password", stored["daemon"]["auth"])
+            self.assertEqual(stored["daemon"]["auth"]["tokens"], {"ci": "abc"})
+
+
 class SetListenTest(unittest.TestCase):
     def test_writes_loopback_listen(self) -> None:
         with tempfile.TemporaryDirectory() as raw:
@@ -73,7 +133,7 @@ class SetListenTest(unittest.TestCase):
             self.assertEqual(stored["agents"]["providers"]["kimi"]["enabled"], True)
 
     def test_refuses_non_loopback_targets(self) -> None:
-        for target in ("0.0.0.0:6767", "192.168.31.143:6767", "10.0.0.1:6767", ":6767"):
+        for target in ("0.0.0.0:6767", "192.0.2.1:6767", "10.0.0.1:6767", ":6767"):
             with self.subTest(target=target), tempfile.TemporaryDirectory() as raw:
                 home = Path(raw)
                 proc = run_cli(home, "set-listen", target)
