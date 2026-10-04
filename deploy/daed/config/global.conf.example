@@ -23,8 +23,9 @@ sniffing_timeout: "100ms"
 tls_implementation: "tls"
 utls_imitate: "chrome_auto"
 enable_local_tcp_fast_redirect: "true"
-# Prefer a domestically reachable bootstrap resolver for node/DoH hostname lookup
-# when system DNS or foreign resolvers flap.
+# Direct mode. DoH mode rewrites this value in wing.db to the foreign
+# resolver's :53 (dae accepts only ip:port here). The template file stays
+# on the direct-mode value.
 fallback_resolver: "223.5.5.5:53"
 bandwidth_max_tx: "200 mbps"
 bandwidth_max_rx: "1 gbps"

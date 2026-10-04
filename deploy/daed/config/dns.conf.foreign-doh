@@ -1,0 +1,13 @@
+upstream {
+  alidns: 'udp://223.5.5.5:53'
+  # IP literal: dae does not look up a hostname before the query, and the
+  # certificate presented by this address is valid for the IP itself.
+  # 1.1.1.1 is the other supported address (`dns-mode doh --doh-ip 1.1.1.1`).
+  googledoh: 'https://8.8.8.8/dns-query'
+}
+routing {
+  request {
+    qname(geosite:cn) -> alidns
+    fallback: googledoh
+  }
+}

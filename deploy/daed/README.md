@@ -42,6 +42,8 @@ docker compose up -d daed
 # 3. 访问 Web UI http://localhost:2023 创建管理员账号，并添加订阅（导入节点）
 
 # 4. 初始化：把 config/*.conf 和 groups.txt 写入 wing.db（仅此一次）
+#    终端里会询问 direct / doh；非交互默认 direct。
+#    国外 DoH：python3 daed-init.py init --dns-mode doh
 python3 daed-init.py
 docker restart daed
 ```
@@ -142,9 +144,11 @@ docker restart daed
 初始化会写入：
 
 - `config/global.conf` → `configs` 表（全局配置）
-- `config/dns.conf` → `dns` 表（DNS 配置）
+- `config/dns.conf` → `dns` 表（DNS 配置；`--dns-mode doh` 时改用 `dns.conf.foreign-doh`）
 - `config/routing.conf` → `routings` 表（路由规则）
 - `config/groups.txt` → `groups` 表（出站分组种子）
+
+`dns` 表里只要已有记录，再跑 `init` 不会改模式，也不会重写节点、路由或全局配置。已装好的库用 `dns-mode` 切换。
 
 ### 出站分组
 
@@ -217,23 +221,57 @@ curl -x http://127.0.0.1:20171 -o /dev/null -sS -w '%{http_code} %{speed_downloa
 
 ### DNS 配置 (dns.conf)
 
-- 国内域名 → 阿里 DNS (`223.5.5.5`)
-- 其他域名 → Google DNS (`dns.google`)
+直连模式（默认）：
 
-### DNS 模式（normal / DoH）
+- 国内域名 → 阿里 DNS (`udp://223.5.5.5:53`)
+- 其他域名 → `tcp+udp://8.8.8.8:53`
+- `systemd-resolved` 保持 `must_direct`，系统解析不进 daed
 
-默认部署使用直连 UDP/TCP 53 上游（`dns.conf`），适用于 DNS 正常的主机。若主机出站 **53 被拦**（ICMP/HTTPS 正常、公共 DNS 全超时，见 [`deploy/doh-dns`](../doh-dns/README.md)），可切换到 **DoH 模式**复用宿主机 `dnscrypt-proxy`（`127.0.0.1:5353`）：
+### 两种解析模式
+
+分界是谁来解析，不是 Tailscale 对 DoH。Tailscale 只是曾经占过系统 DNS 的位置。
+
+| 模式 | 国外域名 | `fallback_resolver` | 本机 `systemd-resolved` |
+|---|---|---|---|
+| `direct`（默认） | `tcp+udp://8.8.8.8:53` | `223.5.5.5:53` | 不进 daed |
+| `doh` | `https://8.8.8.8/dns-query`（或 `--doh-ip 1.1.1.1`） | 同一地址的 `:53` | 53 端口查询进 daed |
+
+国内域名在两种模式下都走阿里的 UDP。`udp_check_dns` 不改：节点健康检查仍按延迟抖动，这和域名被解析成假地址是两件事。
+
+空库初始化：
+
+```bash
+python3 daed-init.py                  # 终端里询问；非交互默认 direct
+python3 daed-init.py init --dns-mode doh
+python3 daed-init.py init --dns-mode doh --doh-ip 1.1.1.1
+```
+
+已经装好的库不要靠再跑 `init` 来切换。`dns-mode` 先把 `wing.db` 备成 `wing.db.bak-<时间>`，再在一个事务里改当前选中的 DNS 行、同一条全局配置里的 `fallback_resolver`，以及 `systemd-resolved` 那一行路由。失败就回滚。SQLite 正被 daed 写入时会报 `database is locked`，库文件不会写坏。改完需要 `docker restart daed` 才生效。节点、分组和其余路由行（含 private rules）不动。
+
+```bash
+python3 daed-init.py dns-mode status
+python3 daed-init.py dns-mode doh
+python3 daed-init.py dns-mode direct
+docker restart daed
+```
+
+`dns-mode` 会用模式模板盖掉选中的那一行 DNS。Web UI 里对这一行做过的其它改动会消失；全局配置里只动 `fallback_resolver`。
+
+DoH 用写死的 IP，dae 不会先去解析 `dns.google`。查询走 TLS，注入包改不了内容。到 `8.8.8.8:443` 或 `1.1.1.1:443` 的连接被掐断时，解析失败，而不是连到伪造地址。`fallback_resolver` 在 dae 里只能写 `ip:port`，所以它仍是明文 UDP，只是不再指向 `223.5.5.5`。主查询路径是 DoH。
+
+### 53 端口被墙时（不是上面的 DoH 模式）
+
+若主机出站 UDP/TCP 53 被拦，而 ICMP/HTTPS 正常，用 [`deploy/doh-dns`](../doh-dns/README.md)，不要用上面的 `doh` 模式。`config/dns.conf.doh` 把上游指到宿主机 `127.0.0.1:5353`。那套默认的 HTTPS 上游在国内，被墙的域名仍可能直接答错。
 
 | 文件 | 说明 |
 |---|---|
-| `config/dns.conf.normal` | 直连 53 上游模板（默认） |
-| `config/dns.conf.doh` | 复用宿主机 `127.0.0.1:5353` 的 DoH 模板 |
-| `config/dns.conf` | 生效配置（由模板复制，一般不改） |
+| `config/dns.conf` | 直连模式模板，也是 `dns.conf.normal` 的同一内容 |
+| `config/dns.conf.normal` | 直连 53 上游模板 |
+| `config/dns.conf.foreign-doh` | 写死 IP 的国外 DoH 模板 |
+| `config/dns.conf.doh` | 53 被墙时借用 `deploy/doh-dns` 的 5353，默认不启用 |
 
 - 初始化前：把 `config/dns.conf.doh` 复制为 `config/dns.conf`，并把 `config/global.conf` 的 `fallback_resolver` / `udp_check_dns` 改成 `127.0.0.1:5353`
-- 初始化后：直接在 Web UI → DNS 里改上游，并在 Web UI → Config 里改 `fallbackResolver` / `udpCheckDns`
-
-DoH 模式下 `global.conf` 的 `fallback_resolver` / `udp_check_dns` 也会一并指向 `127.0.0.1:5353`。前提：宿主机已部署并启动 `deploy/doh-dns`；daed 容器为 `network_mode: host`，可直接访问该端口。若 `dnscrypt-proxy` 不可用，可把 `dns.conf.doh` 的上游改为直连 DoH：`localdoh: 'https://223.5.5.5/dns-query'`（走 443，国内可达）。
+- 这和 `dns-mode doh` 是两条路，不要混用
 
 ### 路由规则 (routing.conf)
 
@@ -256,13 +294,16 @@ DoH 模式下 `global.conf` 的 `fallback_resolver` / `udp_check_dns` 也会一�
 ```
 deploy/daed/
 ├── docker-compose.yml              # 只启动 daed 容器
-├── daed-init.py                    # 一次性初始化脚本（空库才写）
+├── daed-init.py                    # 空库初始化；dns-mode 切换已有库的解析模式
 ├── README.md                       # 本文档
 ├── .gitignore
 ├── config/
 │   ├── global.conf.example         # 全局配置模板（进入版本管理）
 │   ├── global.conf                 # 由 daed-init.py 从模板生成（本地文件，不入版本库）
-│   ├── dns.conf                    # DNS 配置模板
+│   ├── dns.conf                    # 直连模式 DNS 模板
+│   ├── dns.conf.normal             # 与 dns.conf 相同的直连模板
+│   ├── dns.conf.foreign-doh        # 写死 IP 的国外 DoH 模板
+│   ├── dns.conf.doh                # 53 被墙时借用 deploy/doh-dns，默认不启用
 │   ├── routing.conf                # 路由规则模板（含 sticky outbound）
 │   ├── groups.txt                  # 出站分组种子
 │   ├── subscriptions.txt.example   # 订阅信息模板

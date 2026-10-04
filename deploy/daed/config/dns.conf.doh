@@ -1,5 +1,6 @@
-# DoH mode — for hosts where outbound UDP/TCP 53 is blocked (ICMP/HTTPS fine;
-# see deploy/doh-dns). dae dials its DNS upstreams directly (routing.conf:
+# Port-53-blocked forwarder. Not the foreign DoH mode (dns.conf.foreign-doh).
+# Use this only when outbound UDP/TCP 53 is blocked and deploy/doh-dns is up
+# (ICMP/HTTPS fine). dae dials its DNS upstreams directly (routing.conf:
 # pname(daed) -> must_direct), so on such hosts the upstream must NOT use
 # port 53. Reuse the host's doh-dns kit: dnscrypt-proxy listens on
 # 127.0.0.1:5353 (daed runs with network_mode: host and can reach it).

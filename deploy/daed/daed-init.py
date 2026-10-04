@@ -3,6 +3,10 @@
 
 Usage:
     python3 daed-init.py                        # initialize an empty wing.db (once)
+    python3 daed-init.py init --dns-mode doh    # same, but seed the foreign DoH mode
+    python3 daed-init.py dns-mode status        # show the selected DNS mode
+    python3 daed-init.py dns-mode doh           # switch an existing wing.db to DoH
+    python3 daed-init.py dns-mode direct        # switch it back
     python3 daed-init.py export-private         # print the private rules block from wing.db
     python3 daed-init.py export-private --tag work --output private.txt
     python3 daed-init.py import-private --file private.txt [--force-groups]
@@ -10,6 +14,11 @@ Usage:
 `init` only writes when the corresponding table is empty, so it can never
 overwrite changes made in the daed Web UI. The Web UI is the source of truth
 after initialization.
+
+`dns-mode` is the only command that edits an already-seeded library. It copies
+wing.db to a backup, then in one transaction updates the selected DNS row,
+that row's global `fallback_resolver`, and the `systemd-resolved` must_direct
+rule. Nodes, groups, and every other routing line stay as they are.
 
 Private rules are stored inside the selected routing text between markers:
 
@@ -53,6 +62,20 @@ LEGACY_MARKER = "# ── Private rules (private.conf, not version-controlled) �
 
 VALID_POLICIES = {"random", "fixed", "min", "min_avg10", "min_moving_avg"}
 BUILTIN_GROUPS = {"direct", "proxy", "block", "must_direct", "must_block", "must_proxy"}
+
+# direct: domestic UDP + foreign tcp+udp/53, systemd-resolved stays must_direct.
+# doh: foreign queries use an IP-literal DoH URL; systemd-resolved enters daed.
+DNS_MODES = ("direct", "doh")
+DOH_IPS = ("8.8.8.8", "1.1.1.1")
+DIRECT_FALLBACK = "223.5.5.5:53"
+RESOLVED_NAME = "systemd-resolved"
+_FALLBACK_RE = re.compile(
+    r"^(?P<indent>[ \t]*)fallback_resolver[ \t]*:[ \t]*(?P<quote>[\"']?)"
+    r"(?P<value>[^\"'\s#]+)(?P=quote)[ \t]*$",
+    re.M,
+)
+_PNAME_LINE = re.compile(r"^(\s*)pname\(([^)]*)\)\s*->\s*must_direct\s*$")
+_RESOLVER_PNAME = {"NetworkManager", RESOLVED_NAME, "dnsmasq"}
 
 # ── terminal colors ─────────────────────────────────────────────────────────
 
@@ -116,10 +139,11 @@ def migration_notice() -> None:
 
 # ── generic db helpers ──────────────────────────────────────────────────────
 
-def wait_for_db(timeout: float = 30.0) -> bool:
+def wait_for_db(timeout: float = 30.0, db: Path | None = None) -> bool:
+    path = DB_PATH if db is None else db
     deadline = time.time() + timeout
     while time.time() < deadline:
-        if DB_PATH.is_file():
+        if path.is_file():
             return True
         time.sleep(0.5)
     return False
@@ -461,6 +485,359 @@ def ensure_global_conf() -> None:
         ok("generated config/global.conf from global.conf.example")
 
 
+# ── DNS modes ───────────────────────────────────────────────────────────────
+
+def choose_dns_mode() -> str:
+    """Ask which DNS mode to seed. Non-interactive runs stay on direct."""
+    if not (hasattr(sys.stdin, "isatty") and sys.stdin.isatty()):
+        info("non-interactive run; DNS mode: direct")
+        return "direct"
+    print()
+    print(paint("选择 DNS 模式（回车 = direct）", C.CYAN))
+    print("  1. direct  国内域名走 223.5.5.5 UDP，其余走 tcp+udp://8.8.8.8:53。")
+    print("             systemd-resolved 不进 daed。")
+    print("  2. doh     国外域名走 https://8.8.8.8/dns-query。")
+    print("             systemd-resolved 的 53 端口查询进 daed。")
+    try:
+        answer = input("选择 [1]: ").strip().lower()
+    except EOFError:
+        print()
+        return "direct"
+    print()
+    if answer in {"2", "doh"}:
+        return "doh"
+    return "direct"
+
+
+def fallback_value(mode: str, doh_ip: str) -> str:
+    if mode == "direct":
+        return DIRECT_FALLBACK
+    if doh_ip not in DOH_IPS:
+        raise ValueError(f"unsupported DoH address: {doh_ip}")
+    return f"{doh_ip}:53"
+
+
+def render_dns_body(mode: str, doh_ip: str) -> str:
+    if mode == "direct":
+        return (CONFIG_DIR / "dns.conf").read_text(encoding="utf-8")
+    if doh_ip not in DOH_IPS:
+        raise ValueError(f"unsupported DoH address: {doh_ip}")
+    text = (CONFIG_DIR / "dns.conf.foreign-doh").read_text(encoding="utf-8")
+    if doh_ip != "8.8.8.8":
+        text = text.replace(
+            "https://8.8.8.8/dns-query", f"https://{doh_ip}/dns-query"
+        )
+    return text
+
+
+def set_fallback_resolver(text: str, value: str) -> str:
+    """Replace fallback_resolver, preserving the line's quotes and spacing."""
+    match = _FALLBACK_RE.search(text)
+    if match is None:
+        line = f'fallback_resolver: "{value}"\n'
+        closing = text.rfind("}")
+        if closing == -1:
+            return text.rstrip() + "\n" + line
+        return text[:closing] + line + text[closing:]
+    raw = match.group(0)
+    colon = ": " if re.search(r":[ \t]", raw) else ":"
+    quote = match.group("quote") or '"'
+    replacement = f"{match.group('indent')}fallback_resolver{colon}{quote}{value}{quote}"
+    return text[:match.start()] + replacement + text[match.end():]
+
+
+def _split_pname(body: str) -> list[str]:
+    return [part.strip() for part in body.split(",") if part.strip()]
+
+
+def _resolver_line_index(lines: list[str]) -> int | None:
+    for index, line in enumerate(lines):
+        match = _PNAME_LINE.match(line.rstrip("\r\n"))
+        if match is None:
+            continue
+        names = set(_split_pname(match.group(2)))
+        if names & _RESOLVER_PNAME:
+            return index
+    return None
+
+
+def set_systemd_resolved(routing: str, enter_daed: bool) -> str:
+    """Drop or restore systemd-resolved on the local-resolver must_direct rule.
+
+    enter_daed=True removes the name so its port 53 queries hit daed.
+    Other routing lines, including private rules, are left in place.
+    """
+    lines = routing.splitlines(keepends=True)
+    index = _resolver_line_index(lines)
+    if enter_daed:
+        if index is None:
+            return routing
+        stripped = lines[index].rstrip("\r\n")
+        newline = lines[index][len(stripped):]
+        match = _PNAME_LINE.match(stripped)
+        assert match is not None
+        names = [name for name in _split_pname(match.group(2)) if name != RESOLVED_NAME]
+        if names == _split_pname(match.group(2)):
+            return routing
+        if not names:
+            del lines[index]
+        else:
+            lines[index] = (
+                f"{match.group(1)}pname({', '.join(names)}) -> must_direct{newline}"
+            )
+        return "".join(lines)
+
+    if index is not None:
+        stripped = lines[index].rstrip("\r\n")
+        newline = lines[index][len(stripped):]
+        match = _PNAME_LINE.match(stripped)
+        assert match is not None
+        names = _split_pname(match.group(2))
+        if RESOLVED_NAME in names:
+            return routing
+        if "NetworkManager" in names:
+            names.insert(names.index("NetworkManager") + 1, RESOLVED_NAME)
+        else:
+            names.insert(0, RESOLVED_NAME)
+        lines[index] = (
+            f"{match.group(1)}pname({', '.join(names)}) -> must_direct{newline}"
+        )
+        return "".join(lines)
+
+    insert = "pname(NetworkManager, systemd-resolved, dnsmasq) -> must_direct\n"
+    for index, line in enumerate(lines):
+        if "pname(daed)" in line:
+            lines.insert(index + 1, insert)
+            return "".join(lines)
+    for index, line in enumerate(lines):
+        if line.strip() == "routing {":
+            lines.insert(index + 1, insert)
+            return "".join(lines)
+    return insert + routing
+
+
+def _fallback_of(text: str) -> str | None:
+    match = _FALLBACK_RE.search(text)
+    if match is None:
+        return None
+    return match.group("value")
+
+
+def _resolved_is_direct(routing: str) -> bool:
+    for line in routing.splitlines():
+        match = _PNAME_LINE.match(line.rstrip())
+        if match and RESOLVED_NAME in _split_pname(match.group(2)):
+            return True
+    return False
+
+
+def already_in_mode(dns: str, global_text: str, routing: str, mode: str, doh_ip: str) -> bool:
+    """True when the live texts already have this mode's upstream, fallback, and resolver rule.
+
+    Whitespace and unrelated DNS lines do not count, so a daed rewrite of the
+    same mode is left alone.
+    """
+    fallback = _fallback_of(global_text)
+    resolved_direct = _resolved_is_direct(routing)
+    has_tcp = "tcp+udp://8.8.8.8:53" in dns
+    has_doh = f"https://{doh_ip}/dns-query" in dns
+    has_any_foreign_doh = any(f"https://{ip}/dns-query" in dns for ip in DOH_IPS)
+    if mode == "doh":
+        return has_doh and not has_tcp and fallback == f"{doh_ip}:53" and not resolved_direct
+    return (
+        has_tcp
+        and not has_any_foreign_doh
+        and fallback == DIRECT_FALLBACK
+        and resolved_direct
+    )
+
+
+def apply_mode_to_sections(
+    dns: str, global_text: str, routing: str, mode: str, doh_ip: str
+) -> tuple[str, str, str]:
+    del dns  # the selected DNS row is replaced by the mode template
+    new_dns = wrap_section("dns", render_dns_body(mode, doh_ip))
+    new_global = set_fallback_resolver(global_text, fallback_value(mode, doh_ip))
+    new_routing = set_systemd_resolved(routing, enter_daed=(mode == "doh"))
+    return new_dns, new_global, new_routing
+
+
+def describe_dns_mode(dns: str, global_text: str, routing: str) -> str:
+    if "https://1.1.1.1/dns-query" in dns:
+        upstream = "doh https://1.1.1.1/dns-query"
+    elif "https://8.8.8.8/dns-query" in dns:
+        upstream = "doh https://8.8.8.8/dns-query"
+    elif "tcp+udp://8.8.8.8:53" in dns:
+        upstream = "direct tcp+udp://8.8.8.8:53"
+    else:
+        upstream = "custom"
+    fallback = _fallback_of(global_text) or "missing"
+    resolved = "must_direct" if _resolved_is_direct(routing) else "enters daed"
+    return f"dns={upstream} fallback_resolver={fallback} systemd-resolved={resolved}"
+
+
+def _connect(path: Path, timeout: float, readonly: bool = False) -> sqlite3.Connection:
+    if readonly:
+        return sqlite3.connect(path.resolve().as_uri() + "?mode=ro", uri=True, timeout=timeout)
+    return sqlite3.connect(str(path), timeout=timeout)
+
+
+def _selected_text(conn: sqlite3.Connection, table: str, column: str) -> tuple[int, str] | None:
+    quoted = f'"{column}"'
+    row = conn.execute(
+        f"SELECT id, {quoted} FROM {table} WHERE selected = 1 LIMIT 1"
+    ).fetchone()
+    if row is None:
+        row = conn.execute(
+            f"SELECT id, {quoted} FROM {table} ORDER BY id LIMIT 1"
+        ).fetchone()
+    if row is None:
+        return None
+    return int(row[0]), row[1]
+
+
+def _locked_message(exc: sqlite3.OperationalError) -> str:
+    text = str(exc).lower()
+    if "locked" in text or "busy" in text:
+        return (
+            "wing.db is locked by daed (database is locked). "
+            "Nothing was written. Retry in a moment."
+        )
+    return str(exc)
+
+
+def _read_mode_rows(conn: sqlite3.Connection) -> tuple[tuple[int, str], tuple[int, str], tuple[int, str]]:
+    dns_row = _selected_text(conn, "dns", "dns")
+    global_row = _selected_text(conn, "configs", "global")
+    routing_row = _selected_text(conn, "routings", "routing")
+    if dns_row is None or global_row is None or routing_row is None:
+        raise RuntimeError(
+            "dns, configs, or routings is empty; run python3 daed-init.py first"
+        )
+    return dns_row, global_row, routing_row
+
+
+def backup_wing_db(src: Path, timeout: float) -> Path:
+    """Consistent snapshot via SQLite's backup API. A plain copy can tear a WAL."""
+    stamp = time.strftime("%Y%m%d-%H%M%S")
+    dest = src.with_name(f"{src.name}.bak-{stamp}")
+    suffix = 2
+    while dest.exists():
+        dest = src.with_name(f"{src.name}.bak-{stamp}-{suffix}")
+        suffix += 1
+    src_conn = _connect(src, timeout, readonly=True)
+    try:
+        dest_conn = sqlite3.connect(dest, timeout=timeout)
+        try:
+            src_conn.backup(dest_conn)
+            dest_conn.commit()
+        finally:
+            dest_conn.close()
+    except sqlite3.OperationalError:
+        dest.unlink(missing_ok=True)
+        raise
+    finally:
+        src_conn.close()
+    return dest
+
+
+def apply_dns_mode(conn: sqlite3.Connection, mode: str, doh_ip: str) -> list[str]:
+    """Update the selected DNS, fallback_resolver, and systemd-resolved lines.
+
+    The caller owns the transaction. Nodes, groups, and other routing lines
+    are not rewritten.
+    """
+    dns_row, global_row, routing_row = _read_mode_rows(conn)
+    if already_in_mode(dns_row[1], global_row[1], routing_row[1], mode, doh_ip):
+        return []
+    new_dns, new_global, new_routing = apply_mode_to_sections(
+        dns_row[1], global_row[1], routing_row[1], mode, doh_ip
+    )
+    changes: list[str] = []
+    if new_dns != dns_row[1]:
+        conn.execute(
+            "UPDATE dns SET dns = ?, version = version + 1 WHERE id = ?",
+            (new_dns, dns_row[0]),
+        )
+        changes.append("dns")
+    if new_global != global_row[1]:
+        conn.execute(
+            'UPDATE configs SET "global" = ?, version = version + 1 WHERE id = ?',
+            (new_global, global_row[0]),
+        )
+        changes.append("fallback_resolver")
+    if new_routing != routing_row[1]:
+        conn.execute(
+            "UPDATE routings SET routing = ?, version = version + 1 WHERE id = ?",
+            (new_routing, routing_row[0]),
+        )
+        changes.append("systemd-resolved")
+    return changes
+
+
+def switch_dns_mode(db: Path, mode: str, doh_ip: str = "8.8.8.8", timeout: float = 5.0) -> int:
+    if mode not in (*DNS_MODES, "status"):
+        return fail(f"unknown DNS mode: {mode}")
+    if doh_ip not in DOH_IPS:
+        return fail(f"unsupported DoH address: {doh_ip}")
+    if not db.is_file():
+        return fail(f"wing.db not found at {db}")
+
+    try:
+        preview = _connect(db, timeout, readonly=True)
+    except sqlite3.OperationalError as exc:
+        return fail(_locked_message(exc))
+    try:
+        dns_row, global_row, routing_row = _read_mode_rows(preview)
+    except RuntimeError as exc:
+        return fail(str(exc))
+    except sqlite3.OperationalError as exc:
+        return fail(_locked_message(exc))
+    finally:
+        preview.close()
+
+    if mode == "status":
+        print(describe_dns_mode(dns_row[1], global_row[1], routing_row[1]))
+        return 0
+
+    if already_in_mode(dns_row[1], global_row[1], routing_row[1], mode, doh_ip):
+        info(f"already in {mode} mode; nothing changed")
+        print(describe_dns_mode(dns_row[1], global_row[1], routing_row[1]))
+        return 0
+
+    try:
+        backup = backup_wing_db(db, timeout)
+    except sqlite3.OperationalError as exc:
+        return fail(_locked_message(exc))
+    ok(f"backed up wing.db to {backup.name}")
+
+    conn = _connect(db, timeout)
+    try:
+        conn.execute("BEGIN IMMEDIATE")
+        try:
+            changes = apply_dns_mode(conn, mode, doh_ip)
+            if not changes:
+                conn.rollback()
+                info(f"already in {mode} mode; nothing changed")
+                return 0
+            conn.commit()
+        except Exception:
+            conn.rollback()
+            raise
+    except sqlite3.OperationalError as exc:
+        return fail(_locked_message(exc) + f" Backup kept at {backup.name}.")
+    except RuntimeError as exc:
+        return fail(str(exc) + f" Backup kept at {backup.name}.")
+    finally:
+        conn.close()
+
+    ok(f"switched to {mode}: {', '.join(changes)}")
+    ok("selected DNS row was replaced with the mode template")
+    ok("Restart daed to apply:")
+    print("  docker restart daed")
+    return 0
+
+
 # ── init: config seeding ────────────────────────────────────────────────────
 
 def seed_config(
@@ -469,6 +846,7 @@ def seed_config(
     column: str,
     section: str,
     file: Path,
+    text: str | None = None,
 ) -> bool:
     if not table_exists(conn, table):
         warn(f"skip {table}: table missing (daed not booted yet?)")
@@ -478,11 +856,13 @@ def seed_config(
         info(f"skip {table}: already initialized")
         return False
 
-    if not file.is_file():
-        warn(f"skip {table}: {file.name} not found")
-        return False
+    if text is None:
+        if not file.is_file():
+            warn(f"skip {table}: {file.name} not found")
+            return False
+        text = file.read_text(encoding="utf-8")
 
-    content = wrap_section(section, file.read_text(encoding="utf-8"))
+    content = wrap_section(section, text)
     conn.execute(
         f"INSERT INTO {table} (name, \"{column}\", selected, version) "
         "VALUES ('default', ?, 1, 0)",
@@ -887,7 +1267,8 @@ def import_private(conn: sqlite3.Connection, block: str, force_groups: bool) -> 
 # ── commands ────────────────────────────────────────────────────────────────
 
 def cmd_init(args: argparse.Namespace) -> int:
-    if not wait_for_db():
+    db = Path(args.db) if getattr(args, "db", None) else DB_PATH
+    if not wait_for_db(db=db):
         return fail(
             "wing.db not found. Start daed once first:\n"
             "  docker compose up -d daed"
@@ -903,15 +1284,46 @@ def cmd_init(args: argparse.Namespace) -> int:
             "and set lan_interface before running init"
         )
 
-    conn = sqlite3.connect(str(DB_PATH))
+    conn = sqlite3.connect(str(db))
     try:
+        mode = "direct"
+        doh_ip = getattr(args, "doh_ip", None) or "8.8.8.8"
+        requested = getattr(args, "dns_mode", None)
+        dns_empty = table_exists(conn, "dns") and table_count(conn, "dns") == 0
+        if dns_empty:
+            mode = requested or choose_dns_mode()
+            info(f"DNS mode for empty dns table: {mode}")
+        elif requested not in (None, "direct"):
+            warn(
+                "dns table already has rows; init does not switch modes. "
+                f"Run: python3 daed-init.py dns-mode {requested}"
+            )
+
+        dns_file = CONFIG_DIR / "dns.conf"
+        dns_text = global_text = routing_text = None
+        if mode == "doh":
+            dns_file = CONFIG_DIR / "dns.conf.foreign-doh"
+            dns_text = render_dns_body("doh", doh_ip)
+            global_text = set_fallback_resolver(
+                global_conf.read_text(encoding="utf-8"),
+                fallback_value("doh", doh_ip),
+            )
+            routing_text = set_systemd_resolved(
+                (CONFIG_DIR / "routing.conf").read_text(encoding="utf-8"),
+                enter_daed=True,
+            )
+            if table_exists(conn, "configs") and table_count(conn, "configs") > 0:
+                warn("configs already has rows; init will not change fallback_resolver. Use dns-mode.")
+            if table_exists(conn, "routings") and table_count(conn, "routings") > 0:
+                warn("routings already has rows; init will not change systemd-resolved. Use dns-mode.")
+
         seeded_any = False
         seeded_any |= seed_config(conn, "configs", "global", "global",
-                                  CONFIG_DIR / "global.conf")
+                                  CONFIG_DIR / "global.conf", text=global_text)
         seeded_any |= seed_config(conn, "dns", "dns", "dns",
-                                  CONFIG_DIR / "dns.conf")
+                                  dns_file, text=dns_text)
         seeded_any |= seed_config(conn, "routings", "routing", "routing",
-                                  CONFIG_DIR / "routing.conf")
+                                  CONFIG_DIR / "routing.conf", text=routing_text)
         seeded_any |= seed_groups(conn, CONFIG_DIR / "groups.txt")
         conn.commit()
 
@@ -986,12 +1398,35 @@ def cmd_import_private(args: argparse.Namespace) -> int:
     return 0
 
 
+def cmd_dns_mode(args: argparse.Namespace) -> int:
+    db = Path(args.db) if args.db else DB_PATH
+    return switch_dns_mode(db, args.mode, args.doh_ip)
+
+
 def build_arg_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(description="daed one-shot bootstrap and private-rules migration")
     sub = parser.add_subparsers(dest="command")
 
     p_init = sub.add_parser("init", help="initialize an empty wing.db (default)")
+    p_init.add_argument(
+        "--dns-mode", choices=list(DNS_MODES), default=None,
+        help="DNS mode when the dns table is empty (default: direct, or a prompt on a TTY)",
+    )
+    p_init.add_argument(
+        "--doh-ip", choices=list(DOH_IPS), default="8.8.8.8",
+        help="foreign DoH address when --dns-mode doh",
+    )
+    p_init.add_argument("--db", help="wing.db path (default: deploy/daed/config/wing.db)")
     p_init.set_defaults(func=cmd_init)
+
+    p_mode = sub.add_parser("dns-mode", help="show or switch DNS mode in an existing wing.db")
+    p_mode.add_argument("mode", choices=[*DNS_MODES, "status"])
+    p_mode.add_argument(
+        "--doh-ip", choices=list(DOH_IPS), default="8.8.8.8",
+        help="foreign DoH address for doh mode (default: 8.8.8.8)",
+    )
+    p_mode.add_argument("--db", help="wing.db path (default: deploy/daed/config/wing.db)")
+    p_mode.set_defaults(func=cmd_dns_mode)
 
     p_export = sub.add_parser("export-private", help="export private rules block from wing.db")
     p_export.add_argument("--output", help="write to file instead of stdout")
