@@ -164,6 +164,15 @@ cd deploy/proxy
 
 它**不会**修改 nginx/OpenResty、不会 reload、不会安装任何反代片段。反代相关操作由你手动完成。
 
+用户级 systemd（进程以某个登录账号运行，退出登录后仍保持）：
+
+```bash
+./scripts/deploy.sh --install --user --service-user <账号> \
+  --host <ssh别名> --ip <公网IP> --sni <域名> --cert-dir <远端证书目录>
+```
+
+这会把单元装到该用户的 `~/.config/systemd/user/sing-box.service`，二进制和配置默认落在 `~/.local/bin/sing-box` 与 `~/.config/sing-box/config.json`，并 `loginctl enable-linger`。Hysteria2 若占用 1024 以下端口，安装脚本给二进制加上 `cap_net_bind_service`。已有配置不想换凭据时，不要走会重新生成链接的 `--install`；在远端以 `KEEP_CONFIG=1 SERVICE_SCOPE=user SERVICE_USER=<账号>` 运行 `scripts/install.sh`。`scripts/rotate.sh` 轮换凭据时重启的就是这个用户单元。
+
 SSH 参数可通过 `SSH_ARGS` 环境变量覆盖，例如：
 
 ```bash

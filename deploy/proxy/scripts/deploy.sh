@@ -31,12 +31,16 @@
 #                        Default is IPv4 only. The host must have IPv6 enabled.
 #   --version V          sing-box version to install (default 1.14.0)
 #   --install            Upload config + service and install sing-box on remote
+#   --user               With --install, install a user systemd unit instead of
+#                        the system unit. Requires --service-user. Enables linger
+#                        so the unit keeps running after that user logs out.
+#   --service-user NAME  Unix account that owns the user unit
 #   --dry-run            Alias for default (generate + print only)
 #
 # Everything above can also be set via environment variables:
 #   SSH_HOST, REMOTE_IP, SNI_DOMAIN, CERT_DIR, HYSTERIA_PORT, VLESS_PORT,
 #   TLS_PORT, ENABLE_IPV6, SING_BOX_VERSION, SSH_ARGS, BIN_DIR, CONFIG_DIR,
-#   TLS_DIR, MASQUERADE_URL, CERTBOT_HOOK_DIR
+#   TLS_DIR, MASQUERADE_URL, CERTBOT_HOOK_DIR, SERVICE_USER
 
 set -euo pipefail
 
@@ -62,6 +66,8 @@ MASQUERADE_URL="${MASQUERADE_URL:-https://www.microsoft.com}"
 CERTBOT_HOOK_DIR="${CERTBOT_HOOK_DIR:-}"
 
 INSTALL=0
+SERVICE_SCOPE=system
+SERVICE_USER="${SERVICE_USER:-}"
 while [[ $# -gt 0 ]]; do
     case "$1" in
         --install) INSTALL=1; shift ;;
@@ -83,13 +89,16 @@ while [[ $# -gt 0 ]]; do
         --ipv6) ENABLE_IPV6=1; shift 1 ;;
         --version) SING_BOX_VERSION="${2:-}"; shift 2 ;;
         --version=*) SING_BOX_VERSION="${1#*=}"; shift 1 ;;
+        --user) SERVICE_SCOPE=user; shift ;;
+        --service-user) SERVICE_USER="${2:-}"; shift 2 ;;
+        --service-user=*) SERVICE_USER="${1#*=}"; shift 1 ;;
         --help|-h)
-            sed -n '2,39p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
+            sed -n '2,43p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//'
             exit 0
             ;;
         *)
             echo "unknown option: $1" >&2
-            sed -n '2,39p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
+            sed -n '2,43p' "${BASH_SOURCE[0]}" | sed 's/^# \{0,1\}//' >&2
             exit 1
             ;;
     esac
@@ -267,6 +276,10 @@ if [[ -z "${SSH_HOST}" ]]; then
     echo "error: --install requires --host <ssh-alias> (or SSH_HOST env)" >&2
     exit 1
 fi
+if [[ "${SERVICE_SCOPE}" == "user" && -z "${SERVICE_USER}" ]]; then
+    echo "error: --user requires --service-user <account>" >&2
+    exit 1
+fi
 
 SSH_ARGS=(${SSH_ARGS:--o BatchMode=yes -o ConnectTimeout=10})
 ssh_run() {
@@ -297,9 +310,12 @@ ssh_run 'rm -rf /tmp/sing-box-deploy && mkdir -p /tmp/sing-box-deploy' >/dev/nul
 for file in config.json sing-box.service; do
     ssh_run "cat > /tmp/sing-box-deploy/${file}" < "${TMPDIR}/${file}"
 done
+if [[ "${SERVICE_SCOPE}" == "user" ]]; then
+    ssh_run "cat > /tmp/sing-box-deploy/sing-box.user.service" < "${TEMPLATE_DIR}/sing-box.user.service"
+fi
 
-echo "[deploy/proxy] running remote installer (sing-box only)"
-ssh_run "SING_BOX_VERSION=${SING_BOX_VERSION} BIN_DIR=${BIN_DIR} CONFIG_DIR=${CONFIG_DIR} TLS_DIR=${TLS_DIR} HY2_CERT_PATH=${HY2_CERT_PATH} HY2_KEY_PATH=${HY2_KEY_PATH} GEN_SELF_SIGNED=${GEN_SELF_SIGNED} CERTBOT_HOOK_DIR=${CERTBOT_HOOK_DIR} bash -s" \
+echo "[deploy/proxy] running remote installer (sing-box only, scope=${SERVICE_SCOPE})"
+ssh_run "SING_BOX_VERSION=${SING_BOX_VERSION} BIN_DIR=${BIN_DIR} CONFIG_DIR=${CONFIG_DIR} TLS_DIR=${TLS_DIR} HY2_CERT_PATH=${HY2_CERT_PATH} HY2_KEY_PATH=${HY2_KEY_PATH} GEN_SELF_SIGNED=${GEN_SELF_SIGNED} CERTBOT_HOOK_DIR=${CERTBOT_HOOK_DIR} SERVICE_SCOPE=${SERVICE_SCOPE} SERVICE_USER=${SERVICE_USER} bash -s" \
     < "${SCRIPT_DIR}/install.sh"
 
 echo
