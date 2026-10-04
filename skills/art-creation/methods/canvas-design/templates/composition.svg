@@ -1,0 +1,16 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="900" height="1200" viewBox="0 0 900 1200">
+  <title>Editable composition example</title>
+  <desc>A static study of asymmetry, focal scale, and a limited palette.</desc>
+  <rect id="background" width="900" height="1200" fill="#f3eee4"/>
+  <g id="primary-form" fill="#ae483b">
+    <circle cx="575" cy="460" r="225"/>
+  </g>
+  <g id="supporting-form" fill="#243e40">
+    <rect x="110" y="425" width="220" height="405"/>
+  </g>
+  <g id="type" fill="#243e40" font-family="sans-serif">
+    <text x="90" y="120" font-size="20" letter-spacing="3">COMPOSITION STUDY</text>
+    <text x="90" y="970" font-size="72" font-weight="700">Space and form</text>
+    <text x="90" y="1030" font-size="24">A labeled example, ready for a new brief.</text>
+  </g>
+</svg>

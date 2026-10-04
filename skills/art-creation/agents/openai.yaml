@@ -1,0 +1,4 @@
+interface:
+  display_name: "Art Creation"
+  short_description: "Analyze references and refine creative intent"
+  default_prompt: "Use $art-creation to turn my rough idea or reference into visible alternatives and a precise creative brief."

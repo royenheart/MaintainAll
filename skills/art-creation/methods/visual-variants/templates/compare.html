@@ -1,0 +1,57 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Visual comparison example</title>
+<style>
+  body { font: 16px system-ui; margin: 24px; color: #253c40; background: #f4f1e9; }
+  #candidates { display: grid; grid-template-columns: repeat(auto-fit,minmax(260px,1fr)); gap: 20px; }
+  article { padding: 16px; border: 1px solid #9baba5; background: white; }
+  iframe { width: 100%; height: 280px; border: 0; }
+  button { font: inherit; margin-top: 12px; }
+</style>
+<h1>Compare visible directions</h1>
+<p>The bundled cards are examples. Replace them with actual candidate previews.</p>
+<div id="candidates"></div>
+<p id="status" role="status">No direction has been chosen.</p>
+<button id="export" disabled>Export Selection</button>
+<script type="module">
+  function example(layout) {
+    const columns = layout === 'horizontal' ? '1fr 1fr' : '1fr';
+    const order = layout === 'reverse' ? 'flex-direction:column-reverse' : '';
+    return `<html><body style="margin:0;font:18px system-ui;color:#253c40;background:#eee8dc"><main style="padding:24px;display:${layout==='horizontal'?'grid':'flex'};grid-template-columns:${columns};flex-direction:column;${order};gap:20px"><div style="height:110px;min-width:90px;background:#b25543"></div><div><b>A common subject</b><p>Same content, a different relationship.</p></div></main></body></html>`;
+  }
+  // Replace this array with actual same-origin src URLs or self-contained srcdoc.
+  const variants = [
+    {id:'A',title:'Image first',description:'Example: vertical hierarchy.',srcdoc:example('vertical')},
+    {id:'B',title:'Side by side',description:'Example: shared horizontal space.',srcdoc:example('horizontal')},
+    {id:'C',title:'Words first',description:'Example: reversed hierarchy.',srcdoc:example('reverse')},
+  ];
+  window.creationSelection = null;
+  for (const variant of variants) {
+    const article = document.createElement('article');
+    const title = document.createElement('h2'); title.textContent = variant.id + ': ' + variant.title;
+    const frame = document.createElement('iframe'); frame.title = variant.title;
+    if (variant.src) frame.src = variant.src; else frame.srcdoc = variant.srcdoc;
+    const description = document.createElement('p'); description.textContent = variant.description;
+    const choose = document.createElement('button'); choose.textContent = 'Choose ' + variant.id;
+    choose.addEventListener('click', () => {
+      let recipe = null;
+      let limitation = null;
+      try {
+        if (typeof frame.contentWindow.exportRecipe === 'function') recipe = frame.contentWindow.exportRecipe();
+        else limitation = 'This preview does not export current live parameters.';
+      } catch { limitation = 'Current live parameters are unavailable across this preview origin.'; }
+      window.creationSelection = {status:'user-selected',variantId:variant.id,
+        source:variant.src || 'embedded-srcdoc',recipe,limitation};
+      document.querySelector('#status').textContent = 'Chosen: ' + variant.id + '. Return this choice to the creative workflow.';
+      document.querySelector('#export').disabled = false;
+    });
+    article.append(title,frame,description,choose); document.querySelector('#candidates').append(article);
+  }
+  document.querySelector('#export').addEventListener('click', () => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(window.creationSelection,null,2)],{type:'application/json'}));
+    const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'creation-selection.json'; anchor.click(); URL.revokeObjectURL(url);
+  });
+</script>
+</html>

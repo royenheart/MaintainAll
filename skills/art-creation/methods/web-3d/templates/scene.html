@@ -1,0 +1,91 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Interactive 3D form study</title>
+<style>
+  body { font:16px system-ui; margin:24px; color:#253c40; background:#f4f1e9; }
+  #view { width:100%; height:420px; border:1px solid #a7b2ab; }
+  #view canvas { display:block; width:100%; height:100%; }
+  .controls { display:flex; flex-wrap:wrap; gap:20px; margin-block:20px; }
+  button, input, select { font:inherit; }
+</style>
+<h1>Interactive 3D form study</h1>
+<p>Example geometry: compare silhouette, viewpoint, and surface separately.</p>
+<div id="view"></div>
+<div class="controls">
+  <label>Shape <select id="shape"><option>vase</option><option>column</option><option>rounded</option></select></label>
+  <label>Width <input id="width" type="range" min="0.5" max="2" step="0.1" value="1"><output id="width-value">1</output></label>
+  <label>View angle <input id="yaw" type="range" min="-180" max="180" step="1" value="30"><output id="yaw-value">30</output></label>
+  <label>Surface roughness <input id="roughness" type="range" min="0" max="1" step="0.05" value="0.7"><output id="roughness-value">0.7</output></label>
+  <button id="reset">Reset</button><button id="export">Export Recipe</button>
+</div>
+<p id="status" role="status">Loading the Three.js runtime...</p>
+<script type="module">
+  const query = new URLSearchParams(location.search);
+  const runtime = query.get('three') || 'https://cdn.jsdelivr.net/npm/three@0.180.0/build/three.module.js';
+  const status = document.querySelector('#status');
+  const defaults = {shape:'vase',width:1,yaw:30,roughness:0.7};
+  const params = {...defaults};
+  const profiles = {
+    vase:[[.24,0],[.46,.5],[.5,.9],[.35,1.5],[.22,2]],
+    column:[[.5,0],[.5,.5],[.5,1.5],[.5,2]],
+    rounded:[[.14,0],[.4,.36],[.5,1],[.4,1.64],[.14,2]],
+  };
+  try {
+    const THREE = await import(runtime);
+    const view = document.querySelector('#view');
+    const renderer = new THREE.WebGLRenderer({antialias:true,preserveDrawingBuffer:true});
+    renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+    view.append(renderer.domElement);
+    const scene = new THREE.Scene(); scene.background = new THREE.Color('#f4f1e9');
+    const camera = new THREE.PerspectiveCamera(38,1,.1,100);
+    scene.add(new THREE.AmbientLight(0xffffff,1));
+    const light = new THREE.DirectionalLight(0xffffff,3); light.position.set(3,4,5); scene.add(light);
+    const material = new THREE.MeshStandardMaterial({color:'#b7744e',roughness:params.roughness,metalness:0.1,side:THREE.DoubleSide});
+    const mesh = new THREE.Mesh(new THREE.BufferGeometry(),material); mesh.position.y = -1; scene.add(mesh);
+    function geometry() {
+      const points = profiles[params.shape].map(([radius,height]) => new THREE.Vector2(radius*params.width,height));
+      mesh.geometry.dispose(); mesh.geometry = new THREE.LatheGeometry(points,64);
+    }
+    function render() {
+      const angle = params.yaw*Math.PI/180;
+      camera.position.set(Math.sin(angle)*5,2,Math.cos(angle)*5); camera.lookAt(0,0,0);
+      material.roughness = params.roughness;
+      renderer.render(scene,camera);
+    }
+    function resize() {
+      const width = view.clientWidth, height = view.clientHeight;
+      renderer.setSize(width,height,false); camera.aspect = width/height;
+      camera.updateProjectionMatrix(); render();
+    }
+    for (const key of Object.keys(defaults)) {
+      document.querySelector('#'+key).addEventListener('input', event => {
+        params[key] = key==='shape' ? event.target.value : Number(event.target.value);
+        const output = document.querySelector('#'+key+'-value'); if (output) output.value = String(params[key]);
+        if (key==='shape' || key==='width') geometry(); render();
+      });
+    }
+    document.querySelector('#reset').addEventListener('click', () => {
+      Object.assign(params,defaults);
+      for (const [key,value] of Object.entries(params)) {
+        document.querySelector('#'+key).value = String(value);
+        const output = document.querySelector('#'+key+'-value'); if (output) output.value = String(value);
+      }
+      geometry(); render();
+    });
+    window.exportRecipe = () => ({method:'web-3d',runtime:'Three.js '+THREE.REVISION,runtimeSource:runtime,
+      parameters:{...params},profile:profiles[params.shape],height:2,segments:64,projection:'perspective'});
+    document.querySelector('#export').addEventListener('click', () => {
+      const url = URL.createObjectURL(new Blob([JSON.stringify(window.exportRecipe(),null,2)],{type:'application/json'}));
+      const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'web-3d-recipe.json'; anchor.click(); URL.revokeObjectURL(url);
+    });
+    new ResizeObserver(resize).observe(view);
+    addEventListener('pagehide', () => {mesh.geometry.dispose();material.dispose();renderer.dispose();}, {once:true});
+    geometry(); resize(); status.textContent = 'Actual 3D scene ready.'; window.creationReady = true;
+  } catch (error) {
+    status.textContent = 'The 3D preview is unavailable: '+error.message;
+    window.creationError = error.message;
+  }
+</script>
+</html>

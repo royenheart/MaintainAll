@@ -15,8 +15,7 @@ When delegation is useful and supported, give each subagent a bounded task and r
 
 ## Per task
 
-The following sequence applies when independent delegation/review is available and
-warranted by the task. Otherwise perform these checks sequentially and label self-review.
+The following sequence applies when independent delegation/review is available and warranted by the task. Otherwise perform these checks sequentially and label self-review.
 
 1. **Dispatch implementer** with `./implementer-prompt.md` — paste the FULL task text plus scene-setting context. Never make the subagent read the plan file.
 2. Answer its questions before letting it proceed.

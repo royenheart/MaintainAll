@@ -1,0 +1,77 @@
+<!doctype html>
+<html lang="en">
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Motion study example</title>
+<style>
+  body { font: 16px system-ui; margin: 24px; background: #f4f1e9; color: #253c40; }
+  .stage { height: 340px; display: grid; place-items: center; border: 1px solid #abb4b0; }
+  #subject { padding: 48px; background: #253c40; color: white; font-size: 28px; }
+  .controls { display: flex; flex-wrap: wrap; gap: 16px; margin-block: 20px; }
+  button, select, input { font: inherit; }
+</style>
+<h1>Motion study</h1>
+<p>Example: compare travel, reveal, and focus while keeping the subject fixed.</p>
+<div class="stage"><div id="subject">One clear moment</div></div>
+<div class="controls">
+  <label>Mechanism <select id="mechanism"><option value="travel">Travel</option><option value="reveal">Reveal</option><option value="focus">Focus</option></select></label>
+  <label>Duration <input id="duration" type="range" min="200" max="2000" step="100" value="800"><output id="duration-value">800 ms</output></label>
+  <label>Progress <input id="progress" type="range" min="0" max="1" step="0.01" value="0"></label>
+  <button id="play">Play</button><button id="reset">Reset</button><button id="export">Export Recipe</button>
+</div>
+<p id="status" role="status">Paused at the start.</p>
+<script type="module">
+  const subject = document.querySelector('#subject');
+  const mechanism = document.querySelector('#mechanism');
+  const duration = document.querySelector('#duration');
+  const progress = document.querySelector('#progress');
+  const reduced = matchMedia('(prefers-reduced-motion: reduce)');
+  let animation;
+  const frames = {
+    travel: [{transform:'translateX(-100px)',opacity:0}, {transform:'translateX(0)',opacity:1}],
+    reveal: [{clipPath:'inset(0 100% 0 0)'}, {clipPath:'inset(0 0 0 0)'}],
+    focus: [{transform:'scale(.7)',opacity:0}, {transform:'scale(1)',opacity:1}],
+  };
+  function rebuild() {
+    const position = Number(progress.value);
+    animation?.cancel();
+    animation = subject.animate(reduced.matches ? [{opacity:0},{opacity:1}] : frames[mechanism.value],
+      {duration:Number(duration.value),easing:'cubic-bezier(.16,1,.3,1)',fill:'both'});
+    animation.pause();
+    animation.currentTime = position * Number(duration.value);
+    document.querySelector('#duration-value').value = duration.value + ' ms';
+  }
+  mechanism.addEventListener('change', () => { progress.value = '0'; rebuild(); });
+  duration.addEventListener('input', rebuild);
+  progress.addEventListener('input', () => {
+    animation.pause();
+    animation.currentTime = Number(progress.value) * Number(duration.value);
+    document.querySelector('#status').textContent = 'Paused at ' + Math.round(Number(progress.value)*100) + '%.';
+  });
+  document.querySelector('#play').addEventListener('click', () => {
+    animation.currentTime = 0;
+    animation.play();
+    document.querySelector('#status').textContent = 'Playing.';
+  });
+  document.querySelector('#reset').addEventListener('click', () => {
+    mechanism.value = 'travel'; duration.value = '800'; progress.value = '0'; rebuild();
+    document.querySelector('#status').textContent = 'Paused at the start.';
+  });
+  reduced.addEventListener('change', rebuild);
+  window.exportRecipe = () => ({method:'animate',mechanism:mechanism.value,
+    durationMs:Number(duration.value),progress:Number(progress.value),
+    easing:'cubic-bezier(.16,1,.3,1)',reducedMotion:reduced.matches});
+  document.querySelector('#export').addEventListener('click', () => {
+    const url = URL.createObjectURL(new Blob([JSON.stringify(window.exportRecipe(),null,2)],{type:'application/json'}));
+    const anchor = document.createElement('a'); anchor.href = url; anchor.download = 'motion-recipe.json'; anchor.click(); URL.revokeObjectURL(url);
+  });
+  function tick() {
+    if (animation.playState === 'running' || animation.playState === 'finished') {
+      progress.value = String(Math.min(1,Number(animation.currentTime)/Number(duration.value)));
+      if (animation.playState === 'finished') document.querySelector('#status').textContent = 'Finished.';
+    }
+    requestAnimationFrame(tick);
+  }
+  rebuild(); tick();
+</script>
+</html>

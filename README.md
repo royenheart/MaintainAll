@@ -4,6 +4,23 @@
 
 详细设计与开发说明见 [`AGENTS.md`](./AGENTS.md)。
 
+## Creative skills
+
+[Art Creation](skills/art-creation/SKILL.md) indexes teaching-oriented style analysis
+and progressive creative exploration for non-experts. Disclosure follows the root
+skill, the [iterative workflow](skills/art-creation/references/iterative-creation.md),
+then a selected method: algorithmic art, canvas design, animation, visual variants,
+frame-based video, scene modeling, or browser 3D. Methods include focused generation
+and improvement guidance plus editable templates or executable helpers.
+
+The workflow uses direct annotations of supplied references, visible alternatives,
+user feedback, and language/program-first methods to build a precise creative brief.
+The [practice review](skills/art-creation/references/practice-review.md) compares
+industry mechanisms; the [source inventory](skills/art-creation/references/upstream-sources.md)
+records adapted sources, licenses, and runtime boundaries. This standalone domain
+skill is separate from the engineering model policy below. Distribute its complete
+directory; copying the root SKILL.md alone omits method instructions and resources.
+
 ## 开发技能与模型策略
 
 可复用的开发技能在 [`skills/`](./skills/)，与 AIOps 的 `.agents/skills/` 分开维护。

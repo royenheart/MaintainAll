@@ -1,0 +1,242 @@
+{
+  "schema_version": 1,
+  "files": [
+    {
+      "repo": "anthropics/skills",
+      "revision": "8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4",
+      "source": "skills/algorithmic-art/LICENSE.txt",
+      "destination": "methods/algorithmic-art/LICENSE.txt",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/anthropics/skills/8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4/skills/algorithmic-art/LICENSE.txt",
+      "original_sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+      "current_sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+      "modified": false
+    },
+    {
+      "repo": "anthropics/skills",
+      "revision": "8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4",
+      "source": "skills/algorithmic-art/SKILL.md",
+      "destination": "methods/algorithmic-art/SKILL.md",
+      "role": "adapted-instructions",
+      "url": "https://raw.githubusercontent.com/anthropics/skills/8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4/skills/algorithmic-art/SKILL.md",
+      "original_sha256": "3bc4092c09804853186524c826bc0621b940bb6122c05b84496dff95388e6eef",
+      "current_sha256": "b3409b27c274fd5fa5c166f0904b97807de786a5743e57c029754c8e81aa95a7",
+      "modified": true
+    },
+    {
+      "repo": "anthropics/skills",
+      "revision": "8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4",
+      "source": "skills/algorithmic-art/templates/generator_template.js",
+      "destination": "methods/algorithmic-art/templates/generator_template.js",
+      "role": "template",
+      "url": "https://raw.githubusercontent.com/anthropics/skills/8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4/skills/algorithmic-art/templates/generator_template.js",
+      "original_sha256": "9ee0f1da52ef8f7bbfde1917123654880890d43f2d388642d71eab6dd78f94c4",
+      "current_sha256": "add8a3a0ea56e8a81d5528b0fc7a31e95e1198d55aeda2be762ca133ba058ce3",
+      "modified": true
+    },
+    {
+      "repo": "anthropics/skills",
+      "revision": "8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4",
+      "source": "skills/algorithmic-art/templates/viewer.html",
+      "destination": "methods/algorithmic-art/templates/viewer.html",
+      "role": "template",
+      "url": "https://raw.githubusercontent.com/anthropics/skills/8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4/skills/algorithmic-art/templates/viewer.html",
+      "original_sha256": "86c79d7ce97d2599ebe4bd9b97fdeb7295c9d3ed61ceeb513cbe1b2bb5d1ce29",
+      "current_sha256": "42faa6596fa1e84b0ee9b3569bcdc043098d2fd301a1ee70d4b889a9c30fb034",
+      "modified": true
+    },
+    {
+      "repo": "pbakaus/impeccable",
+      "revision": "e103efe779e2dd01274dabae83531fef00bf2563",
+      "source": "LICENSE",
+      "destination": "methods/animate/LICENSE",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/pbakaus/impeccable/e103efe779e2dd01274dabae83531fef00bf2563/LICENSE",
+      "original_sha256": "02bb8c3b4e70190e3986c0404ad2fd8d639b4f534252d82379cc1b502b6d1812",
+      "current_sha256": "02bb8c3b4e70190e3986c0404ad2fd8d639b4f534252d82379cc1b502b6d1812",
+      "modified": false
+    },
+    {
+      "repo": "pbakaus/impeccable",
+      "revision": "e103efe779e2dd01274dabae83531fef00bf2563",
+      "source": "NOTICE.md",
+      "destination": "methods/animate/NOTICE.md",
+      "role": "notice",
+      "url": "https://raw.githubusercontent.com/pbakaus/impeccable/e103efe779e2dd01274dabae83531fef00bf2563/NOTICE.md",
+      "original_sha256": "c60a093c2845fd9fb82f9c6f742ece31f379f8190b535309d32d66c45ccffdcb",
+      "current_sha256": "c60a093c2845fd9fb82f9c6f742ece31f379f8190b535309d32d66c45ccffdcb",
+      "modified": false
+    },
+    {
+      "repo": "pbakaus/impeccable",
+      "revision": "e103efe779e2dd01274dabae83531fef00bf2563",
+      "source": "skill/reference/animate.md",
+      "destination": "methods/animate/SKILL.md",
+      "role": "adapted-instructions",
+      "url": "https://raw.githubusercontent.com/pbakaus/impeccable/e103efe779e2dd01274dabae83531fef00bf2563/skill/reference/animate.md",
+      "original_sha256": "59f38d50c799aa47ecd7288c69dce0245d8c3e3e2368b29499d583996b5030b3",
+      "current_sha256": "adf5d43a47bcf819d87e2a25e322758573d5891bc6431cdbae4aff732d45e04e",
+      "modified": true
+    },
+    {
+      "repo": "anthropics/skills",
+      "revision": "8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4",
+      "source": "skills/canvas-design/LICENSE.txt",
+      "destination": "methods/canvas-design/LICENSE.txt",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/anthropics/skills/8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4/skills/canvas-design/LICENSE.txt",
+      "original_sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+      "current_sha256": "bc6b3af2f331cbc7fb0da1344efb2cbe5877a31498b4d70dbc7000f3405a1362",
+      "modified": false
+    },
+    {
+      "repo": "anthropics/skills",
+      "revision": "8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4",
+      "source": "skills/canvas-design/SKILL.md",
+      "destination": "methods/canvas-design/SKILL.md",
+      "role": "adapted-instructions",
+      "url": "https://raw.githubusercontent.com/anthropics/skills/8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4/skills/canvas-design/SKILL.md",
+      "original_sha256": "a1f288079624402f30682753c1d43920b6664785698d21d3e7aa197450a6448b",
+      "current_sha256": "53794e8ff0bb255be16215268683aa2946af297175fa492b5737e7e9b3b33af1",
+      "modified": true
+    },
+    {
+      "repo": "remotion-dev/codex-plugin",
+      "revision": "10bf0018eb1d5ca03d08116c97416972d3ee0b47",
+      "source": "LICENSE",
+      "destination": "methods/remotion-video/LICENSE",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/remotion-dev/codex-plugin/10bf0018eb1d5ca03d08116c97416972d3ee0b47/LICENSE",
+      "original_sha256": "1df205bece1fe707f818658a104844aba9a783e43f716642f5bf1286c18263c0",
+      "current_sha256": "1df205bece1fe707f818658a104844aba9a783e43f716642f5bf1286c18263c0",
+      "modified": false
+    },
+    {
+      "repo": "remotion-dev/codex-plugin",
+      "revision": "10bf0018eb1d5ca03d08116c97416972d3ee0b47",
+      "source": "skills/remotion-markup/SKILL.md",
+      "destination": "methods/remotion-video/SKILL.md",
+      "role": "adapted-instructions",
+      "url": "https://raw.githubusercontent.com/remotion-dev/codex-plugin/10bf0018eb1d5ca03d08116c97416972d3ee0b47/skills/remotion-markup/SKILL.md",
+      "original_sha256": "76ce498550fa46bceebc82f55b647f5284d73340151a688c8a727da941650835",
+      "current_sha256": "9f7d938e9316211ef953e1ecccb70ac5377f8900872655ccecf4045a433602d6",
+      "modified": true
+    },
+    {
+      "repo": "remotion-dev/codex-plugin",
+      "revision": "10bf0018eb1d5ca03d08116c97416972d3ee0b47",
+      "source": "skills/remotion-markup/3d.md",
+      "destination": "methods/remotion-video/references/3d.md",
+      "role": "reference",
+      "url": "https://raw.githubusercontent.com/remotion-dev/codex-plugin/10bf0018eb1d5ca03d08116c97416972d3ee0b47/skills/remotion-markup/3d.md",
+      "original_sha256": "42cef6d68fb4a266ab495d35df0c60e03672b0d85c043f9b567f6aa7ff00dd0d",
+      "current_sha256": "8e6ac2df9645dd4bcfd44130f1c65783b52da23a9f10ed56ec1e3226102e7b76",
+      "modified": true
+    },
+    {
+      "repo": "remotion-dev/codex-plugin",
+      "revision": "10bf0018eb1d5ca03d08116c97416972d3ee0b47",
+      "source": "skills/remotion-markup/audio.md",
+      "destination": "methods/remotion-video/references/audio.md",
+      "role": "reference",
+      "url": "https://raw.githubusercontent.com/remotion-dev/codex-plugin/10bf0018eb1d5ca03d08116c97416972d3ee0b47/skills/remotion-markup/audio.md",
+      "original_sha256": "727a2518a1eeee96b5ed3a7b45f0042823f77e463b843d2c314170eb14c839b0",
+      "current_sha256": "397cf802647ab2fbfe42610131be4ed365936dd7706f487b224d604d90da3411",
+      "modified": true
+    },
+    {
+      "repo": "remotion-dev/codex-plugin",
+      "revision": "10bf0018eb1d5ca03d08116c97416972d3ee0b47",
+      "source": "skills/remotion-markup/calculate-metadata.md",
+      "destination": "methods/remotion-video/references/calculate-metadata.md",
+      "role": "reference",
+      "url": "https://raw.githubusercontent.com/remotion-dev/codex-plugin/10bf0018eb1d5ca03d08116c97416972d3ee0b47/skills/remotion-markup/calculate-metadata.md",
+      "original_sha256": "ca904cd19d65bd926a1fb07519eb769cc55deeffe74f7c3282d5e3fd16a0dcba",
+      "current_sha256": "462ee380c88ec3fab379a6d7f15fb062e1c23833a659b8ba46a87200b65e2306",
+      "modified": true
+    },
+    {
+      "repo": "remotion-dev/codex-plugin",
+      "revision": "10bf0018eb1d5ca03d08116c97416972d3ee0b47",
+      "source": "skills/remotion-markup/compositions.md",
+      "destination": "methods/remotion-video/references/compositions.md",
+      "role": "reference",
+      "url": "https://raw.githubusercontent.com/remotion-dev/codex-plugin/10bf0018eb1d5ca03d08116c97416972d3ee0b47/skills/remotion-markup/compositions.md",
+      "original_sha256": "96f1f3891940e8e53c473e70912b234b3fbe7e05ba98eb32987e259ac4e8f252",
+      "current_sha256": "a2d12b93de21b4246c8c20d1f0343221504ad53d0dbf3a8d3beae16ff4b60dc0",
+      "modified": true
+    },
+    {
+      "repo": "remotion-dev/codex-plugin",
+      "revision": "10bf0018eb1d5ca03d08116c97416972d3ee0b47",
+      "source": "skills/remotion-markup/connected-compositions.md",
+      "destination": "methods/remotion-video/references/connected-compositions.md",
+      "role": "reference",
+      "url": "https://raw.githubusercontent.com/remotion-dev/codex-plugin/10bf0018eb1d5ca03d08116c97416972d3ee0b47/skills/remotion-markup/connected-compositions.md",
+      "original_sha256": "92d5ac7c36e92979d1c096ee1b1d9c8c0d37fb5a92065ef2b447b5b504cc9f18",
+      "current_sha256": "db798c7f7682b3d0c05a46047f49674eef1a16f33771ac5d9f809e9cf281083c",
+      "modified": true
+    },
+    {
+      "repo": "remotion-dev/codex-plugin",
+      "revision": "10bf0018eb1d5ca03d08116c97416972d3ee0b47",
+      "source": "skills/remotion-markup/sequencing.md",
+      "destination": "methods/remotion-video/references/sequencing.md",
+      "role": "reference",
+      "url": "https://raw.githubusercontent.com/remotion-dev/codex-plugin/10bf0018eb1d5ca03d08116c97416972d3ee0b47/skills/remotion-markup/sequencing.md",
+      "original_sha256": "f703bb737ad54d4db54641e2fca643685e89b4e9f86ebb5543567611bed77c89",
+      "current_sha256": "564c04d6c1e4473c474a41db0a702407cea8b237c5086595a044444361208c51",
+      "modified": true
+    },
+    {
+      "repo": "remotion-dev/codex-plugin",
+      "revision": "10bf0018eb1d5ca03d08116c97416972d3ee0b47",
+      "source": "skills/remotion-markup/timing.md",
+      "destination": "methods/remotion-video/references/timing.md",
+      "role": "reference",
+      "url": "https://raw.githubusercontent.com/remotion-dev/codex-plugin/10bf0018eb1d5ca03d08116c97416972d3ee0b47/skills/remotion-markup/timing.md",
+      "original_sha256": "48047e758b96aea519916479ede62b832bf51f982924978e091c37f569ab4bac",
+      "current_sha256": "632ca66bff8ebb36d2b4bf052ad46554e6edb3b0405f16fa1c9f496c329f6d82",
+      "modified": true
+    },
+    {
+      "repo": "pbakaus/impeccable",
+      "revision": "e103efe779e2dd01274dabae83531fef00bf2563",
+      "source": "LICENSE",
+      "destination": "methods/visual-variants/LICENSE",
+      "role": "license",
+      "url": "https://raw.githubusercontent.com/pbakaus/impeccable/e103efe779e2dd01274dabae83531fef00bf2563/LICENSE",
+      "original_sha256": "02bb8c3b4e70190e3986c0404ad2fd8d639b4f534252d82379cc1b502b6d1812",
+      "current_sha256": "02bb8c3b4e70190e3986c0404ad2fd8d639b4f534252d82379cc1b502b6d1812",
+      "modified": false
+    },
+    {
+      "repo": "pbakaus/impeccable",
+      "revision": "e103efe779e2dd01274dabae83531fef00bf2563",
+      "source": "NOTICE.md",
+      "destination": "methods/visual-variants/NOTICE.md",
+      "role": "notice",
+      "url": "https://raw.githubusercontent.com/pbakaus/impeccable/e103efe779e2dd01274dabae83531fef00bf2563/NOTICE.md",
+      "original_sha256": "c60a093c2845fd9fb82f9c6f742ece31f379f8190b535309d32d66c45ccffdcb",
+      "current_sha256": "c60a093c2845fd9fb82f9c6f742ece31f379f8190b535309d32d66c45ccffdcb",
+      "modified": false
+    },
+    {
+      "repo": "pbakaus/impeccable",
+      "revision": "e103efe779e2dd01274dabae83531fef00bf2563",
+      "source": "skill/reference/live.md",
+      "destination": "methods/visual-variants/SKILL.md",
+      "role": "adapted-instructions",
+      "url": "https://raw.githubusercontent.com/pbakaus/impeccable/e103efe779e2dd01274dabae83531fef00bf2563/skill/reference/live.md",
+      "original_sha256": "a294fee3d7ad24ace99017e616cf37c6a87f0e5ba2fd7c5dcbd8930188ced0dd",
+      "current_sha256": "6bd96ac4e316d1069935e85a1a5c87f9469d83fdea4b5e25e750e991b91e0395",
+      "modified": true
+    }
+  ],
+  "original_work_license": {
+    "spdx": "MPL-2.0",
+    "file": "LICENSE",
+    "repository_source": "../../LICENSE",
+    "sha256": "1f256ecad192880510e84ad60474eab7589218784b9a50bc7ceee34c2b91f1d5"
+  }
+}

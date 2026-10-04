@@ -253,3 +253,7 @@ python -m pytest -q
 ## 语言约定
 
 - 代码、注释、提示与文档一律使用英文；仅向用户汇报时使用用户的默认语言。
+
+## Skill prose formatting
+
+Skill prose has no per-line word, character, or column limit. Keep paragraphs and list-item text on natural lines without manual wrapping to a fixed width; use newlines for Markdown structure and meaningful paragraph boundaries.

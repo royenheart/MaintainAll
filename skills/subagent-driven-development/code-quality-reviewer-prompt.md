@@ -11,12 +11,10 @@ Task tool (general-purpose):
   BASE_SHA: [commit before task]
   HEAD_SHA: [current commit]
 
-  MODEL_POLICY: [host-confirmed model/config, review task domain, profile and
-                 applicable supplements; unknown identity stays unassessed]
+  MODEL_POLICY: [host-confirmed model/config, review task domain, profile and applicable supplements; unknown identity stays unassessed]
 ```
 
 In addition to the standard checks, the reviewer should verify:
 - Each file has one clear responsibility with a well-defined interface
 - The implementation follows the file structure from the plan
-- This change didn't create large new files or significantly grow existing ones
-  (don't flag pre-existing file sizes — only what this change contributed)
+- This change didn't create large new files or significantly grow existing ones (don't flag pre-existing file sizes — only what this change contributed)

@@ -24,6 +24,8 @@ skills/
 
 Flat namespace. Keep principles, concepts, and short code patterns inline.
 
+Write prose as natural paragraphs with no per-line word, character, or column limit. Keep each paragraph and list item's text together rather than wrapping to a fixed width. Use line breaks for headings, paragraph boundaries, separate list items, table rows, and code or template structure.
+
 ## Frontmatter
 
 - `name`: letters, numbers, hyphens only

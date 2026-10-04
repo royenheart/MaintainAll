@@ -14,13 +14,11 @@ Task tool (general-purpose):
 
     [Scene-setting: where this fits, dependencies, architectural context]
 
-    [Host-confirmed model/config, resolved model-policy profile, applicable
-    supplements, and files this task owns. Do not infer or claim a model switch.]
+    [Host-confirmed model/config, resolved model-policy profile, applicable supplements, and files this task owns. Do not infer or claim a model switch.]
 
     ## Before You Begin
 
-    Ask about missing consequential requirements or dependencies. Record reasonable
-    low-risk assumptions and continue independent authorized work.
+    Ask about missing consequential requirements or dependencies. Record reasonable low-risk assumptions and continue independent authorized work.
 
     ## Your Job
 
@@ -32,24 +30,17 @@ Task tool (general-purpose):
 
     Work from: [directory]
 
-    While you work, report consequential uncertainty without inventing facts.
-    Continue work that does not depend on the missing answer.
+    While you work, report consequential uncertainty without inventing facts. Continue work that does not depend on the missing answer.
 
     ## Code Organization
 
     - Follow the file structure defined in the plan; one clear responsibility per file
-    - File growing beyond the plan's intent → stop, report DONE_WITH_CONCERNS;
-      don't split files on your own
-    - Follow existing codebase patterns; improve code you touch like a good
-      developer would, but don't restructure outside your task
+    - File growing beyond the plan's intent → stop, report DONE_WITH_CONCERNS; don't split files on your own
+    - Follow existing codebase patterns; improve code you touch like a good developer would, but don't restructure outside your task
 
     ## When You're in Over Your Head
 
-    It is always OK to stop and say "this is too hard for me." Bad work is worse
-    than no work. STOP and escalate (BLOCKED / NEEDS_CONTEXT) when the task
-    requires architectural decisions, you can't find clarity in the code, or
-    you're unsure your approach is correct. Describe what you're stuck on, what
-    you tried, and what help you need.
+    It is always OK to stop and say "this is too hard for me." Bad work is worse than no work. STOP and escalate (BLOCKED / NEEDS_CONTEXT) when the task requires architectural decisions, you can't find clarity in the code, or you're unsure your approach is correct. Describe what you're stuck on, what you tried, and what help you need.
 
     ## Before Reporting: Self-Review
 

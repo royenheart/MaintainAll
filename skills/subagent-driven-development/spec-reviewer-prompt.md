@@ -18,9 +18,7 @@ Task tool (general-purpose):
 
     ## CRITICAL: Do Not Trust the Report
 
-    The report may be incomplete, inaccurate, or optimistic. Verify everything
-    independently: read the actual code and compare it to the requirements
-    line by line.
+    The report may be incomplete, inaccurate, or optimistic. Verify everything independently: read the actual code and compare it to the requirements line by line.
 
     ## Check
 
