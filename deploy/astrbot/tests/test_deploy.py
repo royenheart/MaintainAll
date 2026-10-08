@@ -129,6 +129,13 @@ class TestEnvIO:
         (env_dir / ".env").write_text("# c\nASTRBOT_TAG=v4.26.2\n")
         assert read_env()["ASTRBOT_TAG"] == "v4.26.2"
 
+    def test_write_env_preserves_unknown_keys(self, env_dir):
+        """setup-env must not silently drop keys it does not manage."""
+        write_env({"ASTRBOT_DNS_1": "223.5.5.5", "ASTRBOT_TAG": "v4.26.2"})
+        data = read_env()
+        assert data["ASTRBOT_DNS_1"] == "223.5.5.5"
+        assert data["ASTRBOT_TAG"] == "v4.26.2"
+
     @pytest.mark.parametrize(
         "forbidden",
         ["HERMES_ACCESS_TOKEN", "DEEPSEEK_API_KEY", "ANTHROPIC_API_KEY",
@@ -159,6 +166,12 @@ class TestCompose:
         assert "${ASTRBOT_VOLUME:-astrbot_data}" in (
             ROOT / "docker-compose.yml"
         ).read_text()
+
+    def test_dns_is_overridable(self):
+        """Pinned resolvers must be overridable for non-Tencent hosts."""
+        content = (ROOT / "docker-compose.yml").read_text()
+        assert "${ASTRBOT_DNS_1:-183.60.83.19}" in content
+        assert "${ASTRBOT_DNS_2:-183.60.82.98}" in content
 
     def test_data_volume_mounted(self):
         content = (ROOT / "docker-compose.yml").read_text()
