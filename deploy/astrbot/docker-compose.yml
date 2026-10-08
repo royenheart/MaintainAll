@@ -28,6 +28,11 @@ services:
   astrbot:
     image: soulter/astrbot:${ASTRBOT_TAG:-latest}
     container_name: ${ASTRBOT_CONTAINER:-astrbot}
+    # Pin DNS to the host's public resolver so the container never
+    # inherits transient resolver state (e.g. Tailscale MagicDNS).
+    dns:
+      - 183.60.83.19
+      - 183.60.82.98
     restart: unless-stopped
     ports:
       - "${ASTRBOT_PORT:-6185}:6185"
