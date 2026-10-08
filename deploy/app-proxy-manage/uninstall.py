@@ -26,6 +26,7 @@ from install import (  # noqa: E402
     STATE_DIR,
     VERGE_WINGET_ID,
     set_tray_autostart,
+    set_verge_autostart,
     stop_verge,
     winget_uninstall,
 )
@@ -43,6 +44,7 @@ def main() -> None:
     args = p.parse_args()
 
     stop_verge()
+    set_verge_autostart(False)
     set_tray_autostart(False)
 
     if args.client in ("all", "verge"):

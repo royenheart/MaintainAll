@@ -32,6 +32,11 @@ PROFILE_FILE = f"{PROFILE_UID}.yaml"
 PROFILE_NAME = "MaintainAll 分应用白名单"
 VERGE_DIR_NAME = "io.github.clash-verge-rev.clash-verge-rev"
 TRAY_RUN_NAME = "MaintainAllAppProxy"
+VERGE_SHORTCUT_NAME = "Clash Verge.lnk"
+VERGE_LEGACY_SHORTCUT_NAME = "Clash-Verge.lnk"
+STARTUP_APPROVED_FOLDER = (
+    r"Software\Microsoft\Windows\CurrentVersion\Explorer\StartupApproved\StartupFolder"
+)
 
 
 @dataclass
@@ -387,6 +392,99 @@ def _clear_run_key() -> None:
         winreg.CloseKey(key)
 
 
+def verge_startup_dir() -> Path:
+    """User Startup folder Clash Verge Rev 2.4.4 writes its logon shortcut into."""
+    appdata = os.environ.get("APPDATA", "")
+    if not appdata:
+        _die("缺少 APPDATA，无法登记 Clash Verge 开机启动")
+    return Path(appdata) / "Microsoft" / "Windows" / "Start Menu" / "Programs" / "Startup"
+
+
+def _verge_shortcut_paths(startup_dir: Path) -> tuple[Path, Path]:
+    return startup_dir / VERGE_SHORTCUT_NAME, startup_dir / VERGE_LEGACY_SHORTCUT_NAME
+
+
+def remove_verge_shortcuts(startup_dir: Path) -> None:
+    for path in _verge_shortcut_paths(startup_dir):
+        try:
+            path.unlink(missing_ok=True)
+        except OSError as ex:
+            _die(f"删除 Clash Verge 启动快捷方式失败: {path}: {ex}")
+
+
+def write_verge_shortcut(startup_dir: Path, exe: Path) -> Path:
+    """Create ``Clash Verge.lnk``. Drop the older ``Clash-Verge.lnk`` name."""
+    startup_dir.mkdir(parents=True, exist_ok=True)
+    current, legacy = _verge_shortcut_paths(startup_dir)
+    try:
+        legacy.unlink(missing_ok=True)
+    except OSError as ex:
+        _die(f"删除旧的 Clash Verge 启动快捷方式失败: {legacy}: {ex}")
+    script = (
+        "$shell = New-Object -ComObject WScript.Shell; "
+        "$shortcut = $shell.CreateShortcut($env:VERGE_LNK); "
+        "$shortcut.TargetPath = $env:VERGE_EXE; "
+        "$shortcut.WorkingDirectory = Split-Path -Parent $env:VERGE_EXE; "
+        "$shortcut.Save()"
+    )
+    env = os.environ.copy()
+    env["VERGE_LNK"] = str(current)
+    env["VERGE_EXE"] = str(exe)
+    r = subprocess.run(
+        ["powershell", "-NoProfile", "-NonInteractive", "-Command", script],
+        capture_output=True,
+        text=True,
+        encoding="utf-8",
+        errors="replace",
+        env=env,
+        check=False,
+        creationflags=getattr(subprocess, "CREATE_NO_WINDOW", 0),
+    )
+    if r.returncode != 0 or not current.is_file():
+        detail = ((r.stderr or r.stdout) or "").strip()
+        _die(f"登记 Clash Verge 开机启动失败: {detail or r.returncode}")
+    return current
+
+
+def _clear_startup_folder_approval(*names: str) -> None:
+    """Drop a Task Manager 'disabled' flag so a recreated shortcut is allowed to run."""
+    try:
+        key = winreg.OpenKey(
+            winreg.HKEY_CURRENT_USER,
+            STARTUP_APPROVED_FOLDER,
+            0,
+            winreg.KEY_SET_VALUE,
+        )
+    except OSError:
+        return
+    try:
+        for name in names:
+            try:
+                winreg.DeleteValue(key, name)
+            except FileNotFoundError:
+                pass
+    finally:
+        winreg.CloseKey(key)
+
+
+def set_verge_autostart(enabled: bool, exe: Path | None = None) -> None:
+    """Logon shortcut in the user Startup folder. Writing verge.yaml does not do this."""
+    startup_dir = verge_startup_dir()
+    names = (VERGE_SHORTCUT_NAME, VERGE_LEGACY_SHORTCUT_NAME)
+    if not enabled:
+        if startup_dir.is_dir():
+            remove_verge_shortcuts(startup_dir)
+        _clear_startup_folder_approval(*names)
+        print("已取消开机启动 Clash Verge。")
+        return
+    target = exe or find_verge_exe()
+    if target is None or not target.is_file():
+        _die("未找到 clash-verge.exe，无法登记开机启动")
+    path = write_verge_shortcut(startup_dir, target)
+    _clear_startup_folder_approval(*names)
+    print(f"已登记开机启动 Clash Verge: {path}")
+
+
 def set_tray_autostart(enabled: bool) -> None:
     """Logon scheduled task at highest privileges. HKCU Run cannot elevate."""
     _clear_run_key()
@@ -407,8 +505,10 @@ def set_tray_autostart(enabled: bool) -> None:
 
 def elevated_helper(*, autostart: bool, clear_autostart: bool, start_tray_now: bool) -> None:
     if autostart:
+        set_verge_autostart(True)
         set_tray_autostart(True)
     elif clear_autostart:
+        set_verge_autostart(False)
         set_tray_autostart(False)
     if start_tray_now:
         start_tray()
@@ -417,11 +517,13 @@ def elevated_helper(*, autostart: bool, clear_autostart: bool, start_tray_now: b
 def launch_tray_and_autostart(*, start_now: bool, autostart: bool) -> bool:
     """Start the tray and/or register logon autostart. Prompts UAC when needed."""
     if _is_admin():
+        set_verge_autostart(autostart)
         set_tray_autostart(autostart)
         if start_now:
             start_tray()
         return True
     if not start_now and not autostart:
+        set_verge_autostart(False)
         set_tray_autostart(False)
         return True
     print("进程转发需要管理员权限。请在系统弹出的窗口中允许，安装会继续，不用另开终端。")

@@ -109,7 +109,7 @@ python deploy/app-proxy-manage/tray.py --reload
 | Clash Verge Rev | 开始菜单 / 托盘（内嵌内核） |
 | 向导状态 | `%LOCALAPPDATA%\MaintainAll\app-proxy\wizard.json` |
 | 生效 profile | `%APPDATA%\io.github.clash-verge-rev.clash-verge-rev\profiles\LMaintainAll.yaml` |
-| 托盘 | `install.py` 结束后自动启动；开机启动与 Verge 开关相同（HKCU Run → `tray.py --silent`） |
+| 托盘 | `install.py` 结束后自动启动。开机启动与 Verge 同一开关：托盘是登录计划任务 `MaintainAllAppProxy`（`tray.py --silent`）；Clash Verge 是开始菜单 Startup 里的 `Clash Verge.lnk`（Verge 2.4.4 自己的自启方式，只改 `verge.yaml` 的 `enable_auto_launch` 不会登记） |
 
 不要再单独装 `mihomo.exe`，也不要两套一起开。向导不会打开 TUN，也不会安装 TUN 服务。在 Verge 里手动打开 TUN 后，托盘启动时会把它写回关闭。
 
@@ -170,7 +170,7 @@ Windows 进程名 **带 `.exe`，大小写按任务管理器「详细信息」**
 
 - **路线 A**：未挂钩进程的 TCP 与系统 DNS 保持原样。
 - **不开启 TUN**。Windows 上 TUN 没有「只抓白名单进程」，`auto-route` 会把整机 UDP/TCP 收进虚拟网卡再重新从物理网卡发出。直连失败时应用会连续重拨，会话堆在光猫的 NAT 表里，表现为全屋上网中断。因此向导、`--tun` 和托盘写回都把 `enable_tun_mode` 固定为关。
-- **没有 TUN 时，托盘只改白名单进程自己的 connect**（`redirector.py` + `connect_hook.c`）。钩子 DLL 只注入白名单进程及其子进程：这些进程的公网 TCP 先连本机监听端口，托盘再用向导里填写的 SOCKS5 把字节转出去。套接字是一次正常的本机握手，不会把 SYN 留在半开。没被注入的进程（例如没勾选的 Cursor）继续走系统原来的 connect，WinDivert 不抓它们的 TCP，也没有 `processId == 0` 这种全机过滤器。安装时选择 IPv6：默认在进程内直接拒绝全局 IPv6，让应用改走 IPv4；也可改为把全局 IPv6 同样送进 SOCKS。`::1`、链路本地和唯一本地地址保持直连。白名单进程的 UDP 443 仍由 WinDivert 丢掉，QUIC 退回这条 TCP；其它进程的 UDP 不进过滤器。检测到处于 Up 的 Mihomo/Clash/Wintun 网卡才停掉这块。仅有 Clash 服务、没有这块网卡时，转发继续跑。安装时如果当前终端不是管理员，会弹出系统 UAC，允许后托盘以管理员身份继续，不用另开终端。开机启动登记为登录时的最高权限计划任务，之后登录不再询问。
+- **没有 TUN 时，托盘只改白名单进程自己的 connect**（`redirector.py` + `connect_hook.c`）。钩子 DLL 只注入白名单进程及其子进程：这些进程的公网 TCP 先连本机监听端口，托盘再用向导里填写的 SOCKS5 把字节转出去。套接字是一次正常的本机握手，不会把 SYN 留在半开。没被注入的进程（例如没勾选的 Cursor）继续走系统原来的 connect，WinDivert 不抓它们的 TCP，也没有 `processId == 0` 这种全机过滤器。安装时选择 IPv6：默认在进程内直接拒绝全局 IPv6，让应用改走 IPv4；也可改为把全局 IPv6 同样送进 SOCKS。`::1`、链路本地和唯一本地地址保持直连。白名单进程的 UDP 443 仍由 WinDivert 丢掉，QUIC 退回这条 TCP；其它进程的 UDP 不进过滤器。检测到处于 Up 的 Mihomo/Clash/Wintun 网卡才停掉这块。仅有 Clash 服务、没有这块网卡时，转发继续跑。安装时如果当前终端不是管理员，会弹出系统 UAC，允许后托盘以管理员身份继续，不用另开终端。开机启动里，分应用托盘登记为登录时的最高权限计划任务，Clash Verge 登记为 Startup 快捷方式 `Clash Verge.lnk`，之后登录不再询问。
 - 安装脚本仍会改掉 Clash Verge 自带的 `dns-hijack: any:53`，并把 `dns_config.yaml` 收成只监听 `127.0.0.1:1053` 的 `redir-host`。`GEOSITE,cn` / `GEOIP,CN` 在进程规则前面。代理主机的 IP 会加进 `route-exclude-address`，以便以后有人打开 TUN 时不把到代理的连接抓回去。
 - 本机 `mixed-port: 7890` 只给 **自愿** 填代理的程序（curl、部分 CLI）。不要把它再写进 Windows 系统代理。
 - daed 的 `routing.conf` 会拦 QUIC（UDP 443）。游戏/实时音视频若异常，在 daed 侧放行或让该进程 `DIRECT`，不要在 Windows 再叠一层分流。
