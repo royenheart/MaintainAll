@@ -28,6 +28,13 @@ services:
   astrbot:
     image: soulter/astrbot:${ASTRBOT_TAG:-latest}
     container_name: ${ASTRBOT_CONTAINER:-astrbot}
+    # Pin DNS to stable resolvers so the container never inherits
+    # transient host resolver state (e.g. Tailscale MagicDNS). The
+    # defaults are Tencent Cloud VPC DNS (what a Tencent CVM receives
+    # via DHCP); on non-Tencent hosts set ASTRBOT_DNS_1/2 in .env.
+    dns:
+      - ${ASTRBOT_DNS_1:-183.60.83.19}
+      - ${ASTRBOT_DNS_2:-183.60.82.98}
     restart: unless-stopped
     ports:
       - "${ASTRBOT_PORT:-6185}:6185"

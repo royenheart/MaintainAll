@@ -82,6 +82,23 @@ def write_env(data: dict) -> None:
         f"TZ={data.get('TZ', 'Asia/Shanghai')}",
         "",
     ]
+    # Preserve keys this template does not know about (e.g. optional
+    # overrides such as ASTRBOT_DNS_1/2) so a setup-env run never
+    # silently drops them from an existing .env.
+    known = {
+        "ASTRBOT_DASHBOARD_PASSWORD",
+        "ASTRBOT_TAG",
+        "ASTRBOT_CONTAINER",
+        "ASTRBOT_PORT",
+        "ASTRBOT_VOLUME",
+        "TZ",
+    }
+    extras = [(k, v) for k, v in data.items() if k not in known]
+    if extras:
+        lines.append("# --- Preserved from the previous .env ---")
+        for k, v in extras:
+            lines.append(f"{k}={v}")
+        lines.append("")
     ENV_PATH.write_text("\n".join(lines) + "\n")
 
 

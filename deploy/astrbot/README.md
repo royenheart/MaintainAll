@@ -88,7 +88,26 @@ Everything lives in `.env`:
 | `ASTRBOT_CONTAINER` | `astrbot` | Container name |
 | `ASTRBOT_PORT` | `6185` | Host port |
 | `ASTRBOT_VOLUME` | `astrbot_data` | Data volume name |
+| `ASTRBOT_DNS_1` / `ASTRBOT_DNS_2` | `183.60.83.19` / `183.60.82.98` | Container resolvers (Tencent Cloud VPC DNS); override on non-Tencent hosts — see below |
 | `TZ` | `Asia/Shanghai` | Container timezone |
+
+### Container DNS is pinned
+
+`docker-compose.yml` pins the container's DNS (`ASTRBOT_DNS_1` /
+`ASTRBOT_DNS_2`) instead of copying whatever the host uses when the
+container is created. Docker snapshots the host's resolver into the
+container at create time and never refreshes it, so a host resolver
+change (Tailscale MagicDNS toggled off, VPN DNS) silently breaks all
+name resolution inside long-lived containers — the outage that
+motivated this pin killed QQ/WeChat connectivity for a day.
+
+The defaults, `183.60.83.19` / `183.60.82.98`, are Tencent Cloud VPC
+DNS: they are what a Tencent Cloud CVM receives via DHCP, and Tencent
+documents them as VPC resolvers rather than as public recursive DNS
+for arbitrary clients. On any other host, set both variables in `.env`
+to a resolver pair valid there (e.g. `223.5.5.5` / `223.6.6.6`). Any
+change requires `docker compose up -d --force-recreate` to take
+effect.
 
 ### The dashboard password is first-boot only
 
