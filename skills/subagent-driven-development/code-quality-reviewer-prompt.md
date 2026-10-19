@@ -7,9 +7,9 @@ Task tool (general-purpose):
   Use the template at ./code-reviewer.md with:
 
   DESCRIPTION: [task summary, from implementer's report]
-  PLAN_OR_REQUIREMENTS: Task N from [plan-file]
-  BASE_SHA: [commit before task]
-  HEAD_SHA: [current commit]
+  PLAN_OR_REQUIREMENTS: [inline task requirements or an existing plan reference]
+  BASE_SHA: [recorded task baseline or merge-base]
+  HEAD_SHA: [current commit, plus staged/unstaged and relevant new files]
 
   MODEL_POLICY: [host-confirmed model/config, review task domain, profile and applicable supplements; unknown identity stays unassessed]
 ```
@@ -17,4 +17,4 @@ Task tool (general-purpose):
 In addition to the standard checks, the reviewer should verify:
 - Each file has one clear responsibility with a well-defined interface
 - The implementation follows the file structure from the plan
-- This change didn't create large new files or significantly grow existing ones (don't flag pre-existing file sizes — only what this change contributed)
+- Added files and structure serve the requested behavior and existing conventions; file size alone does not justify splitting, new scaffolding, or cleanup outside scope

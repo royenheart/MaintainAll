@@ -131,8 +131,8 @@ class ModelPolicyTests(unittest.TestCase):
     def test_no_self_dependency_and_no_input_mutation(self):
         """Lookup avoids self-loading and preserves its registry input."""
         before = copy.deepcopy(self.data)
-        result = self.resolve(skill="verification-before-completion")
-        self.assertNotIn("verification-before-completion", result["additional_skills"])
+        result = self.resolve(model=None, variant=None, skill="brainstorming")
+        self.assertNotIn("brainstorming", result["additional_skills"])
         self.assertEqual(self.data, before)
 
     def test_invalid_task_skill_and_risk_rejected(self):
@@ -170,21 +170,25 @@ class ModelPolicyTests(unittest.TestCase):
     def test_all_development_skills_are_indexed_and_links_exist(self):
         """The policy covers shipped development skills and their resource links."""
         import re
-        folders = {p.parent.name for p in (ROOT / "skills").glob("*/SKILL.md")}
+        # Independent skill families do not opt into engineering model adaptation.
+        folders = {p.parent.name for p in (ROOT / "skills").glob("*/SKILL.md")
+                   if "\n## Model adaptation\n" in p.read_text() or p.parent.name == "model-policy"}
+        self.assertTrue(folders - {"model-policy"})
         self.assertEqual(folders - {"model-policy"}, set(self.data["skills"]))
         for name in folders:
             path = ROOT / "skills" / name / "SKILL.md"
             text = path.read_text()
             self.assertTrue(text.startswith(f"---\nname: {name}\ndescription: "))
             self.assertIn("Shared model index is provided by the model-policy skill.", text)
-            for target in re.findall(r"\]\(([^)]+)\)", text):
-                if not target.startswith(("https://", "http://", "#")):
-                    self.assertTrue((path.parent / target).exists(), target)
+            for document in path.parent.rglob("*.md"):
+                for target in re.findall(r"\]\(([^)]+)\)", document.read_text()):
+                    if not target.startswith(("https://", "http://", "#")):
+                        self.assertTrue((document.parent / target.split("#", 1)[0]).exists(),
+                                        f"{document}: {target}")
 
     def bundle(self, root):
         """Copy the minimum complete adaptation bundle into a temporary skills root."""
-        for name in ("model-policy", "systematic-debugging", "writing-plans",
-                     "verification-before-completion"):
+        for name in ("model-policy", "systematic-debugging", "brainstorming"):
             shutil.copytree(ROOT / "skills" / name, root / name,
                             ignore=shutil.ignore_patterns("__pycache__"))
 
@@ -206,7 +210,8 @@ class ModelPolicyTests(unittest.TestCase):
 
     def test_missing_companion_or_index_or_support_is_reported(self):
         """Incomplete bundles fail with an actionable missing-dependency diagnostic."""
-        for missing in ("model-policy", "model-policy/registry.json", "writing-plans"):
+        for missing in ("model-policy", "model-policy/registry.json", "brainstorming",
+                        "model-policy/references/docs-and-static-checks.md"):
             with self.subTest(missing=missing), tempfile.TemporaryDirectory() as tmp:
                 root = Path(tmp)
                 self.bundle(root)

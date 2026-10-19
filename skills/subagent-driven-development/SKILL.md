@@ -1,57 +1,32 @@
 ---
 name: subagent-driven-development
-description: Use when an implementation plan benefits from independent task execution or review and the host supports delegation. Shared model index is provided by the model-policy skill.
+description: Use when the user requests subagents or an implementation benefits from delegated execution or review. Shared model index is provided by the model-policy skill.
 ---
 
 # Subagent-Driven Development
 
 ## Model adaptation
 
-Load the skill named `model-policy` using its exact location and reader from the host skill catalog. The catalog location takes precedence over directory names. For a filesystem installation without a catalog entry, try [the sibling policy](../model-policy/SKILL.md), relative to the resolved location of this `SKILL.md`, never the working directory. Do not guess filesystem paths for opaque resource URIs. Resolve this skill by its frontmatter name and apply the returned profile and applicable supplements once. If the policy or registry cannot be read, report that adaptation is unavailable, use bounded steps and observable checks, and continue authorized work without inventing a model tier.
+Load `model-policy` once from its exact host catalog location and apply its repository scope and model guidance. Without a catalog entry, filesystem hosts may use [the sibling policy](../model-policy/SKILL.md) relative to this skill's resolved location, never the working directory. If unavailable, report that limitation and use bounded steps with observable checks; do not invent a model tier.
 
-When delegation is useful and supported, give each subagent a bounded task and relevant artifacts. Review specification compliance before code quality. If unavailable, execute and review sequentially; disclose self-review. Tiny reversible edits do not require ceremonial multiple reviews.
+Useful delegation opportunities include independent investigations, bounded implementation tasks with disjoint ownership, and a fresh review of completed work. Sequence dependent or shared-file tasks.
 
-**Continuous execution:** do not pause to check in between tasks. Stop only for: an unresolvable BLOCKED, genuine ambiguity, or all tasks complete.
+## Task handoff
 
-## Per task
+Give each worker the task requirements, relevant context, owned files, dependencies, acceptance checks, and the user's delivery scope. Inline requirements and uncommitted diffs are sufficient. Keep reports in messages; do not require plan files, worktrees, or per-task commits.
 
-The following sequence applies when independent delegation/review is available and warranted by the task. Otherwise perform these checks sequentially and label self-review.
+Use [the implementer prompt](implementer-prompt.md) when useful. Workers preserve others' edits; parallel writes require disjoint ownership and independent contracts. Sequence shared-file or dependent tasks. Independent investigations may run in parallel with their own evidence and bounded questions.
 
-1. **Dispatch implementer** with `./implementer-prompt.md` — paste the FULL task text plus scene-setting context. Never make the subagent read the plan file.
-2. Answer its questions before letting it proceed.
-3. Implementer reports a status (see below).
-4. **Dispatch spec reviewer** with `./spec-reviewer-prompt.md`. Issues → implementer fixes → re-review. Only when spec is ✅:
-5. **Dispatch code quality reviewer** with `./code-quality-reviewer-prompt.md` (needs BASE_SHA/HEAD_SHA). Issues → implementer fixes → re-review.
-6. Mark task complete. Next task.
+## Review and integration
 
-After all tasks: inspect the combined diff and run integration checks; use independent review when risk warrants it, then honor the user's delivery request via branch-lifecycle.
+Check [specification compliance](spec-reviewer-prompt.md) before [code quality](code-quality-reviewer-prompt.md); one reviewer may cover both when appropriate. Reviewers inspect read-only and return concrete findings. Fix material issues and recheck affected behavior before proceeding.
 
-## Ad-hoc review (no plan workflow)
+For an ad-hoc review, use [the review prompt](code-reviewer.md). Include the task baseline or intended target's merge-base, staged/unstaged changes, and relevant new files; do not assume the last commit represents the task. Verify a worker's report against the actual diff and test evidence.
 
-Not running a plan? A review is still valuable before merge, after a major feature, or when stuck. Use the recorded task baseline, or the merge-base with the intended target branch, through the current HEAD; do not assume HEAD~1 covers a whole feature. Include staged, unstaged and relevant new files when work is not committed. Dispatch a reviewer with `./code-reviewer.md`, filling requirements, the exact review scope and `MODEL_POLICY` for the reviewer's host-confirmed model/configuration and review domain; unknown identity stays unassessed. Fix Critical immediately, Important before proceeding, and push back with evidence if the finding is wrong.
+After all tasks, inspect the combined diff, resolve overlaps, and run relevant integration checks. Deliver within the user's requested scope.
 
-## Parallel investigations
+## Uncertainty and model guidance
 
-Multiple INDEPENDENT failures (different test files/subsystems) → dispatch one investigation agent per domain in parallel, each self-contained (paste the error messages and context). Parallel implementers require disjoint write ownership and independent contracts; sequence shared-file tasks. After parallel agents return: check for overlapping edits, then run the full suite.
+Workers report completion, concerns, missing context, or a blocker with evidence and the next useful action. Resolve missing context or split an oversized task before retrying. Continue independent authorized work while consequential questions remain open.
 
-## Implementer status handling
-
-- **DONE** → proceed to spec review.
-- **DONE_WITH_CONCERNS** → read the concerns; correctness/scope doubts → address before review; observations → note and proceed.
-- **NEEDS_CONTEXT** → provide the missing context, re-dispatch.
-- **BLOCKED** → context problem: more context, same model. Reasoning problem: more capable model. Task too large: split it. Plan wrong: escalate to the human.
-
-Never ignore an escalation or make the same model retry without changing something.
-
-## Model selection
-
-Resolve implementer and reviewer separately through model-policy using the actual model/config and task domain. Prefer the least costly option that meets evidence-backed requirements. File count, brand and parameter size alone do not establish capability. Never claim a switch if the host cannot perform it.
-
-## Red flags
-
-- Implementing on main/master without explicit consent
-- Omitting applicable specification/quality checks, or reviewing quality before requirements
-- Moving to the next task with open review issues
-- Dispatching writers with overlapping ownership or dependent contracts
-- Making the subagent read the plan file instead of pasting the task text
-- Claiming independent review when only self-review occurred
+Use the host-supported model configuration for each role. Model-policy provides advisory guidance; model identity may remain unassessed.

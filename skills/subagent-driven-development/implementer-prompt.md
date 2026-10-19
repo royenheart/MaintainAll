@@ -16,6 +16,8 @@ Task tool (general-purpose):
 
     [Host-confirmed model/config, resolved model-policy profile, applicable supplements, and files this task owns. Do not infer or claim a model switch.]
 
+    You are not alone in this codebase. Preserve others' changes and adapt to them. Follow the user's delivery scope and existing layout; keep working notes and reports in messages. Use external temporary storage for disposable artifacts rather than adding project directories or ignore rules.
+
     ## Before You Begin
 
     Ask about missing consequential requirements or dependencies. Record reasonable low-risk assumptions and continue independent authorized work.
@@ -24,7 +26,7 @@ Task tool (general-purpose):
 
     1. Implement exactly what the task specifies (TDD if the task says to)
     2. Verify it works
-    3. Commit only if the coordinator assigned that responsibility
+    3. Commit only if the user's delivery scope authorizes it and the coordinator assigned that responsibility
     4. Self-review (below)
     5. Report back
 
@@ -36,7 +38,7 @@ Task tool (general-purpose):
 
     - Follow the file structure defined in the plan; one clear responsibility per file
     - File growing beyond the plan's intent → stop, report DONE_WITH_CONCERNS; don't split files on your own
-    - Follow existing codebase patterns; improve code you touch like a good developer would, but don't restructure outside your task
+    - Follow existing codebase patterns; change only what the task requires. Do not add scaffolding, dependencies, tools, policy files, or restructuring merely to satisfy this workflow
 
     ## When You're in Over Your Head
 
@@ -52,6 +54,8 @@ Task tool (general-purpose):
     Fix anything found before reporting.
 
     ## Report Format
+
+    Return this report as a message, not a repository file.
 
     - **Status:** DONE | DONE_WITH_CONCERNS | BLOCKED | NEEDS_CONTEXT
     - What you implemented (or attempted)

@@ -7,6 +7,16 @@ description: Use when adapting MaintainAll development skills to a known model a
 
 Use [registry.json](registry.json) as the single source for model identities, reasoning variants, task tiers, profiles, supplements, sources and skill mappings. Read [methodology.md](methodology.md) for evidence review and packaging details.
 
+## Repository scope
+
+Loading a development skill does not authorize extra repository changes. Follow the user's task and existing repository layout; create deliverables, tests, documentation, dependencies, or configuration only when the task or repository policy calls for them. Examples are not scaffolding requirements. Do not vendor skills or this policy into the project merely to use them.
+
+Keep plans, evidence, logs, and review reports in conversation or host state by default; use an external temporary directory for disposable experiments. Use existing repository scratch/output conventions only when appropriate to the task, and remove task-owned temporary artifacts before delivery. Do not add ignore rules to hide them. Creating branches/worktrees, committing, installing, publishing, or changing services follows the user's requested scope, never skill invocation alone. Delegated tasks inherit these limits.
+
+For requested Git delivery, verify the complete task diff against the intended target, including uncommitted files. Preserve unrelated work and clean up only resources this task owns; a directory name alone does not establish ownership.
+
+Before delivery, run required and focused checks against the final artifact, inspect their actual results, and report scope and limits. Recheck evidence invalidated by edits. For documentation or new static checks, read [documentation ownership and check design](references/docs-and-static-checks.md).
+
 ## Locate the index
 
 The host catalog's location for the skill named `model-policy` is authoritative; the folder need not be named model-policy. Resolve the resource links above relative to this skill's supplied location using the same reader. For opaque/virtual URIs, use the host's resource mechanism, not a guessed filesystem path.

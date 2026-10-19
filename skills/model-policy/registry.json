@@ -108,8 +108,7 @@
         "evidence-ledger"
       ],
       "additional_skills": [
-        "writing-plans",
-        "verification-before-completion"
+        "brainstorming"
       ]
     },
     "standard": {
@@ -120,9 +119,7 @@
       "supplements": [
         "evidence-ledger"
       ],
-      "additional_skills": [
-        "verification-before-completion"
-      ]
+      "additional_skills": []
     },
     "analytical": {
       "instructions": [
@@ -132,9 +129,7 @@
       "supplements": [
         "evidence-ledger"
       ],
-      "additional_skills": [
-        "verification-before-completion"
-      ]
+      "additional_skills": []
     }
   },
   "supplements": {
@@ -144,7 +139,8 @@
     ],
     "evidence-ledger": [
       "Separate observed facts, hypotheses, unavailable data and completed checks.",
-      "Record tool failures honestly; do not replace missing evidence with confidence."
+      "Record tool failures honestly; do not replace missing evidence with confidence.",
+      "Verify the final artifact with required and focused checks; report commands, actual results, scope and limitations in conversation."
     ],
     "risk-review": [
       "For destructive, security-sensitive, migration or broad cross-system work, record rollback and inspect affected contracts.",
@@ -156,14 +152,6 @@
       "task": "design",
       "minimum_tier": "T2"
     },
-    "branch-lifecycle": {
-      "task": "tool_use",
-      "minimum_tier": "T1"
-    },
-    "receiving-code-review": {
-      "task": "review",
-      "minimum_tier": "T1"
-    },
     "subagent-driven-development": {
       "task": "design",
       "minimum_tier": "T2"
@@ -174,14 +162,6 @@
     },
     "test-driven-development": {
       "task": "coding",
-      "minimum_tier": "T1"
-    },
-    "verification-before-completion": {
-      "task": "review",
-      "minimum_tier": "T1"
-    },
-    "writing-plans": {
-      "task": "design",
       "minimum_tier": "T1"
     },
     "writing-skills": {

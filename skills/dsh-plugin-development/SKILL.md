@@ -7,9 +7,9 @@ description: Use when building, extending, packaging, or debugging a DeepSeek Ha
 
 ## Model adaptation
 
-Load the skill named `model-policy` using its exact location and reader from the host skill catalog. The catalog location takes precedence over directory names. For a filesystem installation without a catalog entry, try [the sibling policy](../model-policy/SKILL.md), relative to the resolved location of this `SKILL.md`, never the working directory. Do not guess filesystem paths for opaque resource URIs. Resolve this skill by its frontmatter name and apply the returned profile and applicable supplements once. If the policy or registry cannot be read, report that adaptation is unavailable, use bounded steps and observable checks, and continue authorized work without inventing a model tier.
+Load `model-policy` once from its exact host catalog location and apply its repository scope and model guidance. Without a catalog entry, filesystem hosts may use [the sibling policy](../model-policy/SKILL.md) relative to this skill's resolved location, never the working directory. If unavailable, report that limitation and use bounded steps with observable checks; do not invent a model tier.
 
-General reference for writing dsh plugins. It records durable conventions and gotchas — the *what / why*, not the *where* — so re-locate the current files by grepping the harness rather than relying on memorized paths.
+General reference for writing dsh plugins. Re-locate current files in the harness rather than relying on memorized paths. Adapt the examples below to the existing plugin; create only the entries and capabilities the task needs. Reading this skill does not authorize scaffolding a package, installing a plugin, editing a live profile, or restarting services.
 
 ## Locating the harness
 
@@ -41,7 +41,7 @@ A **preset** is an agent-plane composition — the tools, prompt sections, and s
 - One plugin = one npm package, named under a user scope: when no scope is explicitly specified, use a verified npm scope from existing package metadata, or ask for it — a Git display name is not an npm identity. **Never use the `@deepseek-ai/*` scope for a third-party plugin** — it is reserved for the harness's own packages. Depending on `@deepseek-ai/*` via `peerDependencies` is expected; the reserved-scope rule is about the plugin's own package name.
 - `package.json` carries `main`/`exports` (`.`, `./client`), a `dsh` block — `dsh.bundle.patch` pointing at the package's own `cordis.patch.yml`, plus optional `dsh.client` (`platform`, `inject`, `immediately`) — a `files` list that ships every built entry and `cordis.patch.yml`, and `peerDependencies` against `@deepseek-ai/*`.
 - The package's `cordis.patch.yml` inserts its own host row by package name (never a relative source path), so Node resolution finds the installed code.
-- Layout: `src/index.ts` (host entry), `src/client.ts` (client entry), `src/core/` (pure logic with no dsh imports → unit-testable with `node --test`), `src/locales/` (i18n dictionaries), `tests/`.
+- Example layout for a new plugin with both Host and Client capabilities: `src/index.ts`, `src/client.ts`, optional pure logic and locale modules, and tests. Preserve an existing package's layout; omit unused Client entries, directories, and dependencies.
 - Host entry: default-export a Cordis Service — `static inject = [...]`, `super(ctx, 'name')`, init in `async *[Service.init]()` — or a plain `apply(ctx)`.
 - Client entry: `exports["./client"]` → `src/client.ts`, exporting `inject` (service names) + `apply(ctx)`; render with `React.createElement` (no JSX).
 
@@ -58,10 +58,10 @@ A **preset** is an agent-plane composition — the tools, prompt sections, and s
 
 ## Develop → load → reload loop
 
-1. Edit host/client sources under `src/`.
-2. Build + typecheck + test: `npm run build` (emits the host ESM and the CJS client bundle), `npx tsc --noEmit`, `npm test`.
-3. Install and load: `dsh plugin --profile <name> add link:<path>` (symlinks the package into the profile's `node_modules`). Because the package declares `dsh.bundle`, dsh appends it to the profile's `dsh.profile.bundles` and its own `cordis.patch.yml` inserts the host row — the plugin is self-contained, with no manual profile patch or manifest edit. Remove it with `dsh plugin --profile <name> remove <package>` (dependency and layer together).
-4. Reload: restart dsh. (While `dev:web` runs from the same checkout, client bundles hot-reload without a page refresh.)
+1. Edit the existing plugin entry or module that owns the requested behavior.
+2. Discover build, typecheck, and test commands from the package; use installed tooling rather than an auto-downloading command. Keep output in configured build directories and do not commit generated artifacts unless package policy calls for them.
+3. When live integration is within the requested scope, install and load with `dsh plugin --profile <name> add link:<path>` (symlinks the package into the profile's `node_modules`). Because the package declares `dsh.bundle`, dsh appends it to the profile's `dsh.profile.bundles` and its own `cordis.patch.yml` inserts the host row — no manual profile patch or manifest edit. Remove a task-owned test install with `dsh plugin --profile <name> remove <package>` when appropriate.
+4. Reload or restart only the designated development instance when integration scope permits it. While `dev:web` runs from the same checkout, client bundles hot-reload without a page refresh.
 
 `link:` is the dev-loop install; deployment uses `file:` (copies into the profile), so the source checkout is not a runtime dependency.
 
@@ -90,14 +90,14 @@ The client bundle is CJS wrapped in `window.__ModuleLoader__.load({ id, factory 
 
 A plugin should avoid forking the harness, but some needs (a slot, a wire field, a registry semantic) require a change to dsh. **The change must be general-purpose — reusable beyond the one plugin that needs it, never a bespoke seam for it — and must fit the dsh / cordis design philosophy (plugin-first composition, explicit typed boundaries, minimal API surface).** First **search the existing discussions** — dsh's GitHub Discussions and its Agent Notes tree — to check whether a similar proposal already exists; if so, build on it instead of duplicating.
 
-For a new proposal, write a short discussion draft with this structure (sections only — mirror the existing drafts, don't hardcode them):
+When an upstream proposal is part of the user's request, draft it in conversation or an existing requested destination. Use the following topics only where useful; a proposal does not require a new repository document or harness implementation:
 
 1. **Title** — `# [Feature request] <short summary>`.
 2. **English summary** — a 1–2 sentence blockquote of the change and why.
 3. **Background (the actual need I hit)** — what plugin you're building, its scopes, and the concrete problem.
 4. **Current state** — quote the current code/comment/docs that explain the present behavior and why it's deliberate.
 5. **Proposal** — the minimal change, and why it's safe.
-6. **Appendix: patch** — the diff that implements it.
+6. **Optional patch** — include an implementation diff only when implementation is within scope.
 7. **Questions to confirm** — the open questions for maintainers.
 8. **Related** — links to the docs and to related discussions/notes.
 

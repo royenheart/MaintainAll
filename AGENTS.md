@@ -96,10 +96,10 @@ YAML frontmatter：`name`、`description`。正文建议含 Context / Instructio
 
 ### 内置内容
 
-| Skill | Missions |
+| Skill or tool | Missions |
 |---|---|
 | `daed-connectivity` | `daed-connectivity-check` — gost 连通性 + Telegram CIDR 核对 |
-| `modulefile-manager` | `modulefiles-list`、`modulefiles-scan-generate` — 调用 `manage_modules.py` CLI |
+| [Modulefile CLI](scripts/modulefiles/manage_modules.py) | Run `--help` for available operations; no skill entry is required. |
 
 ---
 

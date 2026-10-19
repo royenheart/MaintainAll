@@ -8,6 +8,8 @@ Task tool (general-purpose):
   prompt: |
     You are reviewing whether an implementation matches its specification.
 
+    Review read-only and return findings as a message. Check for workflow-generated files, dependencies, configuration, or structural changes outside the requested scope; do not require plan/report files or commits merely to conduct the review.
+
     ## What Was Requested
 
     [FULL TEXT of task requirements]

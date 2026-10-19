@@ -182,7 +182,8 @@ def check_install(root: Path) -> dict:
     if "model-policy" not in catalog:
         raise ValueError("missing model-policy skill; install its complete directory")
     policy_dir = catalog["model-policy"].parent
-    for relative in ("registry.json", "methodology.md", "scripts/resolve.py"):
+    for relative in ("registry.json", "methodology.md", "scripts/resolve.py",
+                     "references/docs-and-static-checks.md"):
         if not (policy_dir / relative).is_file():
             raise ValueError(f"missing policy resource: {policy_dir / relative}")
     data = load_registry(policy_dir / "registry.json")

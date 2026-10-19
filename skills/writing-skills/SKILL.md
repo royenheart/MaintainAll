@@ -7,61 +7,20 @@ description: Use when creating, editing, evaluating, or packaging reusable agent
 
 ## Model adaptation
 
-Load the skill named `model-policy` using its exact location and reader from the host skill catalog. The catalog location takes precedence over directory names. For a filesystem installation without a catalog entry, try [the sibling policy](../model-policy/SKILL.md), relative to the resolved location of this `SKILL.md`, never the working directory. Do not guess filesystem paths for opaque resource URIs. Resolve this skill by its frontmatter name and apply the returned profile and applicable supplements once. If the policy or registry cannot be read, report that adaptation is unavailable, use bounded steps and observable checks, and continue authorized work without inventing a model tier.
+Load `model-policy` once from its exact host catalog location and apply its repository scope and model guidance. Without a catalog entry, filesystem hosts may use [the sibling policy](../model-policy/SKILL.md) relative to this skill's resolved location, never the working directory. If unavailable, report that limitation and use bounded steps with observable checks; do not invent a model tier.
 
-A **skill** is a reusable reference guide for a proven technique, pattern, or tool — not a narrative of how you solved a problem once.
+Keep a skill only when it adds a reusable technique, tool procedure, or non-obvious decision rule. Retire skills that repeat host instructions, ordinary tool knowledge, or another skill. Put project conventions with their existing owner and mechanical constraints in checks when the task calls for them.
 
-**Don't create skills for:** one-off solutions, standard practices documented elsewhere, project-specific conventions (put those in CLAUDE.md/AGENTS.md), or mechanically enforceable constraints (automate those instead).
+## Content and location
 
-## Structure
+Use the user's destination or the host's skill installation location. Do not create a project skill tree or copy policy dependencies merely to consume a skill. A bundle needs `SKILL.md`; add references, scripts, or templates only when they materially help, and link resources where they become relevant.
 
-```
-skills/
-  skill-name/
-    SKILL.md          # required
-    supporting-file   # only for heavy reference (100+ lines) or reusable tools
-```
+Keep the entry short and actionable. Remove generic advice, repeated rules, incident narratives, and redundant examples. Preserve existing namespaces. Write natural paragraphs without fixed-width wrapping.
 
-Flat namespace. Keep principles, concepts, and short code patterns inline.
+Frontmatter needs a lowercase hyphenated `name` and a concise `description` of when the skill applies. Describe task triggers rather than the workflow. Skills in this development collection retain the shared model-policy pointer; unrelated skills do not need that integration.
 
-Write prose as natural paragraphs with no per-line word, character, or column limit. Keep each paragraph and list item's text together rather than wrapping to a fixed width. Use line breaks for headings, paragraph boundaries, separate list items, table rows, and code or template structure.
+## Validation and distribution
 
-## Frontmatter
+Validate frontmatter, relative links/anchors, resource packaging, and changed executable helpers. Reuse existing validators and [static-check guidance](../model-policy/references/docs-and-static-checks.md). For substantial behavioral changes, use realistic comparison scenarios when authorized; structural checks alone do not establish model improvement.
 
-- `name`: letters, numbers, hyphens only
-- `description`: clear task/trigger conditions, plus the shared model-policy index pointer; keep a single line for this repository's loader
-
-**Never summarize the skill's workflow in the description.** Agents read the description to decide whether to load the skill; if it summarizes the process, they follow the description instead of the skill body (a description saying "code review between tasks" produced ONE review when the skill required TWO). Describe the problem and symptoms, not the process:
-
-```yaml
-# ❌ Use for TDD - write test first, watch it fail, write minimal code
-# ✅ Use when implementing any feature or bugfix, before writing implementation code
-```
-
-Include searchable keywords: error messages, symptoms, synonyms, tool names.
-
-## Token efficiency
-
-Skill metadata is indexed; bodies load on demand in supporting hosts — every token counts. Frequently-loaded: <200 words; others: <500. Move flag-level detail to `--help`, cross-reference other skills by name instead of repeating their content, one excellent example instead of many.
-
-Use explicit skill names and relative resource links; do not assume every host implements @ links the same way. Package dependencies together.
-
-## Test before deploying (TDD for documentation)
-
-Writing skills IS TDD applied to process docs:
-
-1. **RED (baseline):** run the scenario with a subagent WITHOUT the skill. Note what it does wrong and any rationalizations verbatim.
-2. **GREEN:** write the skill addressing those specific failures. Re-run the scenario WITH the skill — the agent should now comply.
-3. **REFACTOR:** new rationalization found → add an explicit counter (rationalization table, red-flags list) and re-verify.
-
-For discipline-enforcing skills, apply pressure (time, sunk cost, exhaustion) in test scenarios. Include negative triggers, unknown models, missing tools and already-authorized work. If only static checks were possible, state that limitation; do not claim empirical model improvements.
-
-## Central model policy
-
-Maintain model IDs, effort variants, evidence, tiers, task mappings and supplements only in the `registry.json` resource of the catalog-resolved model-policy skill. In this repository its source path is `skills/model-policy/registry.json`; installed paths may differ. Update its skill entry when adding a development skill. Validate registry references and helper behavior. Package the policy resources and supporting skills, then run the installation check on the destination; do not silently mutate user-installed settings.
-
-## Anti-patterns
-
-- Narrative examples ("in session 2025-10-03 we found...") — too specific, not reusable
-- The same example in 5 languages — one great example is enough
-- Flowcharts for reference material or linear steps — use tables/lists; flowcharts only for non-obvious decisions
+Keep plans and results in conversation or host state unless the user or repository requires a file. When distribution is requested, copy complete selected bundles and their actual dependencies, check the destination, and preserve unrelated installed settings. Keep this collection's model mappings in the catalog-resolved policy registry; do not duplicate them in individual skills.

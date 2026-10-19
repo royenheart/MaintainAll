@@ -4,6 +4,8 @@
 
 详细设计与开发说明见 [`AGENTS.md`](./AGENTS.md)。
 
+Environment Modules: [modulefile CLI](scripts/modulefiles/manage_modules.py); run `python3 scripts/modulefiles/manage_modules.py --help` from the repository root.
+
 ## Creative skills
 
 [Art Creation](skills/art-creation/SKILL.md) indexes teaching-oriented style analysis

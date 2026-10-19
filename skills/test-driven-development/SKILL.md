@@ -7,7 +7,7 @@ description: Use when changing executable behavior or fixing a bug that benefits
 
 ## Model adaptation
 
-Load the skill named `model-policy` using its exact location and reader from the host skill catalog. The catalog location takes precedence over directory names. For a filesystem installation without a catalog entry, try [the sibling policy](../model-policy/SKILL.md), relative to the resolved location of this `SKILL.md`, never the working directory. Do not guess filesystem paths for opaque resource URIs. Resolve this skill by its frontmatter name and apply the returned profile and applicable supplements once. If the policy or registry cannot be read, report that adaptation is unavailable, use bounded steps and observable checks, and continue authorized work without inventing a model tier.
+Load `model-policy` once from its exact host catalog location and apply its repository scope and model guidance. Without a catalog entry, filesystem hosts may use [the sibling policy](../model-policy/SKILL.md) relative to this skill's resolved location, never the working directory. If unavailable, report that limitation and use bounded steps with observable checks; do not invent a model tier.
 
 ## The Iron Law
 
@@ -16,6 +16,8 @@ FOR NONTRIVIAL EXECUTABLE CHANGES, ESTABLISH A FAILING BEHAVIOR TEST FIRST
 ```
 
 Preserve existing and user-written code. If implementation already exists, demonstrate regression-test sensitivity using an isolated baseline or a reversible fault, then restore. Never delete work merely to enforce chronology.
+
+Use the existing test framework and file conventions. Test-first work does not justify a new test directory, dependency, runner, configuration, or repository scaffold unless the requested behavior needs it. Keep disposable reproductions outside the checkout, or in an existing task-appropriate scratch location, and remove temporary faults and instrumentation before delivery.
 
 If you didn't watch the test fail, you don't know it tests the right thing.
 
