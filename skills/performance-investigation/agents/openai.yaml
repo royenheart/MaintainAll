@@ -1,0 +1,4 @@
+interface:
+  display_name: "Performance Investigation"
+  short_description: "Design experiments and investigate performance across domains"
+  default_prompt: "Use $performance-investigation to establish a repeatable testbed, explore competing explanations, and validate the performance conclusion with reproducible evidence."

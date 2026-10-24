@@ -1,0 +1,4 @@
+interface:
+  display_name: "Change Review Preview"
+  short_description: "Preview issue and PR evidence before publication"
+  default_prompt: "Use $change-review-preview to prepare a local review of these independent changes with their issue and PR drafts, diffs, and evidence."

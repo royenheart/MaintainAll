@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width,initial-scale=1">
+    <title>Change review</title>
+    <link rel="stylesheet" href="/assets/style.css">
+    <script type="module" src="/assets/app.js"></script>
+  </head>
+  <body>
+    <header><strong id="project">Change review</strong><span>Local review · read only</span></header>
+    <div class="workspace">
+      <aside><h2>Independent changes</h2><nav id="items"></nav></aside>
+      <main>
+        <h1 id="title">Loading review…</h1>
+        <p id="context"></p>
+        <nav id="tabs" aria-label="Review views"></nav>
+        <section class="toolbar"><button id="raw">Raw Markdown</button><button id="copy">Copy full text</button><a id="archive">Download package</a><span id="status" role="status"></span></section>
+        <section id="content" aria-live="polite"></section>
+      </main>
+    </div>
+  </body>
+</html>

@@ -168,6 +168,14 @@
       "task": "writing",
       "minimum_tier": "T1"
     },
+    "performance-investigation": {
+      "task": "debugging",
+      "minimum_tier": "T2"
+    },
+    "change-review-preview": {
+      "task": "tool_use",
+      "minimum_tier": "T2"
+    },
     "dsh-plugin-development": {
       "task": "tool_use",
       "minimum_tier": "T2"

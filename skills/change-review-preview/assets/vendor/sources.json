@@ -1,0 +1,19 @@
+{
+  "purpose": "Offline Markdown rendering and HTML sanitization; unmodified distributions with their licenses.",
+  "modules": [
+    {
+      "file": "marked.js",
+      "version": "16.4.2",
+      "source": "https://github.com/markedjs/marked/tree/v16.4.2",
+      "license": "marked.LICENSE.md",
+      "sha256": "6540aa2544be84b3abdd9424fa287120e9ed7c7600512dd92c097493121a5951"
+    },
+    {
+      "file": "purify.js",
+      "version": "3.4.12",
+      "source": "https://github.com/cure53/DOMPurify/tree/3.4.12",
+      "license": "purify.LICENSE",
+      "sha256": "b51207de097d14ff9af93bb923d1a245d196a474cbbfdcfeda5e2166734715e1"
+    }
+  ]
+}

@@ -25,6 +25,8 @@ directory; copying the root SKILL.md alone omits method instructions and resourc
 
 ## 开发技能与模型策略
 
+[Performance Investigation](skills/performance-investigation/SKILL.md) establishes a repeatable testbed and guides hypothesis-driven experiments through progressively loaded domain methods. [Change Review Preview](skills/change-review-preview/SKILL.md) prepares portable issue/PR evidence, provides an offline local review page and verified ZIP packages, and guides authorized publication checks. Each complete directory includes its focused references and resources.
+
 可复用的开发技能在 [`skills/`](./skills/)，与 AIOps 的 `.agents/skills/` 分开维护。
 技能按任务描述触发，再通过共享 [`model-policy`](./skills/model-policy/SKILL.md)
 选择执行指导。模型/推理配置/任务阶梯、证据与辅助技能统一在
