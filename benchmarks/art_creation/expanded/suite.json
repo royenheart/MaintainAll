@@ -1,0 +1,71 @@
+{
+  "schema_version": 2,
+  "id": "art-creation-expanded-v3",
+  "version": 1,
+  "cases": [
+    {
+      "path": "cases/expanded-reference-evidence-transfer/case.json",
+      "sha256": "edab519747c01fa5b60703283f4ef20785ab19f3d25c5b1dd0fc461e2c65f003"
+    },
+    {
+      "path": "cases/expanded-editorial-density/case.json",
+      "sha256": "15369a624ab3dbde3df26c60f07a9e0be1022cd1afd0f406cd49135705481d83"
+    },
+    {
+      "path": "cases/expanded-palette-evidence/case.json",
+      "sha256": "6fce925fa90deb7280e30c67f94c96ce056be15c9f1cc5cd4dbaeb347ec6f590"
+    },
+    {
+      "path": "cases/expanded-reference-medium-conflict/case.json",
+      "sha256": "cd4c7f845395b44db03477e79254de579ed24792442539a6a59f2707f90b3b0c"
+    },
+    {
+      "path": "cases/expanded-avatar-silhouette-ownership/case.json",
+      "sha256": "221eefa4260a2d8a7f47208bac3c486f74231a8df7f64f5e4686a9a57e099632"
+    },
+    {
+      "path": "cases/expanded-avatar-layer-boundaries/case.json",
+      "sha256": "ec8de3a7c96a73e7f97593c3a790b2dda4410e8484e1684b397d627181b34e15"
+    },
+    {
+      "path": "cases/expanded-costume-function-detail/case.json",
+      "sha256": "73e3e9f8523f537a033c49b847008ee19f9fc4815487f35cd3c3e37cf84d5258"
+    },
+    {
+      "path": "cases/expanded-avatar-accessory-conflict/case.json",
+      "sha256": "162d6aaf0b68bc67ec5b459f8d084e6357a9f9d9ed15b852d7c2b263f2f99c86"
+    },
+    {
+      "path": "cases/expanded-flow-field-corridor/case.json",
+      "sha256": "b2d23869ae7b211528bfb26c2c0a6ca45aaaf2e939e9338aba11ae828c7bd224"
+    },
+    {
+      "path": "cases/expanded-pattern-grammar-seam/case.json",
+      "sha256": "67ac0b925d3b54419c35b507b1c6a8288785f2a27861b4c7256b0007949e8e2e"
+    },
+    {
+      "path": "cases/expanded-responsive-state-ownership/case.json",
+      "sha256": "b06d65ad45651d45b4bb3b8d946befbf5edf6e748aa437cf6926b2fcb98a250d"
+    },
+    {
+      "path": "cases/expanded-attached-motion-retarget/case.json",
+      "sha256": "597c8d38d30615dabc872ab5694104d6d0212016df31ab9c3e54f6c285084eeb"
+    },
+    {
+      "path": "cases/expanded-browser-overlay-priority/case.json",
+      "sha256": "69070287bf02b858f79abfee5659999fdb1499d8223d00df9d05a7a11171ebea"
+    },
+    {
+      "path": "cases/expanded-native-courtyard-grammar/case.json",
+      "sha256": "ba3f4c30cf11a5181e9871af1bfeaa334089802324d504ea599cd592882f68a4"
+    },
+    {
+      "path": "cases/expanded-native-garment-clearance/case.json",
+      "sha256": "9362d412b108e578687fac0b5467aaaf629802b6c08a302b25005d469e0f2d1a"
+    },
+    {
+      "path": "cases/expanded-native-room-sightlines/case.json",
+      "sha256": "a1ca4e98173ac24588f4fa2bf7f731c6fe44c1e23f235899db9bb763703f9f20"
+    }
+  ]
+}

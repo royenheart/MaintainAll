@@ -1,0 +1,281 @@
+{
+  "schema_version": 1,
+  "id": "editorial-transfer",
+  "attachments": [
+    {
+      "id": "painting",
+      "path": "../inputs/met-436535.jpg",
+      "sha256": "af0e3486621c210b54932d055294051b5601aa3362af4b84ab97e2831f8163bc",
+      "source": "https://www.metmuseum.org/art/collection/search/436535",
+      "license": "CC0 / Met public-domain object image"
+    },
+    {
+      "id": "weave",
+      "path": "../inputs/met-45406.jpg",
+      "sha256": "24fcad8ac8807557be50fff389b5326ae29b561dcbe5e26f3dab17f1c45ed916",
+      "source": "https://www.metmuseum.org/art/collection/search/45406",
+      "license": "CC0 / Met public-domain object image"
+    }
+  ],
+  "rounds": [
+    {
+      "prompt": "Design the identity for a fictional small exhibition, FIELD / CURRENT. I like the movement and land/sky color relationship in painting.jpg and the uneven repeated rhythm in weave.jpg. I want warmth and movement, but calm, authoritative information; please do not turn the painting into a background with unrelated fashionable effects, or just tile the textile everywhere. Show two distinct directions A and B. Each must work as a 900x1200 portrait poster and a 360x240 mobile event card, belonging to the same identity but adapted to the different viewing context. Exact public text: FIELD / CURRENT; Painting movement without animation; 17 OCT — 22 NOV 2026; RIVER ROOM; TUE–SUN 10:00–18:00; FREE ENTRY. All six pieces of information must remain available on each format, with a clear reading order. The references are visual material, not proof of motion. Deliver editable a-poster.svg, b-poster.svg, a-card.svg, b-card.svg and actual rendered PNGs with the same base names. Inspect the images at their intended sizes and briefly explain reference interpretation and uncertain choices in notes.md. You can crop or reinterpret the supplied art if it helps, but make the source treatment deliberate.",
+      "attachments": [
+        "painting",
+        "weave"
+      ],
+      "required_artifacts": [
+        {
+          "path": "a-poster.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b-poster.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a-card.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b-card.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a-poster.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 900,
+          "height": 1200
+        },
+        {
+          "path": "b-poster.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 900,
+          "height": 1200
+        },
+        {
+          "path": "a-card.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 360,
+          "height": 240
+        },
+        {
+          "path": "b-card.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 360,
+          "height": 240
+        }
+      ]
+    },
+    {
+      "prompt": "Select A for the conversation between the image and the quiet information area, not approval of its exact crop or typography. Keep B unchanged. Make the title unmistakably first and the date/place next, while retaining the chosen palette and source treatment. The phone card must feel designed for its shape rather than a miniaturized poster. Keep all exact public text, including hours and free entry; avoid solving readability by laying one large opaque label over the painting. Show the updated poster and card, inspect their real-size renders, and explain the tradeoff you made.",
+      "attachments": [],
+      "required_artifacts": [
+        {
+          "path": "a-poster.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b-poster.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a-card.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b-card.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a-poster.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 900,
+          "height": 1200
+        },
+        {
+          "path": "b-poster.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 900,
+          "height": 1200
+        },
+        {
+          "path": "a-card.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 360,
+          "height": 240
+        },
+        {
+          "path": "b-card.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 360,
+          "height": 240
+        }
+      ]
+    },
+    {
+      "prompt": "The updated poster is accepted. Freeze that poster and both B artifacts. Only refine A's phone card: FREE ENTRY should be read together with the date, not treated as a decorative badge away from the event details. Keep the title first, make date/venue easy to pick up next, and keep hours and subtitle readable. Do not shrink every text line to force it into the card. Preserve the selected identity and artwork treatment while adjusting the phone layout. Give me the same source/render deliverables and a concise account of which relations changed versus which accepted choices stayed fixed.",
+      "attachments": [],
+      "required_artifacts": [
+        {
+          "path": "a-poster.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b-poster.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a-card.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b-card.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a-poster.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 900,
+          "height": 1200
+        },
+        {
+          "path": "b-poster.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 900,
+          "height": 1200
+        },
+        {
+          "path": "a-card.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 360,
+          "height": 240
+        },
+        {
+          "path": "b-card.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 360,
+          "height": 240
+        }
+      ]
+    }
+  ],
+  "rubric": [
+    {
+      "id": "reference-transfer",
+      "criterion": "Painting movement/color bands and irregular woven rhythm are intentionally transformed into a readable exhibition identity.",
+      "anchors": {
+        "0": "References are absent, arbitrary pasted thumbnails, or covered by unrelated effects.",
+        "1": "One reference is meaningfully used or both are decorative.",
+        "2": "A coherent image/type/rhythm system demonstrably translates both references without mechanical all-over tiling."
+      }
+    },
+    {
+      "id": "alternative-mechanisms",
+      "criterion": "A/B differ in image-information organization or rhythm, beyond colors or incidental ornament.",
+      "anchors": {
+        "0": "Only one solution or near-identical alternatives.",
+        "1": "Visible alternative but mainly cosmetic.",
+        "2": "Two distinct design mechanisms address the same brief and are visibly comparable."
+      }
+    },
+    {
+      "id": "reading-hierarchy",
+      "criterion": "At actual poster/card size the title reads first, date/venue next, supporting copy after, using relationships rather than solely size inflation.",
+      "anchors": {
+        "0": "Core hierarchy reversed/obscured, or essential information missing.",
+        "1": "Hierarchy partly works but contrast/placement disrupts secondary information.",
+        "2": "Actual sizes show clear hierarchy using spacing, grouping, contrast and proportion; all supporting information remains available."
+      }
+    },
+    {
+      "id": "real-size-readability",
+      "criterion": "The 360x240 card contains the exact six public text items with usable visible type and no clipping, collisions or art interference.",
+      "anchors": {
+        "0": "Missing/unreadable core text, clipping or collisions.",
+        "1": "All source text exists but one supporting item is hard to read or uncomfortably small.",
+        "2": "All six items are clearly legible in the actual-size rendered card without uniformly shrinking typography."
+      }
+    },
+    {
+      "id": "responsive-recomposition",
+      "criterion": "Poster and mobile card preserve the identity while rebalancing image, whitespace and text for different aspect ratios.",
+      "anchors": {
+        "0": "Only scaling/squeezing, or unrelated identities.",
+        "1": "Some reflow but proportions/hierarchy remain poorly adapted.",
+        "2": "A visibly recomposed card preserves palette/source treatment/type roles with a usable independent layout."
+      }
+    },
+    {
+      "id": "art-information-balance",
+      "criterion": "Quiet information and animated-looking static art coexist without a dominant opaque placard or unsupported decorative effects.",
+      "anchors": {
+        "0": "Painting obscured or info lost; unrelated effects dominate.",
+        "1": "Usable balance but image treatment/quiet area feel disconnected.",
+        "2": "Deliberate crop/rhythm/alignment connects image and information, preserves artwork presence and static-evidence honesty."
+      }
+    },
+    {
+      "id": "localized-preservation",
+      "criterion": "After round 3 the accepted A poster and both B artifacts are unchanged; only A card is revised within identity scope.",
+      "anchors": {
+        "0": "Accepted artifact or B changes, or A card is not updated.",
+        "1": "Most preserved but source/render invariants diverge.",
+        "2": "Hashes support accepted artifact preservation; A card changes while identity remains visibly stable."
+      },
+      "applicable_turns": [
+        3
+      ]
+    },
+    {
+      "id": "semantic-grouping",
+      "criterion": "In the final A card FREE ENTRY is visibly grouped with the date while date/venue precede hours/subtitle in reading priority.",
+      "anchors": {
+        "0": "Entry is an unrelated badge or event relations are not reflected.",
+        "1": "Adjacent items exist but grouping/hierarchy is weak.",
+        "2": "Space/alignment/typographic relationships group entry with date and keep venue easy to find, without relying on explanatory text."
+      },
+      "applicable_turns": [
+        3
+      ]
+    },
+    {
+      "id": "inspection-and-handoff",
+      "criterion": "The agent actually inspects real-size outputs and limits acceptance/claims to the synthetic feedback scope and static evidence.",
+      "anchors": {
+        "0": "No image inspection, or false motion/user/runtime claims.",
+        "1": "Inspection exists but scale/scope limitations are unclear.",
+        "2": "Actual image-return evidence and a concise accurate handoff; no source text or self-declared scores stand in for visible quality."
+      }
+    }
+  ],
+  "limits": {
+    "timeout_seconds": 600,
+    "per_file_bytes": 8388608,
+    "workspace_bytes": 33554432
+  }
+}

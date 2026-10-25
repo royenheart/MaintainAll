@@ -1,0 +1,526 @@
+{
+  "schema_version": 2,
+  "id": "expanded-responsive-state-ownership",
+  "version": 1,
+  "family": "browser_state",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Use the attached schematic as a relationship reference for a small local poetry program. It is an authored diagram, not a real site screenshot. Create a playable page with sections River, Garden, and Night. One shared reading panel should belong to the selected section, with the section controls visibly connected to it. Show two layout approaches A and B on the page using the same words and colors. At 1280x800 and 390x844, keep the selected section, its title, and its content consistent while the layout rearranges. Mouse selection, keyboard focus, and keyboard activation must all work; focus alone should not silently select a different section. Keep text readable during the content transition. Use self-contained local HTML and assets, and show actual intermediate states rather than only endpoints. Deliver index.html, desktop.png, mobile.png, sequence-early.png, sequence-middle.png, sequence-late.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. The desktop and three sequence images are 1280x800; the mobile image is 390x844. Use actual browser captures. In evidence.json record the input actions and observed intermediate states; keep unexecuted behaviors explicitly untested.",
+      "attachments": [
+        "schematic"
+      ],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "desktop.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "mobile.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 390,
+          "height": 844
+        },
+        {
+          "path": "sequence-early.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-middle.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-late.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose A for its reading-panel relationship, not its wide spacing. Keep B unchanged. On the narrow layout make the controls wrap without covering the selected heading or causing horizontal scrolling. Keep the selected section and the desktop hierarchy. When the viewport changes during a transition, the same content should remain owned by the same selected section. Deliver index.html, desktop.png, mobile.png, sequence-early.png, sequence-middle.png, sequence-late.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. The desktop and three sequence images are 1280x800; the mobile image is 390x844. Use actual browser captures. In evidence.json record the input actions and observed intermediate states; keep unexecuted behaviors explicitly untested.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "desktop.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "mobile.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 390,
+          "height": 844
+        },
+        {
+          "path": "sequence-early.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-middle.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-late.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "If I select Garden and then Night before the first change finishes, Night must become the final selected section without old Garden content flashing back. Keep the accepted responsive layout. Preserve keyboard focus on the control I used. With reduced motion, show the same content ownership without spatial travel, and actually exercise both rapid selection and reduced motion. Deliver index.html, desktop.png, mobile.png, sequence-early.png, sequence-middle.png, sequence-late.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. The desktop and three sequence images are 1280x800; the mobile image is 390x844. Use actual browser captures. In evidence.json record the input actions and observed intermediate states; keep unexecuted behaviors explicitly untested.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "desktop.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "mobile.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 390,
+          "height": 844
+        },
+        {
+          "path": "sequence-early.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-middle.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-late.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "schematic",
+      "path": "../../assets/selection-rail.png",
+      "sha256": "60796c6c14d5bc0122476a3bd604cbca127eecade6d959d9ebd4493f835a84d5",
+      "license": "CC0-1.0",
+      "source": "MaintainAll authored schematic reference",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "ownership",
+      "turn": 1,
+      "quote": "One shared reading panel should belong to the selected section"
+    },
+    {
+      "id": "options",
+      "turn": 1,
+      "quote": "two layout approaches A and B on the page using the same words and colors"
+    },
+    {
+      "id": "responsive",
+      "turn": 1,
+      "quote": "keep the selected section, its title, and its content consistent while the layout rearranges"
+    },
+    {
+      "id": "keyboard",
+      "turn": 1,
+      "quote": "Mouse selection, keyboard focus, and keyboard activation must all work"
+    },
+    {
+      "id": "focus",
+      "turn": 1,
+      "quote": "focus alone should not silently select a different section"
+    },
+    {
+      "id": "legibility",
+      "turn": 1,
+      "quote": "Keep text readable during the content transition."
+    },
+    {
+      "id": "actual",
+      "turn": 1,
+      "quote": "show actual intermediate states rather than only endpoints"
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Keep B unchanged."
+    },
+    {
+      "id": "narrow",
+      "turn": 2,
+      "quote": "controls wrap without covering the selected heading or causing horizontal scrolling"
+    },
+    {
+      "id": "resize",
+      "turn": 2,
+      "quote": "When the viewport changes during a transition, the same content should remain owned by the same selected section."
+    },
+    {
+      "id": "retarget",
+      "turn": 3,
+      "quote": "Night must become the final selected section without old Garden content flashing back"
+    },
+    {
+      "id": "keep-focus",
+      "turn": 3,
+      "quote": "Preserve keyboard focus on the control I used."
+    },
+    {
+      "id": "reduced",
+      "turn": 3,
+      "quote": "With reduced motion, show the same content ownership without spatial travel"
+    }
+  ],
+  "atoms": [
+    {
+      "id": "single-owner-panel",
+      "dimension": "interaction",
+      "criterion": "The shared panel content and selected control identify the same section.",
+      "requirement_ids": [
+        "ownership"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "desktop.png",
+          "mobile.png"
+        ]
+      }
+    },
+    {
+      "id": "meaningful-layout-options",
+      "dimension": "alternatives",
+      "criterion": "A/B differ in layout relationships under common content/palette.",
+      "requirement_ids": [
+        "options"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "desktop.png"
+        ]
+      }
+    },
+    {
+      "id": "responsive-state-retention",
+      "dimension": "state_continuity",
+      "criterion": "Desktop/mobile layouts keep the same selected section/title/content.",
+      "requirement_ids": [
+        "responsive"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "desktop.png",
+          "mobile.png",
+          "evidence.json"
+        ]
+      }
+    },
+    {
+      "id": "focus-selection-separation",
+      "dimension": "interaction",
+      "criterion": "Mouse/keyboard activation work while focus alone does not change selection.",
+      "requirement_ids": [
+        "keyboard",
+        "focus"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "evidence.json"
+        ]
+      }
+    },
+    {
+      "id": "actual-legible-transition",
+      "dimension": "motion_continuity",
+      "criterion": "Played intermediate states retain readable text and correspond to live browser behavior.",
+      "requirement_ids": [
+        "legibility",
+        "actual"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "sequence-early.png",
+          "sequence-middle.png",
+          "sequence-late.png",
+          "index.html"
+        ]
+      }
+    },
+    {
+      "id": "narrow-scope-preservation",
+      "dimension": "preservation",
+      "criterion": "A narrow controls avoid overlap/overflow while B and desktop hierarchy remain accepted.",
+      "requirement_ids": [
+        "scope",
+        "narrow"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "desktop.png",
+          "mobile.png"
+        ]
+      }
+    },
+    {
+      "id": "resize-owner-retention",
+      "dimension": "state_continuity",
+      "criterion": "Resizing during motion preserves section ownership rather than resetting content.",
+      "requirement_ids": [
+        "resize"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "evidence.json"
+        ]
+      }
+    },
+    {
+      "id": "rapid-selection-final-owner",
+      "dimension": "state_continuity",
+      "criterion": "Night remains final owner after interrupted Garden-to-Night selection without stale content return.",
+      "requirement_ids": [
+        "retarget"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "sequence-middle.png",
+          "sequence-late.png",
+          "evidence.json"
+        ]
+      }
+    },
+    {
+      "id": "focus-and-reduced-motion",
+      "dimension": "interaction",
+      "criterion": "The accepted control retains focus and reduced motion expresses selection without spatial travel.",
+      "requirement_ids": [
+        "keep-focus",
+        "reduced"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "evidence.json"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "browser_capture",
+    "playable_motion"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "MaintainAll self-authored demanding non-expert brief",
+    "feedback": "synthetic staged corrections; no claim of real user acceptance",
+    "created_at": "2026-10-11",
+    "dataset_release": "art-creation-expanded-v3",
+    "domain": "browser_interaction",
+    "challenge_axes": [
+      "shared-state-ownership",
+      "responsive-mid-transition",
+      "focus-versus-activation",
+      "rapid-retarget",
+      "reduced-motion-equivalence"
+    ],
+    "reference_authorship": "CC0 Met object photographs and/or explicitly labeled original schematic input; never a replay of private session images",
+    "holdout_policy": "development task data"
+  }
+}

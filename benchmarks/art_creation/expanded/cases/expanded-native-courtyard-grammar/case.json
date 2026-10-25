@@ -1,0 +1,533 @@
+{
+  "schema_version": 2,
+  "id": "expanded-native-courtyard-grammar",
+  "version": 1,
+  "family": "native_architecture",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Use the attached courtyard schematic as a relationship reference for an original compact reading pavilion. It is an authored diagram, not a construction drawing. Build two procedural facade approaches A and B in Blender, using the same outer envelope, entrance position, camera, and lighting so their rules can be compared. The entrance should read as part of the structural bay rhythm and lead into an open courtyard, not look like a detached decorated door. Keep a clear threshold between outside and reading space. Expose meaningful controls for bay proportions, upper-opening variation, and threshold depth in source.py. Make an actual parameter-probe scene/render that changes only threshold depth while preserving the envelope and camera. Reopen the saved native scene and render it; label architectural feasibility as untested rather than claiming a construction-ready building. Deliver scene.blend, source.py, a.png, b.png, side.png, parameter-probe.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. All four PNGs are actual 640x480 Blender renders. Save both labeled alternatives in scene.blend; expose meaningful parameters in source.py and document a real parameter change and independent saved-scene reopen in evidence.json. Native scene editability is required; a flat drawing is insufficient.",
+      "attachments": [
+        "schematic"
+      ],
+      "artifacts": [
+        {
+          "path": "scene.blend",
+          "kind": "editable",
+          "format": "blend"
+        },
+        {
+          "path": "source.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "side.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "parameter-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose A for the entrance-to-bay relationship, not its perfectly repeated windows. Keep B unchanged. Change only A's upper-opening variation so adjacent bays have a restrained rhythm without losing plausible vertical support. Preserve the envelope, entrance, threshold depth, camera, and lighting. Show the same comparison and a side view of A. Deliver scene.blend, source.py, a.png, b.png, side.png, parameter-probe.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. All four PNGs are actual 640x480 Blender renders. Save both labeled alternatives in scene.blend; expose meaningful parameters in source.py and document a real parameter change and independent saved-scene reopen in evidence.json. Native scene editability is required; a flat drawing is insufficient.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "scene.blend",
+          "kind": "editable",
+          "format": "blend"
+        },
+        {
+          "path": "source.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "side.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "parameter-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "Keep that upper rhythm. Refine only the transition from the entrance shade into the courtyard so it reads as one connected threshold rather than a floating awning. Preserve support alignment, envelope, camera, and all upper openings. Repeat a native reopen and the same threshold-depth parameter probe, stating what was actually regenerated versus only proposed. Deliver scene.blend, source.py, a.png, b.png, side.png, parameter-probe.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. All four PNGs are actual 640x480 Blender renders. Save both labeled alternatives in scene.blend; expose meaningful parameters in source.py and document a real parameter change and independent saved-scene reopen in evidence.json. Native scene editability is required; a flat drawing is insufficient.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "scene.blend",
+          "kind": "editable",
+          "format": "blend"
+        },
+        {
+          "path": "source.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "side.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "parameter-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "schematic",
+      "path": "../../assets/courtyard-bays.png",
+      "sha256": "bc01fdc3d5d1240bbeeadf641d5260eabf9f1c54ca576482a4f76f9d37744c24",
+      "license": "CC0-1.0",
+      "source": "MaintainAll authored schematic reference",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "same",
+      "turn": 1,
+      "quote": "same outer envelope, entrance position, camera, and lighting so their rules can be compared"
+    },
+    {
+      "id": "entrance",
+      "turn": 1,
+      "quote": "entrance should read as part of the structural bay rhythm and lead into an open courtyard"
+    },
+    {
+      "id": "threshold",
+      "turn": 1,
+      "quote": "a clear threshold between outside and reading space"
+    },
+    {
+      "id": "controls",
+      "turn": 1,
+      "quote": "controls for bay proportions, upper-opening variation, and threshold depth"
+    },
+    {
+      "id": "probe",
+      "turn": 1,
+      "quote": "changes only threshold depth while preserving the envelope and camera"
+    },
+    {
+      "id": "reopen",
+      "turn": 1,
+      "quote": "Reopen the saved native scene and render it"
+    },
+    {
+      "id": "truth",
+      "turn": 1,
+      "quote": "label architectural feasibility as untested"
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Keep B unchanged."
+    },
+    {
+      "id": "upper",
+      "turn": 2,
+      "quote": "Change only A's upper-opening variation"
+    },
+    {
+      "id": "support",
+      "turn": 2,
+      "quote": "without losing plausible vertical support"
+    },
+    {
+      "id": "accepted",
+      "turn": 2,
+      "quote": "Preserve the envelope, entrance, threshold depth, camera, and lighting."
+    },
+    {
+      "id": "connected",
+      "turn": 3,
+      "quote": "one connected threshold rather than a floating awning"
+    },
+    {
+      "id": "final-preserve",
+      "turn": 3,
+      "quote": "Preserve support alignment, envelope, camera, and all upper openings."
+    },
+    {
+      "id": "final-proof",
+      "turn": 3,
+      "quote": "Repeat a native reopen and the same threshold-depth parameter probe"
+    }
+  ],
+  "atoms": [
+    {
+      "id": "controlled-native-comparison",
+      "dimension": "alternatives",
+      "criterion": "A/B grammar comparisons share envelope/entrance/camera/lighting.",
+      "requirement_ids": [
+        "same"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "scene.blend",
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "structural-entrance-relation",
+      "dimension": "construction",
+      "criterion": "The entrance belongs to the facade bay rhythm and connects to open courtyard space.",
+      "requirement_ids": [
+        "entrance"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "side.png"
+        ]
+      }
+    },
+    {
+      "id": "readable-threshold",
+      "dimension": "spatial_relations",
+      "criterion": "Exterior-to-reading threshold is distinguishable and connected.",
+      "requirement_ids": [
+        "threshold"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "side.png"
+        ]
+      }
+    },
+    {
+      "id": "meaningful-generator-controls",
+      "dimension": "editability",
+      "criterion": "Generator exposes distinct bay/upper-rhythm/threshold controls.",
+      "requirement_ids": [
+        "controls"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "source.py"
+        ]
+      }
+    },
+    {
+      "id": "single-parameter-native-probe",
+      "dimension": "editability",
+      "criterion": "Actual threshold-depth counterfactual preserves envelope and camera rather than being a new drawing.",
+      "requirement_ids": [
+        "probe"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "scene.blend",
+          "source.py",
+          "parameter-probe.png",
+          "evidence.json"
+        ]
+      }
+    },
+    {
+      "id": "native-reopen-not-feasibility",
+      "dimension": "evidence_honesty",
+      "criterion": "Saved scene is reopened/rendered while construction feasibility remains explicitly untested.",
+      "requirement_ids": [
+        "reopen",
+        "truth"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "scene.blend",
+          "a.png",
+          "evidence.json",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "upper-rhythm-edit-scope",
+      "dimension": "preservation",
+      "criterion": "A upper variation retains vertical support and accepted fixed relations while B stays unchanged.",
+      "requirement_ids": [
+        "scope",
+        "upper",
+        "support",
+        "accepted"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "scene.blend",
+          "source.py",
+          "a.png",
+          "b.png",
+          "side.png"
+        ]
+      }
+    },
+    {
+      "id": "connected-shade-refinement",
+      "dimension": "construction",
+      "criterion": "Entrance shade forms a connected threshold without detached awning geometry.",
+      "requirement_ids": [
+        "connected"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "side.png"
+        ]
+      }
+    },
+    {
+      "id": "final-native-preservation",
+      "dimension": "preservation",
+      "criterion": "Final threshold refinement retains envelope/camera/support/upper openings and repeats native probe evidence.",
+      "requirement_ids": [
+        "final-preserve",
+        "final-proof"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "scene.blend",
+          "source.py",
+          "a.png",
+          "parameter-probe.png",
+          "evidence.json"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "blender",
+    "native_scene_reopen"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "MaintainAll self-authored demanding non-expert brief",
+    "feedback": "synthetic staged corrections; no claim of real user acceptance",
+    "created_at": "2026-10-11",
+    "dataset_release": "art-creation-expanded-v3",
+    "domain": "native_3d",
+    "challenge_axes": [
+      "native-scene-reopen",
+      "structural-bay-grammar",
+      "camera-envelope-control",
+      "single-parameter-probe",
+      "threshold-continuity"
+    ],
+    "reference_authorship": "CC0 Met object photographs and/or explicitly labeled original schematic input; never a replay of private session images",
+    "holdout_policy": "development task data"
+  }
+}

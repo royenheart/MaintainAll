@@ -1,0 +1,343 @@
+{
+  "schema_version": 2,
+  "id": "reference-annotation",
+  "version": 2,
+  "family": "reference_analysis",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "I am learning how to describe design. Analyze the actual kimono photograph and woven-cloth image I supplied. First show numbered component boundaries directly on those exact images; keep the original pixels, aspect ratio, and layout, and do not redraw a similar garment. Explain the most distinctive layout, boundary, color, and repetition relationships in plain language, with observations separated from interpretations and suggestions. Write a two-chapter teaching report: Design Overview, then Full Design Analysis. Include a component-number table and a medium-appropriate implementation brief. If image or font details cannot be established, say so. Deliver editable kimono-annotated.svg and weave-annotated.svg, their rendered PNGs, and notes.md containing the report.",
+      "attachments": [
+        "kimono",
+        "weave"
+      ],
+      "artifacts": [
+        {
+          "path": "kimono-annotated.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "weave-annotated.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "kimono-annotated.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 308,
+          "height": 624
+        },
+        {
+          "path": "weave-annotated.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 192,
+          "height": 625
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Keep the overview concise. My interest is the calm field and narrow red edge, not copying the photographed garment. Revise the implementation brief for an original book cover. Preserve the source annotations and observed evidence; distinguish the inherited relationships from new layout suggestions. Do not invent animation or an exact historical style from this static source.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "kimono-annotated.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "weave-annotated.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "kimono-annotated.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 308,
+          "height": 624
+        },
+        {
+          "path": "weave-annotated.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 192,
+          "height": 625
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "I meant irregular repetition in the woven cloth, not identical hexagons tiled over the entire cover. Clarify how spacing or local variation creates the rhythm. Keep all earlier observations that remain supported and label any numerical palette or dimension as measured, estimated, or suggested. Deliver the same source annotations and report.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "kimono-annotated.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "weave-annotated.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "kimono-annotated.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 308,
+          "height": 624
+        },
+        {
+          "path": "weave-annotated.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 192,
+          "height": 625
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "kimono",
+      "path": "../../assets/met-125959.jpg",
+      "sha256": "c05affbab0e62582e94808f6bc4b83cd23cb73bd077fed9e5bac4d9c1a508926",
+      "license": "CC0 / Met public-domain object image",
+      "source": "https://www.metmuseum.org/art/collection/search/125959",
+      "visibility": "public"
+    },
+    {
+      "id": "weave",
+      "path": "../../assets/met-45406.jpg",
+      "sha256": "24fcad8ac8807557be50fff389b5326ae29b561dcbe5e26f3dab17f1c45ed916",
+      "license": "CC0 / Met public-domain object image",
+      "source": "https://www.metmuseum.org/art/collection/search/45406",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "actual",
+      "turn": 1,
+      "quote": "numbered component boundaries directly on those exact images; keep the original pixels, aspect ratio, and layout"
+    },
+    {
+      "id": "teaching",
+      "turn": 1,
+      "quote": "observations separated from interpretations and suggestions"
+    },
+    {
+      "id": "numbering",
+      "turn": 1,
+      "quote": "component-number table"
+    },
+    {
+      "id": "transfer",
+      "turn": 2,
+      "quote": "calm field and narrow red edge, not copying the photographed garment"
+    },
+    {
+      "id": "medium",
+      "turn": 2,
+      "quote": "original book cover"
+    },
+    {
+      "id": "rhythm",
+      "turn": 3,
+      "quote": "irregular repetition in the woven cloth, not identical hexagons tiled over the entire cover"
+    },
+    {
+      "id": "uncertainty",
+      "turn": 3,
+      "quote": "label any numerical palette or dimension as measured, estimated, or suggested"
+    }
+  ],
+  "atoms": [
+    {
+      "id": "source-preservation",
+      "dimension": "source_fidelity",
+      "criterion": "The annotation displays the actual supplied images without substituting a generated design.",
+      "requirement_ids": [
+        "actual"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "kimono-annotated.png",
+          "weave-annotated.png"
+        ]
+      }
+    },
+    {
+      "id": "number-component-link",
+      "dimension": "analysis_grounding",
+      "criterion": "Numbers correspond to visible component boundaries and the report table.",
+      "requirement_ids": [
+        "numbering"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "kimono-annotated.png",
+          "weave-annotated.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "observation-interpretation",
+      "dimension": "evidence_honesty",
+      "criterion": "Observed relationships, uncertain interpretations and suggestions are distinguished.",
+      "requirement_ids": [
+        "teaching"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "medium-transfer",
+      "dimension": "reference_transfer",
+      "criterion": "The book-cover brief inherits field/edge relations without copying garment content.",
+      "requirement_ids": [
+        "transfer",
+        "medium"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "irregular-rhythm",
+      "dimension": "pattern_relations",
+      "criterion": "The explanation supports irregularity with reference-specific spacing or local variation.",
+      "requirement_ids": [
+        "rhythm"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "weave-annotated.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "measurement-labels",
+      "dimension": "evidence_honesty",
+      "criterion": "Numerical claims disclose measurement, estimate or suggestion rather than presenting guesses as facts.",
+      "requirement_ids": [
+        "uncertainty"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "notes.md"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "svg",
+    "real_images",
+    "exact_resume"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "self-authored natural brief",
+    "reference_images": "Met Open Access; exact downloaded image hashes",
+    "user_acceptance": "none; synthetic staged feedback",
+    "created_at": "2026-10-09"
+  }
+}

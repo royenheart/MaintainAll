@@ -1,0 +1,47 @@
+{
+  "schema_version": 1,
+  "purpose": "Evaluator evidence templates, not solver-generated acceptance criteria or universal aesthetic thresholds",
+  "templates": [
+    {
+      "id": "accepted-artifact-preservation",
+      "observable": "Declared accepted artifact bytes before and after the scoped revision",
+      "units": "SHA-256 exact equality",
+      "evidence": "Immutable trusted turn snapshots",
+      "limits": "Byte equality proves preservation only. Changes may be intentional in nonaccepted artifacts; visual quality is still separately reviewed.",
+      "missing_evidence_status": "missing_evidence"
+    },
+    {
+      "id": "semantic-grouping",
+      "observable": "Intended label and its event anchor, their spacing/alignment at actual output size",
+      "units": "Optional normalized geometric distance after an independent selector; ordinal visual grouping anchors",
+      "evidence": "Actual size preview + independent element mapping",
+      "limits": "Do not infer semantic grouping solely from source presence, font count or a global fixed pixel threshold. The bundled baseline measure is only a trusted calibration fixture.",
+      "missing_evidence_status": "unverifiable"
+    },
+    {
+      "id": "attachment-ownership",
+      "observable": "Feature contact/support relation, including body-side ownership in reverse views",
+      "units": "Contact distance in a declared coordinate frame; ordinal cross-view support consistency",
+      "evidence": "Actual relevant views; independent anchor mapping",
+      "limits": "A static contact measure does not prove cloth deformation or physics; annotate uncertainty.",
+      "missing_evidence_status": "unverifiable"
+    },
+    {
+      "id": "motion-continuity",
+      "observable": "Relevant subject position/shape/material and timing across the named state join",
+      "units": "Declared normalized position/speed/time series with timestamps; visible discontinuity anchors",
+      "evidence": "Trusted browser/native playback capture across the join, not endpoints or a solver-authored score",
+      "limits": "No numerical continuity score without an actual sampled trace and declared uncertainty/tolerance. Count of frames or motion terminology is not quality.",
+      "missing_evidence_status": "missing_evidence"
+    },
+    {
+      "id": "light-material-cues",
+      "observable": "Opaque layer separation, edge thickness/fold treatment and relevant arm transition",
+      "units": "Ordinal visual evidence anchored to the specific brief",
+      "evidence": "Actual full-size and detail previews; optional independently verified material/native cloth study",
+      "limits": "A caption stating airy/light is not material evidence. A flat SVG does not establish physical cloth weight.",
+      "missing_evidence_status": "unverifiable"
+    }
+  ],
+  "not_applicable_rule": "Use not_applicable only when the atom is inactive by its frozen turn applicability; do not use it to hide an active failed or unobserved requirement."
+}

@@ -1,0 +1,362 @@
+{
+  "schema_version": 1,
+  "id": "art-creation-session-diversity-development-v2",
+  "suite_sha256": "92dcbf45e824f4457e5257421f895061a8e7f73717e47eefdb42d5da3dcd9aed",
+  "case_count": 9,
+  "turn_count_per_arm": 25,
+  "unique_source_sessions": 2,
+  "unique_source_user_messages": 27,
+  "distinct_actual_input_images": 29,
+  "public_image_bytes": 0,
+  "model_evaluations": 0,
+  "generator_invocations": 0,
+  "skill_modified": false,
+  "existing_frozen_suites_modified": false,
+  "sampling_unit": "A derived episode, clustered by source session; not an independent new user or acceptance",
+  "cases": [
+    {
+      "id": "session-card-contour-fit",
+      "title": "Card contour, proportion and text flow",
+      "domain": "graphic_geometry",
+      "backend_group": "static",
+      "turns": 3,
+      "atoms": 6,
+      "case_sha256": "3561b95567f33475c1a15e2d50d102b740095bdc24fc166ce85c52915412737c",
+      "source_session_sha256": "07f73eb82ba79938f17669396884aac09672f63df0c981a63348189647d32026",
+      "source_turns": [
+        {
+          "line": 409,
+          "user_text_sha256": "b05142c57c187c080dd87ada22b1a4cb677f2a09bd86576674f27c6f8e68729d"
+        },
+        {
+          "line": 505,
+          "user_text_sha256": "ce848e1f3d3faa02784295ad916c65ff295b72b15ad9b53f7193ac6a80b52b9f"
+        },
+        {
+          "line": 1808,
+          "user_text_sha256": "6d762d59e5f545d10cce94c41641f449d1813adecaca108647f1cc21b8728cee"
+        },
+        {
+          "line": 1965,
+          "user_text_sha256": "f9446de152eb75a3dc34084b2dbe120229db97003786e02a2336a2e2529b4b8f"
+        },
+        {
+          "line": 2147,
+          "user_text_sha256": "6a5073bfde76d8e719027d5ed8ca13c1e0b5a22bf9ea94c834db7fda01fbe253"
+        }
+      ],
+      "exact_input_image_sha256": [
+        "02c9e04d7e9818628b928ba318a88dbf8f69714ad20aa24d57b905278d84e152",
+        "52dd9ba48caa6a9b40a42514580136b0ef605a90387c138c5c231927210e135d",
+        "79e7d9177b0026b1a33946886f0dcd36ea4afa6a729473a05a8e98205862415b"
+      ],
+      "input_images": 3,
+      "visibility": "private",
+      "original_reference_inputs": true,
+      "original_site_replay": false,
+      "task_definition_validated": true,
+      "model_evaluations": 0,
+      "unimplemented_evidence_capabilities": []
+    },
+    {
+      "id": "session-reference-target-correction",
+      "title": "Multi-reference analysis with corrected target",
+      "domain": "reference_disambiguation",
+      "backend_group": "browser",
+      "turns": 3,
+      "atoms": 6,
+      "case_sha256": "ec2b4ffc94aa8e94a7fea5b06655454e7b32905160b320eee9063f3c5b05d9e8",
+      "source_session_sha256": "07f73eb82ba79938f17669396884aac09672f63df0c981a63348189647d32026",
+      "source_turns": [
+        {
+          "line": 4969,
+          "user_text_sha256": "08bae3c95ba694d4aadba0711969b55595e94a7c01788a1508f241526565b609"
+        },
+        {
+          "line": 5118,
+          "user_text_sha256": "06c770961a99e42d31a71cf781971e09494a9f6e89536f29c9bf8f9ba3e3a7fe"
+        },
+        {
+          "line": 5197,
+          "user_text_sha256": "e93c003142907cb6ac913fb7f142efd4f7fa4f90bf1270cc3ff1b0ea1a8db1bc"
+        }
+      ],
+      "exact_input_image_sha256": [
+        "4a78247a500ac0a002f104576c25e87e052d15d85f3362d7ca5469c82f7d6a62",
+        "7e20e3ff31336d70772848ff6ca642475bc65d24c06cebf3cbd6de2f939a5834",
+        "8ae80c0b612867c5491f9e37a39516d4ef6012fd4104e1e2a86d21db250d2d6c",
+        "965b18348327f6593ca91f0b8d33892f1b1781ab6b29fb7f87e7cbb26d49ecaa",
+        "a56822fa97141f94af1d6595a9bd2f4bb6b920af94450fa7d1c883be7e5f40b6",
+        "d3e869332c8b4268d74d88823ad519675d8ccced9271d52f66bbc67fd070fc9c",
+        "ebe0ac954eb375a4fce6f8046840f801ebcaf122113d563c7d961d1a74158a35",
+        "fd024bfad07f95305f35331a493593b42dd9086b2b565a4c5b8c208075681fae"
+      ],
+      "input_images": 8,
+      "visibility": "private",
+      "original_reference_inputs": true,
+      "original_site_replay": false,
+      "task_definition_validated": true,
+      "model_evaluations": 0,
+      "unimplemented_evidence_capabilities": [
+        "action_trace_capture"
+      ]
+    },
+    {
+      "id": "session-ring-spacing-wave",
+      "title": "Perspective spacing and wave variation",
+      "domain": "procedural_depth",
+      "backend_group": "browser",
+      "turns": 3,
+      "atoms": 6,
+      "case_sha256": "d4be295202fa3733a3db4858de569df5ea9184ba82e322edd5ed808d52801bf0",
+      "source_session_sha256": "07f73eb82ba79938f17669396884aac09672f63df0c981a63348189647d32026",
+      "source_turns": [
+        {
+          "line": 4703,
+          "user_text_sha256": "57a48e83dffc94bcea858c98bb2a1954deaf69655e217dfff09ccbd33a3792fc"
+        },
+        {
+          "line": 5476,
+          "user_text_sha256": "77e3b521f645987b930281757ca5c6ea070094ded37e6f8a3b3ba9b518829ed8"
+        }
+      ],
+      "exact_input_image_sha256": [
+        "99bd2928ddc5be7212d0cc9983642ef5a1fa4a8e3f156dce75e1155bcccc5c9c"
+      ],
+      "input_images": 1,
+      "visibility": "private",
+      "original_reference_inputs": true,
+      "original_site_replay": false,
+      "task_definition_validated": true,
+      "model_evaluations": 0,
+      "unimplemented_evidence_capabilities": [
+        "action_trace_capture"
+      ]
+    },
+    {
+      "id": "session-audio-ring-fallback",
+      "title": "Audio-linked curves and graceful fallback",
+      "domain": "audio_visual_response",
+      "backend_group": "browser",
+      "turns": 3,
+      "atoms": 6,
+      "case_sha256": "0db880e311198be8306063f5323580cd8274844aba3d1b05d7e2e864f7f4fe64",
+      "source_session_sha256": "07f73eb82ba79938f17669396884aac09672f63df0c981a63348189647d32026",
+      "source_turns": [
+        {
+          "line": 5681,
+          "user_text_sha256": "d0a831c39c1bc9ddd73e742e5e9b31dd8e8b568db05a97081956c68c54bd13b0"
+        },
+        {
+          "line": 5759,
+          "user_text_sha256": "07a741aa3881b384f595e0c8f8a311fe6532f93816959438717f1a953a88afc1"
+        },
+        {
+          "line": 10646,
+          "user_text_sha256": "f30bda51c1a3cc0add47eaf77b2195ac1b7b2889da6cc944e20a410b6a333a64"
+        }
+      ],
+      "exact_input_image_sha256": [
+        "635646fbf9a1dac080e7fd6d9e6d2d788fb182183d071141685a04e34dbde042"
+      ],
+      "input_images": 1,
+      "visibility": "private",
+      "original_reference_inputs": true,
+      "original_site_replay": false,
+      "task_definition_validated": true,
+      "model_evaluations": 0,
+      "unimplemented_evidence_capabilities": [
+        "action_trace_capture",
+        "web_audio_probe"
+      ]
+    },
+    {
+      "id": "session-depth-to-glitch-revision",
+      "title": "Spatial rays followed by a changed visual direction",
+      "domain": "spatial_transition_revision",
+      "backend_group": "browser",
+      "turns": 3,
+      "atoms": 6,
+      "case_sha256": "9cfb6cc84b5695d63b4741752a76767f818197a1cfd79326c285d887826d8294",
+      "source_session_sha256": "07f73eb82ba79938f17669396884aac09672f63df0c981a63348189647d32026",
+      "source_turns": [
+        {
+          "line": 6993,
+          "user_text_sha256": "d7d5beb6838b7bb65e482e03b6b3845dbef766c9ad56eb767eeaead6c2deffb6"
+        },
+        {
+          "line": 7221,
+          "user_text_sha256": "3fda094b7bcc81557ff5d44f798174b12b38c6a5efd13b5ed61b64f92caabf75"
+        },
+        {
+          "line": 7614,
+          "user_text_sha256": "3fc8e92c530e95d2ec771c2185bec276d66ffc42c8e28a94d7fc39040e42790c"
+        },
+        {
+          "line": 7961,
+          "user_text_sha256": "e5f49ee8b5da188e9f904439a6927902374dc770e2a117c3e544d4d8b890d6c1"
+        }
+      ],
+      "exact_input_image_sha256": [
+        "746a8ebea7db9233acabd606447daf3e949a43abe649c775602a558a59bbf504",
+        "9f3fb79d9ea8f8a7994b0872fe482cb20e4567c605d6e23aace341978da2969d",
+        "e59eaea94a008eeb6208da8fc44414d10435f2b3e809b3642b075388e9207778"
+      ],
+      "input_images": 3,
+      "visibility": "private",
+      "original_reference_inputs": true,
+      "original_site_replay": false,
+      "task_definition_validated": true,
+      "model_evaluations": 0,
+      "unimplemented_evidence_capabilities": [
+        "action_trace_capture"
+      ]
+    },
+    {
+      "id": "session-cover-material-transition",
+      "title": "Cover switching through material reflection",
+      "domain": "material_transition",
+      "backend_group": "browser",
+      "turns": 3,
+      "atoms": 6,
+      "case_sha256": "fcb5262354fa587cf4497151d6e2e49c152ffb2e6ab76bc6df7902f650b3aba3",
+      "source_session_sha256": "07f73eb82ba79938f17669396884aac09672f63df0c981a63348189647d32026",
+      "source_turns": [
+        {
+          "line": 11827,
+          "user_text_sha256": "8efa7f22b303a249c96c9a6b717e37d154295d03545bc6bad255784ed6fa2033"
+        },
+        {
+          "line": 12336,
+          "user_text_sha256": "347b9f7f78588cf2065bd831d472495630af277004707ae6cc70689ac48f9392"
+        },
+        {
+          "line": 12754,
+          "user_text_sha256": "8a59a25dc447abfb195dfb47bb1fc2c07d3ddbf23ecd947535fb03164fc58d34"
+        }
+      ],
+      "exact_input_image_sha256": [
+        "1284b5a423212a94a86a9e655a4a18890ca00849dbd3b305ef67c99b26aa038d",
+        "30a928e07ea7cbcdf2c8a024bfce7071ac171f9f9a29fc82a32ee3909d8bc3f9",
+        "704c91857cf44f94c7e23bd51a002d197fe30b2e8462ab5c6b1619fb19b5cefe",
+        "9c36e7c57f6fdfbcd206cafac7e10c90305b43de668f1efb127c96d0164c44bd",
+        "f46cc306a29547eade566548165a7246f2b4a07248741c576e3de384652ca85d"
+      ],
+      "input_images": 5,
+      "visibility": "private",
+      "original_reference_inputs": true,
+      "original_site_replay": false,
+      "task_definition_validated": true,
+      "model_evaluations": 0,
+      "unimplemented_evidence_capabilities": [
+        "action_trace_capture"
+      ]
+    },
+    {
+      "id": "session-diagonal-track-integration",
+      "title": "Diagonal tracks, theme fit and stable feedback",
+      "domain": "interface_theme_relations",
+      "backend_group": "browser",
+      "turns": 3,
+      "atoms": 6,
+      "case_sha256": "ae695df25439b7a732a56b6c3f63ccdeda9da641692b8d5a5ae6814ac8b9183a",
+      "source_session_sha256": "07f73eb82ba79938f17669396884aac09672f63df0c981a63348189647d32026",
+      "source_turns": [
+        {
+          "line": 12754,
+          "user_text_sha256": "8a59a25dc447abfb195dfb47bb1fc2c07d3ddbf23ecd947535fb03164fc58d34"
+        },
+        {
+          "line": 13057,
+          "user_text_sha256": "4325ab728173cb1123bfebf560f17cfd1096127a55ee28dc60b2f5b365d84213"
+        },
+        {
+          "line": 13367,
+          "user_text_sha256": "ef4bcbfd8adc47852ad7a2002872d87a719c870047a7100f7bd16a8871aecad0"
+        },
+        {
+          "line": 14036,
+          "user_text_sha256": "e85addcd45bb5ae3b3f355fbd29ac40d02a91109daeed94a847c4a75f084d8cd"
+        }
+      ],
+      "exact_input_image_sha256": [
+        "1284b5a423212a94a86a9e655a4a18890ca00849dbd3b305ef67c99b26aa038d",
+        "55ffe36ee64db68e0f3098624341793bbbd285f7d006a8b449206c4fa2ded867",
+        "5b892d09917dbb0efd1ced93077180fbeea6de59badc3360591ba897bdf94bc5",
+        "848a68bee80e46687f58aa54f54ea86be504d4c206621d7af9e4623051fd9201"
+      ],
+      "input_images": 4,
+      "visibility": "private",
+      "original_reference_inputs": true,
+      "original_site_replay": false,
+      "task_definition_validated": true,
+      "model_evaluations": 0,
+      "unimplemented_evidence_capabilities": [
+        "action_trace_capture"
+      ]
+    },
+    {
+      "id": "session-theme-marks-semantic",
+      "title": "Irregular material marks with recognizable meaning",
+      "domain": "graphic_semantics",
+      "backend_group": "static",
+      "turns": 3,
+      "atoms": 6,
+      "case_sha256": "e5127f003630e8b49b5f250857db5860eaaf1509e59efeced214029af41c177a",
+      "source_session_sha256": "07f73eb82ba79938f17669396884aac09672f63df0c981a63348189647d32026",
+      "source_turns": [
+        {
+          "line": 13618,
+          "user_text_sha256": "92c8307edb2ab90779b129d2023afd64cbb53dfc2478a94079e8b7ced722446f"
+        },
+        {
+          "line": 14788,
+          "user_text_sha256": "d4883b642a5cbffd0447738401dc2db107712ba165a0dbf4f540be95d5cf8cd3"
+        },
+        {
+          "line": 15128,
+          "user_text_sha256": "70963f9aaead4b464bbc47023e4fd0790ab5304a754faf52ba0b466fd29aa0a3"
+        }
+      ],
+      "exact_input_image_sha256": [
+        "47443a50bd8a15565f1cd160a0294028c7931e654af4b3a40498646484058035",
+        "c5a073083fe667d285ad448fa900eae997f60f02c5e196e5fe272d191b0f029b"
+      ],
+      "input_images": 2,
+      "visibility": "private",
+      "original_reference_inputs": true,
+      "original_site_replay": false,
+      "task_definition_validated": true,
+      "model_evaluations": 0,
+      "unimplemented_evidence_capabilities": []
+    },
+    {
+      "id": "session-three-image-analysis",
+      "title": "Three-image narrative-art analysis",
+      "domain": "reference_analysis",
+      "backend_group": "static",
+      "turns": 1,
+      "atoms": 6,
+      "case_sha256": "de1887ccbe134d01582df679640ea9c708bcf6cf929184cd9c92fb9f5182623e",
+      "source_session_sha256": "a7299b1ca6da2280f507f60d8d07a49c50bcb23dfaa3276499ae12ec68b534c0",
+      "source_turns": [
+        {
+          "line": 9,
+          "user_text_sha256": "99312429388989b478a0d605a59cadf91f07b431126f28b0e54e710b6ecb74aa"
+        }
+      ],
+      "exact_input_image_sha256": [
+        "1a8471aa46d95a8bba5d5cd40affcbb9a889866a07091ba9f283183b11b7f379",
+        "256355e76f4e6686f0ce3558bc8b3e427a0450bc88b56b9b8d5141792549b3b7",
+        "a5af60cbc7b7d071228dcba7b042c79efe8f281afa1a97692a9113ed66e2a292"
+      ],
+      "input_images": 3,
+      "visibility": "private",
+      "original_reference_inputs": true,
+      "original_site_replay": false,
+      "task_definition_validated": true,
+      "model_evaluations": 0,
+      "unimplemented_evidence_capabilities": []
+    }
+  ]
+}

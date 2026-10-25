@@ -18,8 +18,8 @@ For SVG, use explicit dimensions/viewBox, named groups, palette roles, and edita
 | Too decorative | Relation of ornament to content and hierarchy | Remove one class of ornament while keeping structure |
 | Not enough material feel | Texture scale, contour, edge/light behavior | Keep layout; compare a specific material treatment |
 
-The user determines which interpretation fits. Keep the accepted result available. Check clipping, accidental collision, unreadable text, and export dimensions. Differentiate useful intentional overlap from mistakes rather than applying a universal ban on overlapping elements.
+Use feedback to select the interpretation and keep the accepted result available. Check clipping, text readability, and export dimensions while preserving intentional overlaps.
 
 ## Render and deliver
 
-Use an available browser, SVG rasterizer, or drawing renderer to display the actual artifact. Keep the same font and viewport when comparing. Export the final format at the requested resolution, retain editable source, and label estimated or recommended values rather than presenting them as measured from a reference.
+Use a browser, SVG rasterizer, or drawing renderer to display the artifact. Keep the same font and viewport when comparing. Export at the requested resolution and retain editable source.

@@ -1,0 +1,74 @@
+{
+  "schema_version": 1,
+  "suites": [
+    {
+      "id": "art-creation",
+      "title": "Art creation"
+    }
+  ],
+  "reports": [
+    {
+      "id": "formal",
+      "title": "Formal comparison",
+      "path": "formal",
+      "suite_id": "art-creation",
+      "package": {
+        "sha256": "0386ff6f2698479934a9abb00607986973433710985c717671f5e0315c096bbe",
+        "size": 39039254,
+        "url": "https://github.com/royenheart/MaintainAll/releases/download/skill-benchmark-data-20261026/formal.zip"
+      },
+      "report_fingerprint": "a900eef2dd0c80e33d722048670de654ca3064b8b35a907a4103d71dea6114fa",
+      "summary": {
+        "experiments": [
+          "20261009-formal-harbor-v2"
+        ],
+        "trials": 18,
+        "ratings": 322,
+        "pairs": 18,
+        "images": 188
+      }
+    },
+    {
+      "id": "refinement-screen-20261013",
+      "title": "Six-case comparison",
+      "path": "refinement-screen-20261013",
+      "suite_id": "art-creation",
+      "package": {
+        "sha256": "923f0ea00a2237c745760b86f1203818afef3d7ef47a1c0efe81c698bbb24830",
+        "size": 46197139,
+        "url": "https://github.com/royenheart/MaintainAll/releases/download/skill-benchmark-data-20261026/refinement-screen-20261013.zip"
+      },
+      "report_fingerprint": "fb4f7cef63f51e5dd50b83ba4da5f34f5adec5080851e63299f2efaf958cf701",
+      "summary": {
+        "experiments": [
+          "20261013-refinement-screen-v1"
+        ],
+        "trials": 12,
+        "ratings": 233,
+        "pairs": 6,
+        "images": 251
+      }
+    },
+    {
+      "id": "refinement-retest-20261013",
+      "title": "Refinement comparison",
+      "path": "refinement-retest-20261013",
+      "suite_id": "art-creation",
+      "package": {
+        "sha256": "e1cb3471a46bdc2e2e78d9c7fd1ca35d441af94a21a02807d4e2f5d3ce0d9543",
+        "size": 37382635,
+        "url": "https://github.com/royenheart/MaintainAll/releases/download/skill-benchmark-data-20261026/refinement-retest-20261013.zip"
+      },
+      "report_fingerprint": "4abbf5f8405c2fca2e26b11cd1e2ca0cc0d18f1c59689c3cd9ab6371b8c25dd4",
+      "summary": {
+        "experiments": [
+          "20261013-refinement-retest-v1"
+        ],
+        "trials": 8,
+        "ratings": 168,
+        "pairs": 4,
+        "images": 120
+      }
+    }
+  ]
+}

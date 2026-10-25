@@ -20,7 +20,7 @@
       "role": "adapted-instructions",
       "url": "https://raw.githubusercontent.com/anthropics/skills/8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4/skills/algorithmic-art/SKILL.md",
       "original_sha256": "3bc4092c09804853186524c826bc0621b940bb6122c05b84496dff95388e6eef",
-      "current_sha256": "b3409b27c274fd5fa5c166f0904b97807de786a5743e57c029754c8e81aa95a7",
+      "current_sha256": "678f2c3413733211d881711be65087efb2b6854874c469b577c7e5098e9f6b92",
       "modified": true
     },
     {
@@ -31,7 +31,7 @@
       "role": "template",
       "url": "https://raw.githubusercontent.com/anthropics/skills/8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4/skills/algorithmic-art/templates/generator_template.js",
       "original_sha256": "9ee0f1da52ef8f7bbfde1917123654880890d43f2d388642d71eab6dd78f94c4",
-      "current_sha256": "add8a3a0ea56e8a81d5528b0fc7a31e95e1198d55aeda2be762ca133ba058ce3",
+      "current_sha256": "257e38a5954b3262d1e0510db4f14122a56dd1281e03bb43aacd77c6cb7d076c",
       "modified": true
     },
     {
@@ -42,7 +42,7 @@
       "role": "template",
       "url": "https://raw.githubusercontent.com/anthropics/skills/8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4/skills/algorithmic-art/templates/viewer.html",
       "original_sha256": "86c79d7ce97d2599ebe4bd9b97fdeb7295c9d3ed61ceeb513cbe1b2bb5d1ce29",
-      "current_sha256": "42faa6596fa1e84b0ee9b3569bcdc043098d2fd301a1ee70d4b889a9c30fb034",
+      "current_sha256": "3b086613d4f31f5b7260b74dad01baf9ef35bf96b1b2b8b4951bf96152ee6a94",
       "modified": true
     },
     {
@@ -75,7 +75,7 @@
       "role": "adapted-instructions",
       "url": "https://raw.githubusercontent.com/pbakaus/impeccable/e103efe779e2dd01274dabae83531fef00bf2563/skill/reference/animate.md",
       "original_sha256": "59f38d50c799aa47ecd7288c69dce0245d8c3e3e2368b29499d583996b5030b3",
-      "current_sha256": "adf5d43a47bcf819d87e2a25e322758573d5891bc6431cdbae4aff732d45e04e",
+      "current_sha256": "8a4372003b74b648cc4c77f45a28dc2c1138c1736231edb24500d3586808de65",
       "modified": true
     },
     {
@@ -97,7 +97,7 @@
       "role": "adapted-instructions",
       "url": "https://raw.githubusercontent.com/anthropics/skills/8a1541c4a3ffa5a20a5a91de0dcf3f0bab1d1ef4/skills/canvas-design/SKILL.md",
       "original_sha256": "a1f288079624402f30682753c1d43920b6664785698d21d3e7aa197450a6448b",
-      "current_sha256": "53794e8ff0bb255be16215268683aa2946af297175fa492b5737e7e9b3b33af1",
+      "current_sha256": "f7017408ef8f07b9271364c079049ed786752742269d806bd52a68ddfa6b8ae0",
       "modified": true
     },
     {
@@ -119,7 +119,7 @@
       "role": "adapted-instructions",
       "url": "https://raw.githubusercontent.com/remotion-dev/codex-plugin/10bf0018eb1d5ca03d08116c97416972d3ee0b47/skills/remotion-markup/SKILL.md",
       "original_sha256": "76ce498550fa46bceebc82f55b647f5284d73340151a688c8a727da941650835",
-      "current_sha256": "9f7d938e9316211ef953e1ecccb70ac5377f8900872655ccecf4045a433602d6",
+      "current_sha256": "00d8d31e5813307c9c9c57d8f3e4eecc226a90fb09e4bb8b381c59da7817a306",
       "modified": true
     },
     {
@@ -130,7 +130,7 @@
       "role": "reference",
       "url": "https://raw.githubusercontent.com/remotion-dev/codex-plugin/10bf0018eb1d5ca03d08116c97416972d3ee0b47/skills/remotion-markup/3d.md",
       "original_sha256": "42cef6d68fb4a266ab495d35df0c60e03672b0d85c043f9b567f6aa7ff00dd0d",
-      "current_sha256": "8e6ac2df9645dd4bcfd44130f1c65783b52da23a9f10ed56ec1e3226102e7b76",
+      "current_sha256": "b3fa79d8cadb08036dfb8f5e3a19d0ca51f87608dbf28647589014c9a4ae4144",
       "modified": true
     },
     {
@@ -163,7 +163,7 @@
       "role": "reference",
       "url": "https://raw.githubusercontent.com/remotion-dev/codex-plugin/10bf0018eb1d5ca03d08116c97416972d3ee0b47/skills/remotion-markup/compositions.md",
       "original_sha256": "96f1f3891940e8e53c473e70912b234b3fbe7e05ba98eb32987e259ac4e8f252",
-      "current_sha256": "a2d12b93de21b4246c8c20d1f0343221504ad53d0dbf3a8d3beae16ff4b60dc0",
+      "current_sha256": "62b6d752fa1c7da1ee50c369b0b38804086bb9258b5e2e8fb87f7c73055a3920",
       "modified": true
     },
     {
@@ -229,7 +229,7 @@
       "role": "adapted-instructions",
       "url": "https://raw.githubusercontent.com/pbakaus/impeccable/e103efe779e2dd01274dabae83531fef00bf2563/skill/reference/live.md",
       "original_sha256": "a294fee3d7ad24ace99017e616cf37c6a87f0e5ba2fd7c5dcbd8930188ced0dd",
-      "current_sha256": "6bd96ac4e316d1069935e85a1a5c87f9469d83fdea4b5e25e750e991b91e0395",
+      "current_sha256": "6094b81b5ff14009753cbbf6763b7707b038a10786af18aca34c4473ac18a8ca",
       "modified": true
     }
   ],

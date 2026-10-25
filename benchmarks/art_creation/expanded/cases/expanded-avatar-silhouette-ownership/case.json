@@ -1,0 +1,463 @@
+{
+  "schema_version": 2,
+  "id": "expanded-avatar-silhouette-ownership",
+  "version": 1,
+  "family": "avatar_costume",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "I want an original virtual storyteller outfit inspired by the kimono's quiet main fabric and red boundary, not a recreated kimono. Give me A and B as two different silhouette directions. Each sheet should show the same character from front, back, and with one arm raised, plus a face-and-shoulder 160x160 preview. The face must remain the main focus. A folded side panel should visibly attach at the wearer's left waist, and the back view should keep that same body-side ownership even though screen left and right reverse. Keep the shoulder outline quiet enough for a small talking-head stream. Explain which attachment and material ideas are visible in the drawings and which would need a real rig or cloth test. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [
+        "kimono"
+      ],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose A for the folded panel, not the large sleeves. Keep B unchanged. Make the lower silhouette feel fuller by adjusting the panel's fold and overlap, without widening the shoulders or covering the hands. Keep the face, red-edge palette, and waist attachment location. Show the same three views and thumbnail. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "I meant lighter material, not a more transparent or wider panel. Change only the fold highlight, edge weight, and overlap cues while preserving the accepted silhouette and attachment. In the raised-arm view make the underarm transition understandable without pretending this proves deformation. Do not call the drawing a finished Live2D or VRM model. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "kimono",
+      "path": "../../assets/met-125959.jpg",
+      "sha256": "c05affbab0e62582e94808f6bc4b83cd23cb73bd077fed9e5bac4d9c1a508926",
+      "license": "CC0 / Met Open Access",
+      "source": "https://www.metmuseum.org/art/collection/search/125959",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "original",
+      "turn": 1,
+      "quote": "not a recreated kimono"
+    },
+    {
+      "id": "options",
+      "turn": 1,
+      "quote": "A and B as two different silhouette directions"
+    },
+    {
+      "id": "identity",
+      "turn": 1,
+      "quote": "the same character from front, back, and with one arm raised"
+    },
+    {
+      "id": "face",
+      "turn": 1,
+      "quote": "The face must remain the main focus."
+    },
+    {
+      "id": "ownership",
+      "turn": 1,
+      "quote": "attach at the wearer's left waist, and the back view should keep that same body-side ownership"
+    },
+    {
+      "id": "shoulder",
+      "turn": 1,
+      "quote": "Keep the shoulder outline quiet enough for a small talking-head stream."
+    },
+    {
+      "id": "truth",
+      "turn": 1,
+      "quote": "which would need a real rig or cloth test"
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Keep B unchanged."
+    },
+    {
+      "id": "volume",
+      "turn": 2,
+      "quote": "adjusting the panel's fold and overlap, without widening the shoulders or covering the hands"
+    },
+    {
+      "id": "preserve",
+      "turn": 2,
+      "quote": "Keep the face, red-edge palette, and waist attachment location."
+    },
+    {
+      "id": "material",
+      "turn": 3,
+      "quote": "Change only the fold highlight, edge weight, and overlap cues while preserving the accepted silhouette and attachment."
+    },
+    {
+      "id": "rig",
+      "turn": 3,
+      "quote": "Do not call the drawing a finished Live2D or VRM model."
+    }
+  ],
+  "atoms": [
+    {
+      "id": "reference-without-copy",
+      "dimension": "reference_transfer",
+      "criterion": "The original performer design inherits field/edge relations without reproducing the garment.",
+      "requirement_ids": [
+        "original"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "silhouette-directions",
+      "dimension": "alternatives",
+      "criterion": "A and B are visibly distinct silhouette organizations.",
+      "requirement_ids": [
+        "options"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "cross-view-identity",
+      "dimension": "cross_view_consistency",
+      "criterion": "Front/back/raised-arm sheets depict a consistent character and garment.",
+      "requirement_ids": [
+        "identity"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "body-side-attachment",
+      "dimension": "construction",
+      "criterion": "The folded panel connects to the same wearer-left waist in all views.",
+      "requirement_ids": [
+        "ownership"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The panel floats, changes body side, or has no readable waist contact.",
+        "1": "Contact is clear in one view but ambiguous or contradictory in another.",
+        "2": "Waist contact and wearer-left ownership are consistent across front, back, and raised-arm views."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "face-and-shoulder-focus",
+      "dimension": "scale_readability",
+      "criterion": "Quiet shoulders support a face-first thumbnail rather than competing costume masses.",
+      "requirement_ids": [
+        "face",
+        "shoulder"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "thumb.png"
+        ]
+      }
+    },
+    {
+      "id": "selected-volume-scope",
+      "dimension": "preservation",
+      "criterion": "A lower folds gain presence while shoulders/hands/face/palette/attachment stay accepted and B stays unchanged.",
+      "requirement_ids": [
+        "scope",
+        "volume",
+        "preserve"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "a.svg",
+          "b.svg",
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "material-without-volume-change",
+      "dimension": "material_cues",
+      "criterion": "Final lighter cues arise from highlights/edge/overlap, with silhouette and attachment retained.",
+      "requirement_ids": [
+        "material"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png"
+        ]
+      }
+    },
+    {
+      "id": "design-versus-rig",
+      "dimension": "evidence_honesty",
+      "criterion": "The notes distinguish illustrated construction from untested cloth/rig deformation and target-ready assets.",
+      "requirement_ids": [
+        "truth",
+        "rig"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "notes.md"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "svg"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "MaintainAll self-authored demanding non-expert brief",
+    "feedback": "synthetic staged corrections; no claim of real user acceptance",
+    "created_at": "2026-10-11",
+    "dataset_release": "art-creation-expanded-v3",
+    "domain": "costume_and_avatar",
+    "challenge_axes": [
+      "body-versus-screen-ownership",
+      "multi-view-construction",
+      "small-avatar-silhouette",
+      "material-versus-volume",
+      "target-readiness-honesty"
+    ],
+    "reference_authorship": "CC0 Met object photographs and/or explicitly labeled original schematic input; never a replay of private session images",
+    "holdout_policy": "development task data"
+  }
+}

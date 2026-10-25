@@ -1,0 +1,19 @@
+{
+  "schema_version": 2,
+  "id": "art-creation-trajectory-development",
+  "version": 1,
+  "cases": [
+    {
+      "path": "cases/trajectory-boundary-glow/case.json",
+      "sha256": "bdc1d91f370990e775d08c99f7e823c0b96f2728d588b3b3a8fe20ea6e729349"
+    },
+    {
+      "path": "cases/trajectory-content-transition/case.json",
+      "sha256": "4702b6e053ac72b14d77fe1c382639a82a062afccacb84f9af3d82162666d32d"
+    },
+    {
+      "path": "cases/trajectory-slot-ownership/case.json",
+      "sha256": "2e9524062f87722ad9006742835084c282fcc9404d4746f91b6003c30eca4f10"
+    }
+  ]
+}

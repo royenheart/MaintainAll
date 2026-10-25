@@ -1,0 +1,480 @@
+{
+  "schema_version": 2,
+  "id": "expanded-editorial-density",
+  "version": 1,
+  "family": "editorial",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Make an original program cover for a riverside poetry reading, using the painting as a mood reference and the woven cloth as a rhythm reference. The words are River Voices, Saturday 16:00, North Quay Reading Room, and Poems, conversation, and a walk along the water. I want openness without the practical details looking lost. Show A with a broad quiet field and B with a more compressed column arrangement, at the same canvas size. The title should lead, followed by time and place, then the explanation. Translate the painting's large-versus-small movement into composition; do not paste or redraw the painting as a background. Keep the original reference-specific explanation separate from your design suggestions. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [
+        "painting",
+        "weave"
+      ],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose B for its alignment, not its density. Keep A unchanged. Add Admission free; step-free entrance on the east side and Bring a poem to share. I want the detail block easier to scan, with related information grouped by proximity and spacing rather than boxing every line. Preserve the title size and the accepted column edge. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "Now check the design as a 160x160 social preview. The title must still be recognizable and the date/location group must remain distinct, even if the smallest invitation sentence is not fully readable. Change B's contrast and spacing only, keeping its text, title size, and column edge. Deliver the full-sized A/B sheets and the new thumbnail, and state which small text was actually legible. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "painting",
+      "path": "../../assets/met-436535.jpg",
+      "sha256": "af0e3486621c210b54932d055294051b5601aa3362af4b84ab97e2831f8163bc",
+      "license": "CC0 / Met Open Access",
+      "source": "https://www.metmuseum.org/art/collection/search/436535",
+      "visibility": "public"
+    },
+    {
+      "id": "weave",
+      "path": "../../assets/met-45406.jpg",
+      "sha256": "24fcad8ac8807557be50fff389b5326ae29b561dcbe5e26f3dab17f1c45ed916",
+      "license": "CC0 / Met Open Access",
+      "source": "https://www.metmuseum.org/art/collection/search/45406",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "open",
+      "turn": 1,
+      "quote": "openness without the practical details looking lost"
+    },
+    {
+      "id": "options",
+      "turn": 1,
+      "quote": "A with a broad quiet field and B with a more compressed column arrangement"
+    },
+    {
+      "id": "hierarchy",
+      "turn": 1,
+      "quote": "The title should lead, followed by time and place, then the explanation."
+    },
+    {
+      "id": "transfer",
+      "turn": 1,
+      "quote": "Translate the painting's large-versus-small movement into composition; do not paste or redraw the painting as a background."
+    },
+    {
+      "id": "claims",
+      "turn": 1,
+      "quote": "Keep the original reference-specific explanation separate from your design suggestions."
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Keep A unchanged."
+    },
+    {
+      "id": "grouping",
+      "turn": 2,
+      "quote": "related information grouped by proximity and spacing rather than boxing every line"
+    },
+    {
+      "id": "preserve",
+      "turn": 2,
+      "quote": "Preserve the title size and the accepted column edge."
+    },
+    {
+      "id": "thumb",
+      "turn": 3,
+      "quote": "The title must still be recognizable and the date/location group must remain distinct"
+    },
+    {
+      "id": "local",
+      "turn": 3,
+      "quote": "Change B's contrast and spacing only, keeping its text, title size, and column edge."
+    }
+  ],
+  "atoms": [
+    {
+      "id": "field-with-legibility",
+      "dimension": "composition",
+      "criterion": "Open space frames rather than disconnects practical information.",
+      "requirement_ids": [
+        "open"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "structural-alternatives",
+      "dimension": "alternatives",
+      "criterion": "A and B visibly use the requested different field/column organizations.",
+      "requirement_ids": [
+        "options"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "reading-hierarchy",
+      "dimension": "hierarchy",
+      "criterion": "Title, time/place, and explanation have a clear reading order.",
+      "requirement_ids": [
+        "hierarchy"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "nonliteral-transfer",
+      "dimension": "reference_transfer",
+      "criterion": "Reference movement is transformed into layout relations rather than pasted imagery.",
+      "requirement_ids": [
+        "transfer"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "observation-suggestion",
+      "dimension": "evidence_honesty",
+      "criterion": "The reference explanation separates seen evidence from design proposals.",
+      "requirement_ids": [
+        "claims"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "unchosen-source-stability",
+      "dimension": "preservation",
+      "criterion": "A remains unchanged when B receives additional copy and thumbnail refinement.",
+      "requirement_ids": [
+        "scope"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "a.svg",
+          "a.png"
+        ]
+      }
+    },
+    {
+      "id": "information-grouping",
+      "dimension": "layout_relations",
+      "criterion": "Added details are grouped by semantic proximity and spacing without indiscriminate boxes.",
+      "requirement_ids": [
+        "grouping"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "fixed-type-and-column",
+      "dimension": "preservation",
+      "criterion": "The title size and column edge survive added copy and the final scoped edit.",
+      "requirement_ids": [
+        "preserve",
+        "local"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "b.svg",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "small-view-hierarchy",
+      "dimension": "scale_readability",
+      "criterion": "The social preview retains a recognizable title and distinct date/location group.",
+      "requirement_ids": [
+        "thumb"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The title cannot be recognized or details collapse into an undifferentiated block.",
+        "1": "The title is recognizable but date/location separation is lost.",
+        "2": "The title is recognizable and date/location remain visibly grouped beneath it."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "thumb.png"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "svg"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "MaintainAll self-authored demanding non-expert brief",
+    "feedback": "synthetic staged corrections; no claim of real user acceptance",
+    "created_at": "2026-10-11",
+    "dataset_release": "art-creation-expanded-v3",
+    "domain": "editorial_layout",
+    "challenge_axes": [
+      "layout-transfer",
+      "information-density",
+      "semantic-grouping",
+      "small-view-readability",
+      "cross-turn-type-preservation"
+    ],
+    "reference_authorship": "CC0 Met object photographs and/or explicitly labeled original schematic input; never a replay of private session images",
+    "holdout_policy": "development task data"
+  }
+}

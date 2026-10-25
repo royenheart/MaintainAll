@@ -1,0 +1,51 @@
+{
+  "schema": 1,
+  "retrieved_utc": "2026-10-09",
+  "policy": "https://www.metmuseum.org/hubs/open-access",
+  "references": [
+    {
+      "object_id": 125959,
+      "title": "Kimono",
+      "page": "https://www.metmuseum.org/art/collection/search/125959",
+      "image_url": "https://images.metmuseum.org/CRDImages/as/web-large/CI41.110.69_F.jpg",
+      "file": "met-125959.jpg",
+      "sha256": "c05affbab0e62582e94808f6bc4b83cd23cb73bd077fed9e5bac4d9c1a508926",
+      "bytes": 36895,
+      "license": "CC0 / Met public-domain object image",
+      "metadata": "met-125959.json"
+    },
+    {
+      "object_id": 45406,
+      "title": "Piece of Cloth for Kimono with Pattern of Stylized Rosettes",
+      "page": "https://www.metmuseum.org/art/collection/search/45406",
+      "image_url": "https://images.metmuseum.org/CRDImages/as/web-large/185505.jpg",
+      "file": "met-45406.jpg",
+      "sha256": "24fcad8ac8807557be50fff389b5326ae29b561dcbe5e26f3dab17f1c45ed916",
+      "bytes": 39913,
+      "license": "CC0 / Met public-domain object image",
+      "metadata": "met-45406.json"
+    },
+    {
+      "object_id": 436535,
+      "title": "Wheat Field with Cypresses",
+      "page": "https://www.metmuseum.org/art/collection/search/436535",
+      "image_url": "https://images.metmuseum.org/CRDImages/ep/web-large/DP-42549-001.jpg",
+      "file": "met-436535.jpg",
+      "sha256": "af0e3486621c210b54932d055294051b5601aa3362af4b84ab97e2831f8163bc",
+      "bytes": 221383,
+      "license": "CC0 / Met public-domain object image",
+      "metadata": "met-436535.json"
+    },
+    {
+      "object_id": 81718,
+      "title": "Mantua",
+      "page": "https://www.metmuseum.org/art/collection/search/81718",
+      "image_url": "https://images.metmuseum.org/CRDImages/ci/web-large/DT11788.jpg",
+      "file": "met-81718.jpg",
+      "sha256": "7d009bd2c495723af17d1cb2a59b8f35fc6a58257418a9f25ed28987e4a8d923",
+      "bytes": 56004,
+      "license": "CC0 / Met public-domain object image",
+      "metadata": "met-81718.json"
+    }
+  ]
+}

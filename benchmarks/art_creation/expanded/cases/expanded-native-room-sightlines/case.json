@@ -1,0 +1,553 @@
+{
+  "schema_version": 2,
+  "id": "expanded-native-room-sightlines",
+  "version": 1,
+  "family": "native_interior",
+  "split": "holdout",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Make an original quiet reading room in Blender using the attached authored sightline schematic. Show A and B as two opening/partition rule systems inside the same room envelope. The entrance and the main reading area should both be visible from one fixed shared camera, while a low partition gives the reading area some privacy without becoming a wall across the view. Keep the furniture grounded on the floor and make daylight come from a readable opening rather than a glowing object floating in the room. Expose partition height, opening proportion, and furniture offset in source.py. Demonstrate a real partition-height parameter edit while preserving the camera, room dimensions, and entrance location; include a side view. Reopen the saved native scene and clearly separate rendered spatial evidence from untested physical lighting or building-accessibility claims. Deliver scene.blend, source.py, a.png, b.png, side.png, parameter-probe.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. All four PNGs are actual 640x480 Blender renders. Save both labeled alternatives in scene.blend; expose meaningful parameters in source.py and document a real parameter change and independent saved-scene reopen in evidence.json. Native scene editability is required; a flat drawing is insufficient.",
+      "attachments": [
+        "schematic"
+      ],
+      "artifacts": [
+        {
+          "path": "scene.blend",
+          "kind": "editable",
+          "format": "blend"
+        },
+        {
+          "path": "source.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "side.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "parameter-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose B for the balance of privacy and sightline, not its pale furniture. Keep A unchanged. Change only B's opening proportion to make daylight quieter while keeping the entrance and reading area visible. Preserve the partition height, furniture positions, room envelope, camera, and material palette. Deliver scene.blend, source.py, a.png, b.png, side.png, parameter-probe.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. All four PNGs are actual 640x480 Blender renders. Save both labeled alternatives in scene.blend; expose meaningful parameters in source.py and document a real parameter change and independent saved-scene reopen in evidence.json. Native scene editability is required; a flat drawing is insufficient.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "scene.blend",
+          "kind": "editable",
+          "format": "blend"
+        },
+        {
+          "path": "source.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "side.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "parameter-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "The opening is calmer, but the partition's top edge now visually merges with the reading table. Fix only the partition/table boundary separation through a small partition-height adjustment, keeping the table position, room envelope, entrance, camera, opening shape, and palette. The entrance and reading area must remain visible, and furniture must still contact the floor. Repeat the native reopen and same height-probe comparison without moving the camera to hide a problem. Deliver scene.blend, source.py, a.png, b.png, side.png, parameter-probe.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. All four PNGs are actual 640x480 Blender renders. Save both labeled alternatives in scene.blend; expose meaningful parameters in source.py and document a real parameter change and independent saved-scene reopen in evidence.json. Native scene editability is required; a flat drawing is insufficient.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "scene.blend",
+          "kind": "editable",
+          "format": "blend"
+        },
+        {
+          "path": "source.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "side.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "parameter-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "schematic",
+      "path": "../../assets/room-sightline.png",
+      "sha256": "2c552721776dcc6a27b52e801df922cfe83ee048b1a4b18b2c2a56089ee28e0b",
+      "license": "CC0-1.0",
+      "source": "MaintainAll authored schematic reference",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "alternatives",
+      "turn": 1,
+      "quote": "two opening/partition rule systems inside the same room envelope"
+    },
+    {
+      "id": "sightline",
+      "turn": 1,
+      "quote": "entrance and the main reading area should both be visible from one fixed shared camera"
+    },
+    {
+      "id": "privacy",
+      "turn": 1,
+      "quote": "a low partition gives the reading area some privacy without becoming a wall across the view"
+    },
+    {
+      "id": "contact",
+      "turn": 1,
+      "quote": "Keep the furniture grounded on the floor"
+    },
+    {
+      "id": "daylight",
+      "turn": 1,
+      "quote": "daylight come from a readable opening rather than a glowing object floating in the room"
+    },
+    {
+      "id": "controls",
+      "turn": 1,
+      "quote": "Expose partition height, opening proportion, and furniture offset in source.py."
+    },
+    {
+      "id": "probe",
+      "turn": 1,
+      "quote": "a real partition-height parameter edit while preserving the camera, room dimensions, and entrance location"
+    },
+    {
+      "id": "truth",
+      "turn": 1,
+      "quote": "separate rendered spatial evidence from untested physical lighting or building-accessibility claims"
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Keep A unchanged."
+    },
+    {
+      "id": "opening",
+      "turn": 2,
+      "quote": "Change only B's opening proportion to make daylight quieter while keeping the entrance and reading area visible."
+    },
+    {
+      "id": "accepted",
+      "turn": 2,
+      "quote": "Preserve the partition height, furniture positions, room envelope, camera, and material palette."
+    },
+    {
+      "id": "boundary",
+      "turn": 3,
+      "quote": "Fix only the partition/table boundary separation through a small partition-height adjustment"
+    },
+    {
+      "id": "freeze",
+      "turn": 3,
+      "quote": "keeping the table position, room envelope, entrance, camera, opening shape, and palette"
+    },
+    {
+      "id": "final",
+      "turn": 3,
+      "quote": "Repeat the native reopen and same height-probe comparison without moving the camera to hide a problem."
+    }
+  ],
+  "atoms": [
+    {
+      "id": "shared-room-rule-comparison",
+      "dimension": "alternatives",
+      "criterion": "Opening/partition grammars differ inside the same controlled room envelope.",
+      "requirement_ids": [
+        "alternatives"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "scene.blend",
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "shared-camera-sightline",
+      "dimension": "spatial_relations",
+      "criterion": "Entrance and reading area remain visible together from the fixed shared camera.",
+      "requirement_ids": [
+        "sightline"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "privacy-without-occlusion",
+      "dimension": "spatial_relations",
+      "criterion": "Partition affords a readable partial boundary without blocking the entrance/reading sightline.",
+      "requirement_ids": [
+        "privacy"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "side.png"
+        ]
+      }
+    },
+    {
+      "id": "ground-and-light-source",
+      "dimension": "construction",
+      "criterion": "Furniture contacts floor and daylight is linked to a readable opening.",
+      "requirement_ids": [
+        "contact",
+        "daylight"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "side.png"
+        ]
+      }
+    },
+    {
+      "id": "meaningful-room-controls",
+      "dimension": "editability",
+      "criterion": "Distinct partition/opening/furniture controls are editable in the generator.",
+      "requirement_ids": [
+        "controls"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "source.py"
+        ]
+      }
+    },
+    {
+      "id": "controlled-height-counterfactual",
+      "dimension": "editability",
+      "criterion": "Actual height-probe edit retains camera/envelope/entrance and exposes the spatial consequence.",
+      "requirement_ids": [
+        "probe"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "scene.blend",
+          "source.py",
+          "parameter-probe.png",
+          "evidence.json"
+        ]
+      }
+    },
+    {
+      "id": "opening-only-edit-retention",
+      "dimension": "preservation",
+      "criterion": "B opening refinement retains accepted positions/partition/material/camera while A stays unchanged.",
+      "requirement_ids": [
+        "scope",
+        "opening",
+        "accepted"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "scene.blend",
+          "source.py",
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "partition-table-boundary-repair",
+      "dimension": "spatial_relations",
+      "criterion": "A small partition-height edit separates the top edge from the table while fixed geometry and sightline remain.",
+      "requirement_ids": [
+        "boundary",
+        "freeze"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "b.png",
+          "side.png",
+          "scene.blend"
+        ]
+      }
+    },
+    {
+      "id": "final-reopen-and-camera-freeze",
+      "dimension": "runtime_evidence",
+      "criterion": "Final scene reopen and height probe retain camera rather than changing view to mask conflicts.",
+      "requirement_ids": [
+        "final"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "scene.blend",
+          "parameter-probe.png",
+          "evidence.json"
+        ]
+      }
+    },
+    {
+      "id": "rendered-versus-physical-claims",
+      "dimension": "evidence_honesty",
+      "criterion": "Spatial renders do not establish physical lighting or building-accessibility compliance.",
+      "requirement_ids": [
+        "truth"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "notes.md"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "blender",
+    "native_scene_reopen"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "MaintainAll self-authored demanding non-expert brief",
+    "feedback": "synthetic staged corrections; no claim of real user acceptance",
+    "created_at": "2026-10-11",
+    "dataset_release": "art-creation-expanded-v3",
+    "domain": "native_3d",
+    "challenge_axes": [
+      "fixed-camera-sightline",
+      "privacy-versus-occlusion",
+      "ground-contact",
+      "boundary-separation",
+      "native-height-counterfactual"
+    ],
+    "reference_authorship": "CC0 Met object photographs and/or explicitly labeled original schematic input; never a replay of private session images",
+    "holdout_policy": "evaluator-only task data after skill snapshot freeze"
+  }
+}

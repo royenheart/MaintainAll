@@ -1,0 +1,82 @@
+{
+  "objectID": 125959,
+  "isHighlight": false,
+  "accessionNumber": "C.I.41.110.69",
+  "accessionYear": "1941",
+  "isPublicDomain": true,
+  "primaryImage": "https://images.metmuseum.org/CRDImages/as/original/CI41.110.69_F.jpg",
+  "primaryImageSmall": "https://images.metmuseum.org/CRDImages/as/web-large/CI41.110.69_F.jpg",
+  "additionalImages": [
+    "https://images.metmuseum.org/CRDImages/as/original/CI41.110.69_B.jpg",
+    "https://images.metmuseum.org/CRDImages/as/original/CI41.110.69_d.jpg"
+  ],
+  "constituents": null,
+  "department": "Asian Art",
+  "objectName": "Kimono",
+  "title": "Kimono",
+  "culture": "Japan",
+  "period": "",
+  "dynasty": "",
+  "reign": "",
+  "portfolio": "",
+  "artistRole": "",
+  "artistPrefix": "",
+  "artistDisplayName": "",
+  "artistDisplayBio": "",
+  "artistSuffix": "",
+  "artistAlphaSort": "",
+  "artistNationality": "",
+  "artistBeginDate": "",
+  "artistEndDate": "",
+  "artistGender": "",
+  "artistWikidata_URL": "",
+  "artistULAN_URL": "",
+  "objectDate": "1800–1941",
+  "objectBeginDate": 1800,
+  "objectEndDate": 1941,
+  "medium": "Silk",
+  "dimensions": "66 1/2 × 50 1/2 in. (168.9 × 128.3 cm)",
+  "measurements": [
+    {
+      "elementName": "Image",
+      "elementDescription": null,
+      "elementMeasurements": {
+        "Height": 168.91034,
+        "Width": 128.27026
+      }
+    }
+  ],
+  "creditLine": "Gift of Mrs. Van S. Merle-Smith, 1941",
+  "geographyType": "",
+  "city": "",
+  "state": "",
+  "county": "",
+  "country": "",
+  "region": "",
+  "subregion": "",
+  "locale": "",
+  "locus": "",
+  "excavation": "",
+  "river": "",
+  "classification": "Main dress-Womenswear",
+  "rightsAndReproduction": "",
+  "linkResource": "",
+  "metadataDate": "2025-03-06T04:54:30Z",
+  "repository": "Metropolitan Museum of Art, New York, NY",
+  "objectURL": "https://www.metmuseum.org/art/collection/search/125959",
+  "tags": [
+    {
+      "term": "Cranes",
+      "AAT_URL": "http://vocab.getty.edu/page/aat/300254555",
+      "Wikidata_URL": "https://www.wikidata.org/wiki/Q25365"
+    },
+    {
+      "term": "Landscapes",
+      "AAT_URL": "http://vocab.getty.edu/page/aat/300132294",
+      "Wikidata_URL": "https://www.wikidata.org/wiki/Q191163"
+    }
+  ],
+  "objectWikidata_URL": "",
+  "isTimelineWork": false,
+  "GalleryNumber": ""
+}

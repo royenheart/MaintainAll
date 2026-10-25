@@ -18,7 +18,7 @@ Adapted from the MIT-licensed official Remotion Codex plugin; see [upstream sour
 | Audio timing or levels | [Audio](references/audio.md) |
 | Three.js content rendered to video | [3D](references/3d.md) |
 
-These are imported instructions. Match APIs to the installed Remotion version; do not assume every newer Studio feature exists. Dependency installation is an implementation step only when it belongs to the user's requested project.
+Match the reference APIs to the project's installed Remotion version.
 
 ## Construct a temporal description
 
@@ -30,8 +30,6 @@ Use [the composition starter](templates/CreativeStudy.jsx) in an existing projec
 
 ## Preview, diagnose, and export
 
-Open an actual Studio/player preview before claiming a temporal result. Seek to start, transitions, overlap boundaries, and end; also play the sequence. Compare rhythm, attention, continuity, and audio sync based on user feedback. Inspect a few representative rendered frames before final video export.
+Open a Studio/player preview. Seek to start, transitions, overlap boundaries, and end; then play the sequence. Compare rhythm, attention, continuity, and audio sync through user feedback. Inspect representative frames before video export.
 
-CSS or browser wall-clock animation does not define reproducible Remotion motion. The imported 3D reference explains the same restriction for Three.js content. If this runtime is unavailable, a timeline and playable native-browser study can still test direction; label that fallback and do not claim a Remotion render.
-
-Return editable composition, parameters, frame ranges, asset list, actual playback or rendered video, verification scope, and user decision. The skill-package MIT license is separate from the Remotion runtime's own terms.
+Return the editable composition, parameters, frame ranges, assets, playback or rendered video, and user feedback.

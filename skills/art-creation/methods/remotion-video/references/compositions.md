@@ -54,7 +54,7 @@ Pass `defaultProps` to provide initial values for your component. Values must be
 
 Keep data owned by a child editor on that child's JSX node. For example, captions that should remain editable in the Caption editor belong as an inline array on `<BasicCaptions>`, not in composition `defaultProps` or a component prop. See Displaying captions.
 
-For Studio editing, keep `defaultProps` as an inline object literal on `<Composition>` or `<Still>`. Keep values that should be written back directly in the object instead of deriving them from a loop variable. Do not store it in a variable, import it, spread it, create it with a helper, or wrap it in `satisfies`. When scaffolding, keep the component and `<Composition>` registration in the same file so `width`, `height`, `fps`, `durationInFrames`, and `defaultProps` are visible next to the code that uses them. Use `type` declarations for props rather than `interface` to ensure `defaultProps` type safety.
+For Studio editing, use an inline object literal for `defaultProps` on `<Composition>` or `<Still>`, giving Studio a direct source location for writing values back. Keep the component and registration together when scaffolding so dimensions, timing, and defaults are visible beside their usage. Use `type` declarations for props to support `defaultProps` type checking.
 
 ```tsx
 type Props = {

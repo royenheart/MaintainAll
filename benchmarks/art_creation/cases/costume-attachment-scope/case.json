@@ -1,0 +1,337 @@
+{
+  "schema_version": 2,
+  "id": "costume-attachment-scope",
+  "version": 2,
+  "family": "costume",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Create an original virtual-performer costume study using the supplied kimono's calm body and red boundary. I want one asymmetric folded side panel that clearly belongs to the waist construction, not a floating ornament. Show front, back and raised-arm views on one sheet, plus a 160x160 face-and-shoulder preview. The same garment should be understandable across all views. Explain assumptions about attachment and what a flat drawing cannot establish about cloth or rigging. Deliver costume.svg, costume.png, thumb.png and notes.md.",
+      "attachments": [
+        "kimono"
+      ],
+      "artifacts": [
+        {
+          "path": "costume.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "costume.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Keep the accepted face, shoulder silhouette and red-edge palette. Increase only the lower-body presence and make the folded panel's attachment easier to read from the back. Do not expand the sleeves or add a cape. The asymmetry should keep the same body-side ownership even though the front and back reverse the viewer's left and right. Show the same views and thumbnail.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "costume.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "costume.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "I want lighter material cues and layer separation, not transparency or simply more width. Preserve the accepted volume and the attachment location. Refine the sleeve/underarm transition for the raised-arm view. Distinguish a visible design suggestion from tested deformation; do not call this a finished Live2D or VRM model.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "costume.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "costume.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "kimono",
+      "path": "../../assets/met-125959.jpg",
+      "sha256": "c05affbab0e62582e94808f6bc4b83cd23cb73bd077fed9e5bac4d9c1a508926",
+      "license": "CC0 / Met public-domain object image",
+      "source": "https://www.metmuseum.org/art/collection/search/125959",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "attach",
+      "turn": 1,
+      "quote": "asymmetric folded side panel that clearly belongs to the waist construction, not a floating ornament"
+    },
+    {
+      "id": "views",
+      "turn": 1,
+      "quote": "same garment should be understandable across all views"
+    },
+    {
+      "id": "limits",
+      "turn": 1,
+      "quote": "what a flat drawing cannot establish about cloth or rigging"
+    },
+    {
+      "id": "local",
+      "turn": 2,
+      "quote": "Increase only the lower-body presence"
+    },
+    {
+      "id": "side",
+      "turn": 2,
+      "quote": "same body-side ownership even though the front and back reverse the viewer's left and right"
+    },
+    {
+      "id": "material",
+      "turn": 3,
+      "quote": "lighter material cues and layer separation, not transparency or simply more width"
+    },
+    {
+      "id": "retain",
+      "turn": 3,
+      "quote": "Preserve the accepted volume and the attachment location."
+    },
+    {
+      "id": "arm",
+      "turn": 3,
+      "quote": "Refine the sleeve/underarm transition for the raised-arm view."
+    }
+  ],
+  "atoms": [
+    {
+      "id": "supported-panel",
+      "dimension": "attachment",
+      "criterion": "The folded panel is supported by a legible waist relation.",
+      "requirement_ids": [
+        "attach"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "costume.png"
+        ]
+      }
+    },
+    {
+      "id": "cross-view-body-side",
+      "dimension": "construction",
+      "criterion": "The same garment ownership and openings remain coherent across actual views.",
+      "requirement_ids": [
+        "views",
+        "side"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "costume.png"
+        ]
+      }
+    },
+    {
+      "id": "localized-volume",
+      "dimension": "preservation",
+      "criterion": "Only lower-body presence changes while accepted upper silhouette and palette stay stable.",
+      "requirement_ids": [
+        "local"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "costume.png",
+          "thumb.png"
+        ]
+      }
+    },
+    {
+      "id": "opaque-lightness",
+      "dimension": "material_cues",
+      "criterion": "Layer and sleeve cues express light opaque material rather than transparency or added width.",
+      "requirement_ids": [
+        "material"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "costume.png"
+        ]
+      }
+    },
+    {
+      "id": "construction-preservation",
+      "dimension": "preservation",
+      "criterion": "Final material/underarm refinements preserve the accepted volume and attachment.",
+      "requirement_ids": [
+        "retain"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "costume.png"
+        ]
+      }
+    },
+    {
+      "id": "underarm-clearance",
+      "dimension": "motion_scope",
+      "criterion": "Raised-arm transitions are visually explained without contradictory attachment changes.",
+      "requirement_ids": [
+        "arm"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "costume.png"
+        ]
+      }
+    },
+    {
+      "id": "handoff-scope",
+      "dimension": "evidence_honesty",
+      "criterion": "The handoff separates a flat design suggestion from untested native deformation.",
+      "requirement_ids": [
+        "limits"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "notes.md"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "svg",
+    "real_images",
+    "exact_resume"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "self-authored natural brief",
+    "reference_images": "Met Open Access; exact downloaded image hashes",
+    "user_acceptance": "none; synthetic staged feedback",
+    "created_at": "2026-10-09"
+  }
+}

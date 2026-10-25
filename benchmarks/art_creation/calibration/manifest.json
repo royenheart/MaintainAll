@@ -1,0 +1,42 @@
+{
+  "schema_version": 1,
+  "provenance": "MaintainAll original illustrative fixtures; CC0 dedication; not model outputs or input reference photographs",
+  "pairs": [
+    {
+      "id": "event-baseline",
+      "measurement": "shared_baseline",
+      "positive": {
+        "path": "grouped-entry.svg",
+        "sha256": "1bd9e294c92802e9117336a475adce6c9b5f37fae0e510bf45c04f2e7b602b70"
+      },
+      "negative": {
+        "path": "detached-entry.svg",
+        "sha256": "9444e8ea3776fe721dda1a5362c6a4ad8ceb9549bd5a7437e2df1e2041c3509f"
+      },
+      "invariant": {
+        "path": "grouped-entry-recolored.svg",
+        "sha256": "637d5377b3cab178391a76fa3fa98c4d67b669c62e47ab5085af44fa29b60a5d"
+      },
+      "nuisance": "same element/text count; color substitution leaves measured relation unchanged",
+      "scope": "trusted exact SVG geometric relation; visual grouping/material/quality still requires independent review"
+    },
+    {
+      "id": "support-contact",
+      "measurement": "anchor_distance",
+      "positive": {
+        "path": "attached-feature.svg",
+        "sha256": "140ed2b0fd499f3a481d641b61b182408793398e55f7225f0b2bdd8e65551bc5"
+      },
+      "negative": {
+        "path": "floating-feature.svg",
+        "sha256": "5caa46a39637d3cbb0349da17dbfa4939d948c58476221cd1f3ef43bde6ca359"
+      },
+      "invariant": {
+        "path": "attached-feature-recolored.svg",
+        "sha256": "c7152309bee5a5110be6f1583d39637c336d5c806f32d8e429d19c2cffbf02e4"
+      },
+      "nuisance": "same element/text count; color substitution leaves measured relation unchanged",
+      "scope": "trusted exact SVG geometric relation; visual grouping/material/quality still requires independent review"
+    }
+  ]
+}

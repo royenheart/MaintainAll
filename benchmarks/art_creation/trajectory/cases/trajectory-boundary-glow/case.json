@@ -1,0 +1,375 @@
+{
+  "schema_version": 2,
+  "id": "trajectory-boundary-glow",
+  "version": 2,
+  "family": "trajectory_derived",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Create a local playable abstract golden ring-and-halo scene. The attached picture is an original schematic replacement, not the original session reference. Keep a thin bright inner edge and a sparse lower ring field extending toward the bottom. The lower lines should approach the central edge rather than stopping across an empty gap. Use less regular wave-like variation, with a smooth color and glow transition. Show actual start, intermediate and end browser captures. Deliver index.html, start.png, middle.png, end.png and notes.md; distinguish an artistic interpretation from a physical black-hole simulation.",
+      "attachments": [
+        "replacement"
+      ],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "start.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "middle.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "end.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "The sparse density and first thin-edge treatment are accepted. Refine only the connection: line ends should be covered by the adjoining glow rather than merely becoming half-transparent or ending before it. Keep the initial thin bright edge. Preserve the overall layout, and show the actual local transition in the same browser study.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "start.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "middle.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "end.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "Add mild, slow luminous material bulges outside the central black boundary, without expanding the black region itself. I want a lighter and slower effect, not large fast deformations. Preserve the accepted sparse field, first edge treatment and connected transition. Exercise the motion and describe what changes versus what stays fixed.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "start.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "middle.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "end.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "replacement",
+      "path": "../../assets/glow-replacement.png",
+      "sha256": "d548750ee265aa0f545c08764c5d906acf9e9f24c413daa81dc4a5e4e18d5901",
+      "license": "CC0 / MaintainAll original schematic",
+      "source": "Self-authored replacement for this abstract task; not an original session image",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "connected",
+      "turn": 1,
+      "quote": "lower lines should approach the central edge rather than stopping across an empty gap"
+    },
+    {
+      "id": "variation",
+      "turn": 1,
+      "quote": "less regular wave-like variation"
+    },
+    {
+      "id": "cover",
+      "turn": 2,
+      "quote": "line ends should be covered by the adjoining glow rather than merely becoming half-transparent"
+    },
+    {
+      "id": "edge",
+      "turn": 2,
+      "quote": "Keep the initial thin bright edge."
+    },
+    {
+      "id": "outside",
+      "turn": 3,
+      "quote": "outside the central black boundary, without expanding the black region itself"
+    },
+    {
+      "id": "slow",
+      "turn": 3,
+      "quote": "a lighter and slower effect, not large fast deformations"
+    },
+    {
+      "id": "preserve",
+      "turn": 3,
+      "quote": "Preserve the accepted sparse field, first edge treatment and connected transition."
+    }
+  ],
+  "atoms": [
+    {
+      "id": "connected-field",
+      "dimension": "spatial_relations",
+      "criterion": "Line/glow relations connect without the empty gap identified in the feedback.",
+      "requirement_ids": [
+        "connected"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The requested relation is absent or contradicted in actual output.",
+        "1": "The relation is partly visible but ambiguous or unstable.",
+        "2": "The requested relation is visible and supported across relevant states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "index.html",
+          "start.png",
+          "middle.png",
+          "end.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "nonregular-wave",
+      "dimension": "pattern_relations",
+      "criterion": "Wave-like variation avoids a mechanically identical repeated rhythm.",
+      "requirement_ids": [
+        "variation"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The requested relation is absent or contradicted in actual output.",
+        "1": "The relation is partly visible but ambiguous or unstable.",
+        "2": "The requested relation is visible and supported across relevant states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "start.png",
+          "middle.png",
+          "end.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "covered-line-end",
+      "dimension": "material_cues",
+      "criterion": "Line ends are covered by the glow while the thin accepted edge remains legible.",
+      "requirement_ids": [
+        "cover",
+        "edge"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The requested relation is absent or contradicted in actual output.",
+        "1": "The relation is partly visible but ambiguous or unstable.",
+        "2": "The requested relation is visible and supported across relevant states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "index.html",
+          "start.png",
+          "middle.png",
+          "end.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "boundary-preservation",
+      "dimension": "preservation",
+      "criterion": "Added luminous bulges remain outside a stable central black boundary.",
+      "requirement_ids": [
+        "outside"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The requested relation is absent or contradicted in actual output.",
+        "1": "The relation is partly visible but ambiguous or unstable.",
+        "2": "The requested relation is visible and supported across relevant states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "start.png",
+          "middle.png",
+          "end.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "restrained-motion",
+      "dimension": "motion_relations",
+      "criterion": "Observed bulges are mild and slow in relation to the scene, rather than large/fast.",
+      "requirement_ids": [
+        "slow"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The requested relation is absent or contradicted in actual output.",
+        "1": "The relation is partly visible but ambiguous or unstable.",
+        "2": "The requested relation is visible and supported across relevant states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "start.png",
+          "middle.png",
+          "end.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "accepted-relations",
+      "dimension": "preservation",
+      "criterion": "The final added effect preserves the previously accepted density, edge and connection.",
+      "requirement_ids": [
+        "preserve"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The requested relation is absent or contradicted in actual output.",
+        "1": "The relation is partly visible but ambiguous or unstable.",
+        "2": "The requested relation is visible and supported across relevant states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "index.html",
+          "start.png",
+          "middle.png",
+          "end.png",
+          "notes.md"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "browser_capture",
+    "playable_motion"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "translated and abstracted from actual user feedback; never a new user acceptance",
+    "source_turns": [
+      {
+        "line": 2843,
+        "user_text_sha256": "7ae1b3f2c44aca1a9e8e0889ea297e5a65947f763238d97db1761102ce7c13c2"
+      },
+      {
+        "line": 3037,
+        "user_text_sha256": "9e52d12507fd3395b2efb268e81dc908c2565b8a0b2fbbd1d5545933e494df53"
+      },
+      {
+        "line": 3447,
+        "user_text_sha256": "f959a497fff9758e1db38bca2b936862b753f8d0600f2bdc651c32465f51b9b1"
+      },
+      {
+        "line": 3746,
+        "user_text_sha256": "1a5ddec115bf9539d58d62580fb42d5e72c3024a2126539329122b16e51d999a"
+      },
+      {
+        "line": 3899,
+        "user_text_sha256": "7e029f470407760c66742678befb180dcd73314d62f86686b416859919d25d82"
+      },
+      {
+        "line": 5197,
+        "user_text_sha256": "e93c003142907cb6ac913fb7f142efd4f7fa4f90bf1270cc3ff1b0ea1a8db1bc"
+      },
+      {
+        "line": 5379,
+        "user_text_sha256": "f989aa16a1a347c54f076342019ad94249573de3e5dfb0d8d2eaa94aaee2f444"
+      }
+    ],
+    "used_to_modify_skill": true,
+    "reference_replacement": true,
+    "replacement_scope": "Original, visibly labeled relationship schematic; exact original private references are separate and license unconfirmed",
+    "added_for_benchmark": "Fixed local deliverable filenames, actual browser evidence and explicit evidence-honesty requirements",
+    "synthetic_staged_feedback": true,
+    "source_session_sha256": "074d30e146858bd9f6404168c1035b5f0eb2e4d4bdc62345fa45cdafd5a7b0a4",
+    "source_thread_sha256": "29937249b41bb4954e56eea42bddf5019800d59cf0dd613f8a7c919465111ba2"
+  }
+}

@@ -1,0 +1,489 @@
+{
+  "schema_version": 2,
+  "id": "expanded-costume-function-detail",
+  "version": 1,
+  "family": "costume_function",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Design an original virtual gardener outfit using the woven-cloth reference for restrained rhythm. I want practical-looking layers that still feel welcoming on camera. Show A and B on matching front, back, and bent-arm sheets. The apron, pocket opening, and waist closure should visibly belong to the garment rather than float as decoration. Keep the patterned area away from the face and hands, and make each pocket opening readable against the surrounding fabric. I do not want the photographed textile copied or tiled across everything. Show a face-and-shoulder thumbnail and explain which practical construction ideas are visible, without claiming the illustrated costume has been worn or tested. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [
+        "weave"
+      ],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose B for the apron-to-waist relation, not its extra straps. Keep A unchanged. Simplify straps near the elbow and move pattern emphasis to the lower apron, while preserving the apron's attachment, pocket positions, face, and shoulder width. Make the bent-arm view show how the sleeve meets the apron without trapping the forearm. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "The pockets are clearer, but the pattern now competes with their openings. Change only pattern spacing and edge contrast around the pocket openings; keep the accepted pattern motif, overall apron silhouette, and all pocket and closure positions. Do not add another layer or accessory to solve it. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "weave",
+      "path": "../../assets/met-45406.jpg",
+      "sha256": "24fcad8ac8807557be50fff389b5326ae29b561dcbe5e26f3dab17f1c45ed916",
+      "license": "CC0 / Met Open Access",
+      "source": "https://www.metmuseum.org/art/collection/search/45406",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "views",
+      "turn": 1,
+      "quote": "matching front, back, and bent-arm sheets"
+    },
+    {
+      "id": "construction",
+      "turn": 1,
+      "quote": "The apron, pocket opening, and waist closure should visibly belong to the garment rather than float as decoration."
+    },
+    {
+      "id": "focus",
+      "turn": 1,
+      "quote": "Keep the patterned area away from the face and hands"
+    },
+    {
+      "id": "pocket",
+      "turn": 1,
+      "quote": "make each pocket opening readable against the surrounding fabric"
+    },
+    {
+      "id": "transfer",
+      "turn": 1,
+      "quote": "I do not want the photographed textile copied or tiled across everything."
+    },
+    {
+      "id": "truth",
+      "turn": 1,
+      "quote": "without claiming the illustrated costume has been worn or tested"
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Keep A unchanged."
+    },
+    {
+      "id": "accepted",
+      "turn": 2,
+      "quote": "preserving the apron's attachment, pocket positions, face, and shoulder width"
+    },
+    {
+      "id": "arm",
+      "turn": 2,
+      "quote": "the sleeve meets the apron without trapping the forearm"
+    },
+    {
+      "id": "local",
+      "turn": 3,
+      "quote": "Change only pattern spacing and edge contrast around the pocket openings"
+    },
+    {
+      "id": "freeze",
+      "turn": 3,
+      "quote": "keep the accepted pattern motif, overall apron silhouette, and all pocket and closure positions"
+    },
+    {
+      "id": "no-extra",
+      "turn": 3,
+      "quote": "Do not add another layer or accessory to solve it."
+    }
+  ],
+  "atoms": [
+    {
+      "id": "cross-view-costume",
+      "dimension": "cross_view_consistency",
+      "criterion": "Front/back/bent-arm sheets share coherent layer construction.",
+      "requirement_ids": [
+        "views"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "attached-functional-details",
+      "dimension": "construction",
+      "criterion": "Apron, pocket openings, and closure show readable contact with their owning garment.",
+      "requirement_ids": [
+        "construction"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "face-and-hand-quiet",
+      "dimension": "hierarchy",
+      "criterion": "Pattern emphasis avoids obscuring face/hands and remains subordinate in the thumbnail.",
+      "requirement_ids": [
+        "focus"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "thumb.png"
+        ]
+      }
+    },
+    {
+      "id": "pocket-signal",
+      "dimension": "layout_relations",
+      "criterion": "Pocket openings remain distinct from surrounding fabric and ornament.",
+      "requirement_ids": [
+        "pocket"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "original-pattern-translation",
+      "dimension": "reference_transfer",
+      "criterion": "The textile rhythm informs a restrained new motif rather than a copied all-over tile.",
+      "requirement_ids": [
+        "transfer"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "selected-scope-and-identity",
+      "dimension": "preservation",
+      "criterion": "B refinements preserve apron attachment/pockets/face/shoulders and leave A unchanged.",
+      "requirement_ids": [
+        "scope",
+        "accepted"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "a.svg",
+          "b.svg",
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "bent-arm-clearance",
+      "dimension": "construction",
+      "criterion": "The bent-arm sleeve/apron relation leaves the forearm visually free.",
+      "requirement_ids": [
+        "arm"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "pattern-only-pocket-refinement",
+      "dimension": "preservation",
+      "criterion": "Final pocket readability is achieved through local spacing/edge contrast without moving structure or adding accessories.",
+      "requirement_ids": [
+        "local",
+        "freeze",
+        "no-extra"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "b.svg",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "construction-claim-limits",
+      "dimension": "evidence_honesty",
+      "criterion": "Illustrated function is distinguished from physical wear or deformation testing.",
+      "requirement_ids": [
+        "truth"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "notes.md"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "svg"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "MaintainAll self-authored demanding non-expert brief",
+    "feedback": "synthetic staged corrections; no claim of real user acceptance",
+    "created_at": "2026-10-11",
+    "dataset_release": "art-creation-expanded-v3",
+    "domain": "costume_and_avatar",
+    "challenge_axes": [
+      "functional-versus-decorative-detail",
+      "body-clearance",
+      "motif-versus-boundary-contrast",
+      "local-pattern-edit",
+      "physical-test-claim-boundary"
+    ],
+    "reference_authorship": "CC0 Met object photographs and/or explicitly labeled original schematic input; never a replay of private session images",
+    "holdout_policy": "development task data"
+  }
+}

@@ -1,0 +1,541 @@
+{
+  "schema_version": 2,
+  "id": "expanded-browser-overlay-priority",
+  "version": 1,
+  "family": "browser_layers",
+  "split": "holdout",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Make a local playable image-notes page using the painting as the actual featured image and the schematic only as an overlay-relationship reference. The original painting must remain proportionate and recognizable. Show two approaches A and B for a local detail panel opened from a labeled point near the image boundary. The panel should belong to that trigger rather than look like a page-wide notification. Keep the painting as the main focus, with the trigger and detail panel secondary. Pointer and keyboard activation must work; the panel needs a close control and an Escape path that returns focus to its trigger. On a narrow screen, preserve the relationship without hiding the image behind a permanent full-screen box. Show actual intermediate opening/closing states. Deliver index.html, desktop.png, mobile.png, sequence-early.png, sequence-middle.png, sequence-late.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. The desktop and three sequence images are 1280x800; the mobile image is 390x844. Use actual browser captures. In evidence.json record the input actions and observed intermediate states; keep unexecuted behaviors explicitly untested.",
+      "attachments": [
+        "painting",
+        "schematic"
+      ],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "desktop.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "mobile.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 390,
+          "height": 844
+        },
+        {
+          "path": "sequence-early.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-middle.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-late.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose B for its panel-to-trigger relation, not the extra shadow. Keep A unchanged. Lighten only B's shadow and border weight so the detail remains readable but stops competing with the painting. Keep the image proportions, trigger position, panel ownership, and close behavior. Make the narrow layout keep the trigger visible while the panel is open. Deliver index.html, desktop.png, mobile.png, sequence-early.png, sequence-middle.png, sequence-late.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. The desktop and three sequence images are 1280x800; the mobile image is 390x844. Use actual browser captures. In evidence.json record the input actions and observed intermediate states; keep unexecuted behaviors explicitly untested.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "desktop.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "mobile.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 390,
+          "height": 844
+        },
+        {
+          "path": "sequence-early.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-middle.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-late.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "When I close the panel while scrolling, keep my scroll position and restore focus to the same trigger without reopening it. If I immediately reopen, begin from the current visual state without a flash of the old fully open panel. Preserve the accepted border/shadow and narrow layout. With reduced motion, keep the same focus and content ownership while removing travel. Deliver index.html, desktop.png, mobile.png, sequence-early.png, sequence-middle.png, sequence-late.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. The desktop and three sequence images are 1280x800; the mobile image is 390x844. Use actual browser captures. In evidence.json record the input actions and observed intermediate states; keep unexecuted behaviors explicitly untested.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "desktop.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "mobile.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 390,
+          "height": 844
+        },
+        {
+          "path": "sequence-early.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-middle.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-late.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "painting",
+      "path": "../../assets/met-436535.jpg",
+      "sha256": "af0e3486621c210b54932d055294051b5601aa3362af4b84ab97e2831f8163bc",
+      "license": "CC0 / Met Open Access",
+      "source": "https://www.metmuseum.org/art/collection/search/436535",
+      "visibility": "public"
+    },
+    {
+      "id": "schematic",
+      "path": "../../assets/overlay-priority.png",
+      "sha256": "79acb5461e1e4d050d4cfa6d676517311fa3af50a2bad5ee4c3bfe61ac65f829",
+      "license": "CC0-1.0",
+      "source": "MaintainAll authored schematic reference",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "source",
+      "turn": 1,
+      "quote": "The original painting must remain proportionate and recognizable."
+    },
+    {
+      "id": "options",
+      "turn": 1,
+      "quote": "two approaches A and B for a local detail panel"
+    },
+    {
+      "id": "ownership",
+      "turn": 1,
+      "quote": "The panel should belong to that trigger rather than look like a page-wide notification."
+    },
+    {
+      "id": "hierarchy",
+      "turn": 1,
+      "quote": "Keep the painting as the main focus, with the trigger and detail panel secondary."
+    },
+    {
+      "id": "close",
+      "turn": 1,
+      "quote": "an Escape path that returns focus to its trigger"
+    },
+    {
+      "id": "narrow",
+      "turn": 1,
+      "quote": "preserve the relationship without hiding the image behind a permanent full-screen box"
+    },
+    {
+      "id": "actual",
+      "turn": 1,
+      "quote": "actual intermediate opening/closing states"
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Keep A unchanged."
+    },
+    {
+      "id": "weight",
+      "turn": 2,
+      "quote": "Lighten only B's shadow and border weight"
+    },
+    {
+      "id": "accepted",
+      "turn": 2,
+      "quote": "Keep the image proportions, trigger position, panel ownership, and close behavior."
+    },
+    {
+      "id": "trigger",
+      "turn": 2,
+      "quote": "keep the trigger visible while the panel is open"
+    },
+    {
+      "id": "scroll",
+      "turn": 3,
+      "quote": "keep my scroll position and restore focus to the same trigger without reopening it"
+    },
+    {
+      "id": "retarget",
+      "turn": 3,
+      "quote": "begin from the current visual state without a flash of the old fully open panel"
+    },
+    {
+      "id": "reduced",
+      "turn": 3,
+      "quote": "With reduced motion, keep the same focus and content ownership while removing travel"
+    }
+  ],
+  "atoms": [
+    {
+      "id": "actual-image-proportion",
+      "dimension": "source_fidelity",
+      "criterion": "The actual input painting remains recognizable and proportionate.",
+      "requirement_ids": [
+        "source"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "desktop.png",
+          "mobile.png"
+        ]
+      }
+    },
+    {
+      "id": "comparable-overlay-directions",
+      "dimension": "alternatives",
+      "criterion": "A/B provide different local panel organizations under the same image content.",
+      "requirement_ids": [
+        "options"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "desktop.png"
+        ]
+      }
+    },
+    {
+      "id": "local-trigger-ownership",
+      "dimension": "construction",
+      "criterion": "The panel remains a local subordinate of its own labeled trigger.",
+      "requirement_ids": [
+        "ownership"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "desktop.png",
+          "mobile.png"
+        ]
+      }
+    },
+    {
+      "id": "painting-first-hierarchy",
+      "dimension": "hierarchy",
+      "criterion": "Painting leads while trigger/panel retain readable subordinate emphasis.",
+      "requirement_ids": [
+        "hierarchy"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "desktop.png",
+          "mobile.png"
+        ]
+      }
+    },
+    {
+      "id": "keyboard-close-focus",
+      "dimension": "interaction",
+      "criterion": "Keyboard activation/Escape close restore focus to the owning trigger.",
+      "requirement_ids": [
+        "close"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "evidence.json"
+        ]
+      }
+    },
+    {
+      "id": "narrow-played-relationship",
+      "dimension": "runtime_evidence",
+      "criterion": "Actual intermediate captures and narrow layout retain image/panel relationship.",
+      "requirement_ids": [
+        "narrow",
+        "actual"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "sequence-early.png",
+          "sequence-middle.png",
+          "sequence-late.png",
+          "mobile.png"
+        ]
+      }
+    },
+    {
+      "id": "selected-weight-only-edit",
+      "dimension": "preservation",
+      "criterion": "B weight refinement preserves accepted image/trigger/close relations, A, and narrow trigger visibility.",
+      "requirement_ids": [
+        "scope",
+        "weight",
+        "accepted",
+        "trigger"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "desktop.png",
+          "mobile.png",
+          "evidence.json"
+        ]
+      }
+    },
+    {
+      "id": "close-scroll-focus-stability",
+      "dimension": "state_continuity",
+      "criterion": "Closing retains scroll and returns focus without accidentally reopening.",
+      "requirement_ids": [
+        "scroll"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "evidence.json"
+        ]
+      }
+    },
+    {
+      "id": "reopen-and-reduced-state",
+      "dimension": "motion_continuity",
+      "criterion": "Immediate reopen preserves current-state continuity, and reduced motion retains ownership/focus without travel.",
+      "requirement_ids": [
+        "retarget",
+        "reduced"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "evidence.json",
+          "sequence-middle.png"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "browser_capture",
+    "playable_motion"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "MaintainAll self-authored demanding non-expert brief",
+    "feedback": "synthetic staged corrections; no claim of real user acceptance",
+    "created_at": "2026-10-11",
+    "dataset_release": "art-creation-expanded-v3",
+    "domain": "browser_interaction",
+    "challenge_axes": [
+      "original-image-integrity",
+      "overlay-trigger-ownership",
+      "keyboard-focus-return",
+      "scroll-retention",
+      "close-reopen-retarget"
+    ],
+    "reference_authorship": "CC0 Met object photographs and/or explicitly labeled original schematic input; never a replay of private session images",
+    "holdout_policy": "evaluator-only task data after skill snapshot freeze"
+  }
+}

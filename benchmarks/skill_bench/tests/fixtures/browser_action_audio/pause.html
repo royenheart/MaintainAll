@@ -1,0 +1,8 @@
+<!doctype html><meta charset="utf-8"><style>body{font:20px sans-serif}button,input{margin:10px;padding:10px}#carrier{width:80px;height:40px;background:#087fa4;animation:drift 3s linear infinite alternate}@keyframes drift{to{transform:translateX(300px)}}</style>
+<input type="file" id="file" accept="audio/wav"><button id="play">Play</button><button id="toggle">Pause or resume</button><audio id="media"></audio><div id="carrier"></div>
+<script>
+const media=document.getElementById('media');
+document.getElementById('file').addEventListener('change',event=>{media.src=URL.createObjectURL(event.target.files[0]);media.load()});
+document.getElementById('play').addEventListener('click',()=>media.play());
+document.getElementById('toggle').addEventListener('click',()=>media.paused?media.play():media.pause());
+</script>

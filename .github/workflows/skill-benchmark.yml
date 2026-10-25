@@ -1,0 +1,108 @@
+name: Skill benchmark
+
+on:
+  pull_request:
+    paths:
+      - 'benchmarks/**'
+      - 'skills/**'
+      - 'tests/test_art_creation_ab.py'
+      - 'tests/test_art_creation_feedback.py'
+      - 'tests/test_art_creation_complex.py'
+      - '.github/workflows/skill-benchmark.yml'
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: skill-benchmark-${{ github.run_id }}
+  cancel-in-progress: false
+
+jobs:
+  offline:
+    name: Offline contracts and calibration
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          lfs: true
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          version: '0.11.28'
+          enable-cache: false
+      - name: Install isolated locked benchmark environment
+        run: uv sync --project benchmarks/skill_bench --frozen
+      - name: Validate task requirements, assets and rubrics
+        shell: bash
+        run: |
+          git ls-files -z -- 'benchmarks/**/suite.json' | while IFS= read -r -d '' suite; do
+            uv run --project benchmarks/skill_bench skill-bench validate --suite "$suite"
+          done
+      - name: Validate the result package index without downloads
+        run: uv run --project benchmarks/skill_bench skill-bench check-catalog
+      - name: Run deterministic framework and grading tests
+        run: uv run --project benchmarks/skill_bench python -m unittest discover -s benchmarks/skill_bench/tests -v
+      - name: Run offline legacy sandbox and feedback regression tests
+        run: uv run --project benchmarks/skill_bench python -m unittest discover -s tests -p 'test_art_creation_*.py' -v
+      - name: Check skill resource index
+        run: uv run --project benchmarks/skill_bench python skills/art-creation/scripts/check_index.py --root skills/art-creation
+
+  report:
+    name: Validate and package submitted local evaluations
+    needs: offline
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          lfs: true
+      - uses: astral-sh/setup-uv@11f9893b081a58869d3b5fccaea48c9e9e46f990 # v8.3.2
+        with:
+          version: '0.11.28'
+          enable-cache: false
+      - name: Install independent locked report environment
+        run: uv sync --project benchmarks/skill_bench --frozen
+      - name: Restore hash-pinned public results from versioned Releases
+        run: uv run --project benchmarks/skill_bench skill-bench fetch-results
+      - name: Validate and stage submitted public reports without model calls
+        run: |
+          uv run --project benchmarks/skill_bench skill-bench check-reports
+          uv run --project benchmarks/skill_bench skill-bench publish --output public-benchmark-site
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: skill-benchmark-reports-${{ github.sha }}
+          path: public-benchmark-site/
+          if-no-files-found: error
+          retention-days: 30
+          include-hidden-files: false
+      - name: Package the verified site for GitHub Pages
+        if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.BENCHMARK_PAGES_ENABLED == 'true'
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4
+        with:
+          path: public-benchmark-site/
+
+  pages:
+    name: Publish verified reports to GitHub Pages
+    if: github.ref == 'refs/heads/main' && github.event_name != 'pull_request' && vars.BENCHMARK_PAGES_ENABLED == 'true'
+    needs: report
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
+    concurrency:
+      group: skill-benchmark-pages
+      cancel-in-progress: false
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - uses: actions/configure-pages@983d7736d9b0ae728b81ab479565c72886d7745b # v5
+      - name: Deploy the verified site
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4

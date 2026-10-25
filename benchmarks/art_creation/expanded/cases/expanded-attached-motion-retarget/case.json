@@ -1,0 +1,529 @@
+{
+  "schema_version": 2,
+  "id": "expanded-attached-motion-retarget",
+  "version": 1,
+  "family": "browser_attachment",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Build a local playable study inspired by the attached before/after schematic. It shows a panel sharing a boundary with its own trigger; it is not a frame sequence to copy. Give A and B two timing approaches using the same geometry, material, and readable trigger label. The lower panel should unfold from its trigger's bottom edge and stay visibly attached throughout the movement. A should feel softly flowing and B more deliberate, without using opacity alone to fake unfolding. Include pointer and keyboard activation, actual early/middle/late browser captures, and a narrow layout that keeps the same attachment. Text on the trigger should remain still and readable while the panel moves. Deliver index.html, desktop.png, mobile.png, sequence-early.png, sequence-middle.png, sequence-late.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. The desktop and three sequence images are 1280x800; the mobile image is 390x844. Use actual browser captures. In evidence.json record the input actions and observed intermediate states; keep unexecuted behaviors explicitly untested.",
+      "attachments": [
+        "schematic"
+      ],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "desktop.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "mobile.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 390,
+          "height": 844
+        },
+        {
+          "path": "sequence-early.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-middle.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-late.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose A for its continuous unfolding, not its bounce. Keep B unchanged. Remove overshoot from A without adding a visible stop between unfolding and the slow idle surface movement. Keep the attachment edge, endpoint shape, palette, trigger label, and narrow layout. Show intermediate playback rather than assuming the endpoints prove the connection. Deliver index.html, desktop.png, mobile.png, sequence-early.png, sequence-middle.png, sequence-late.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. The desktop and three sequence images are 1280x800; the mobile image is 390x844. Use actual browser captures. In evidence.json record the input actions and observed intermediate states; keep unexecuted behaviors explicitly untested.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "desktop.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "mobile.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 390,
+          "height": 844
+        },
+        {
+          "path": "sequence-early.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-middle.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-late.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "If I activate close halfway through opening, turn back from the current shape instead of jumping to an endpoint first. Closing must finish at the original trigger-edge contact, with no separate rectangle replacing the panel. Keep the accepted final shape and idle relation. Under reduced motion, show open/closed ownership without travel or idle drift, and test keyboard use in that mode. Deliver index.html, desktop.png, mobile.png, sequence-early.png, sequence-middle.png, sequence-late.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. The desktop and three sequence images are 1280x800; the mobile image is 390x844. Use actual browser captures. In evidence.json record the input actions and observed intermediate states; keep unexecuted behaviors explicitly untested.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "desktop.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "mobile.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 390,
+          "height": 844
+        },
+        {
+          "path": "sequence-early.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-middle.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "sequence-late.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1280,
+          "height": 800
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "schematic",
+      "path": "../../assets/attached-reveal.png",
+      "sha256": "623ab2d06f11fa4f619c60d0c515225b53acba32d8852020cbfb2b38d56e4e11",
+      "license": "CC0-1.0",
+      "source": "MaintainAll authored schematic reference",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "options",
+      "turn": 1,
+      "quote": "A and B two timing approaches using the same geometry, material, and readable trigger label"
+    },
+    {
+      "id": "contact",
+      "turn": 1,
+      "quote": "unfold from its trigger's bottom edge and stay visibly attached throughout the movement"
+    },
+    {
+      "id": "unfold",
+      "turn": 1,
+      "quote": "without using opacity alone to fake unfolding"
+    },
+    {
+      "id": "activation",
+      "turn": 1,
+      "quote": "Include pointer and keyboard activation"
+    },
+    {
+      "id": "actual",
+      "turn": 1,
+      "quote": "actual early/middle/late browser captures"
+    },
+    {
+      "id": "responsive",
+      "turn": 1,
+      "quote": "a narrow layout that keeps the same attachment"
+    },
+    {
+      "id": "label",
+      "turn": 1,
+      "quote": "Text on the trigger should remain still and readable while the panel moves."
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Keep B unchanged."
+    },
+    {
+      "id": "continuous",
+      "turn": 2,
+      "quote": "Remove overshoot from A without adding a visible stop between unfolding and the slow idle surface movement."
+    },
+    {
+      "id": "preserve",
+      "turn": 2,
+      "quote": "Keep the attachment edge, endpoint shape, palette, trigger label, and narrow layout."
+    },
+    {
+      "id": "interrupt",
+      "turn": 3,
+      "quote": "turn back from the current shape instead of jumping to an endpoint first"
+    },
+    {
+      "id": "identity",
+      "turn": 3,
+      "quote": "Closing must finish at the original trigger-edge contact, with no separate rectangle replacing the panel."
+    },
+    {
+      "id": "reduced",
+      "turn": 3,
+      "quote": "Under reduced motion, show open/closed ownership without travel or idle drift, and test keyboard use in that mode."
+    }
+  ],
+  "atoms": [
+    {
+      "id": "timing-under-shared-form",
+      "dimension": "alternatives",
+      "criterion": "A/B differ in timing with common geometry/material/label.",
+      "requirement_ids": [
+        "options"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "desktop.png"
+        ]
+      }
+    },
+    {
+      "id": "continuous-boundary-contact",
+      "dimension": "construction",
+      "criterion": "Panel stays in contact with its own trigger edge across intermediate and endpoint states.",
+      "requirement_ids": [
+        "contact"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The panel floats away or contacts a different trigger.",
+        "1": "Endpoints contact correctly but at least one intermediate state has an observable gap.",
+        "2": "The same own-trigger edge contact remains visible through all sampled states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "sequence-early.png",
+          "sequence-middle.png",
+          "sequence-late.png",
+          "index.html"
+        ]
+      }
+    },
+    {
+      "id": "shape-change-not-fade",
+      "dimension": "motion_continuity",
+      "criterion": "Unfolding is an actual shape/spatial change rather than opacity-only replacement.",
+      "requirement_ids": [
+        "unfold",
+        "actual"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "sequence-early.png",
+          "sequence-middle.png",
+          "sequence-late.png"
+        ]
+      }
+    },
+    {
+      "id": "input-and-responsive-contact",
+      "dimension": "interaction",
+      "criterion": "Pointer/keyboard activation and narrow layout retain attachment ownership.",
+      "requirement_ids": [
+        "activation",
+        "responsive"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "mobile.png",
+          "evidence.json"
+        ]
+      }
+    },
+    {
+      "id": "stable-trigger-label",
+      "dimension": "scale_readability",
+      "criterion": "Trigger text stays still and readable while the panel unfolds.",
+      "requirement_ids": [
+        "label"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "sequence-early.png",
+          "sequence-middle.png",
+          "sequence-late.png"
+        ]
+      }
+    },
+    {
+      "id": "idle-join-and-edit-scope",
+      "dimension": "preservation",
+      "criterion": "A joins idle movement without overshoot/pause while fixed form and B are retained.",
+      "requirement_ids": [
+        "scope",
+        "continuous",
+        "preserve"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "sequence-middle.png",
+          "sequence-late.png",
+          "evidence.json"
+        ]
+      }
+    },
+    {
+      "id": "interrupted-reversal",
+      "dimension": "state_continuity",
+      "criterion": "Mid-opening close reverses from the observed current shape without endpoint jump.",
+      "requirement_ids": [
+        "interrupt"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "evidence.json",
+          "sequence-middle.png"
+        ]
+      }
+    },
+    {
+      "id": "closing-geometry-identity",
+      "dimension": "construction",
+      "criterion": "Closing ends in the original geometry and boundary contact without replacement.",
+      "requirement_ids": [
+        "identity"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "sequence-late.png",
+          "evidence.json"
+        ]
+      }
+    },
+    {
+      "id": "reduced-keyboard-state",
+      "dimension": "interaction",
+      "criterion": "Reduced-motion keyboard operation preserves open/closed ownership without spatial/idle motion.",
+      "requirement_ids": [
+        "reduced"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "evidence.json"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "browser_capture",
+    "playable_motion"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "MaintainAll self-authored demanding non-expert brief",
+    "feedback": "synthetic staged corrections; no claim of real user acceptance",
+    "created_at": "2026-10-11",
+    "dataset_release": "art-creation-expanded-v3",
+    "domain": "browser_motion",
+    "challenge_axes": [
+      "structural-attachment-through-motion",
+      "shape-versus-opacity",
+      "transition-idle-join",
+      "interrupted-reversal",
+      "reduced-motion-input"
+    ],
+    "reference_authorship": "CC0 Met object photographs and/or explicitly labeled original schematic input; never a replay of private session images",
+    "holdout_policy": "development task data"
+  }
+}

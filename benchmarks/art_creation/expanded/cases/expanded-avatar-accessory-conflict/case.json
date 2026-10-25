@@ -1,0 +1,485 @@
+{
+  "schema_version": 2,
+  "id": "expanded-avatar-accessory-conflict",
+  "version": 1,
+  "family": "avatar_accessories",
+  "split": "holdout",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "I want a virtual musician whose face feels approachable, with a costume that borrows the kimono's quiet edge and the mantua's broad lower balance. I also like an ear ornament and an asymmetric shoulder drape, but I am worried they will compete. Show two different arrangements A and B using the same face and pose, each with front, back, and raised-arm views. The ear ornament belongs to the wearer's right side and the drape to the wearer's left shoulder; keep those body-side identities in back view. The face should lead at 160x160, with the ornament and drape supporting it rather than touching the jaw or hiding the hand. Explain attachment assumptions and keep this as an editable design sheet, not a claimed VRM export. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [
+        "kimono",
+        "mantua"
+      ],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose B for the shoulder drape, not the ear ornament size. Keep A unchanged. Reduce only the ornament's visual weight and move its hanging end away from the jaw, keeping its ear attachment and body side. Preserve the face, drape silhouette, palette, and shoulder width. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "Now the raised-arm view makes the drape look pinned to the forearm. Fix only the drape's shoulder-to-underarm overlap in that view, keeping the front/back silhouettes and the accepted ear ornament unchanged. Make the contact and the intended free-moving area readable, but label the movement as a design proposal rather than tested rig motion. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "kimono",
+      "path": "../../assets/met-125959.jpg",
+      "sha256": "c05affbab0e62582e94808f6bc4b83cd23cb73bd077fed9e5bac4d9c1a508926",
+      "license": "CC0 / Met Open Access",
+      "source": "https://www.metmuseum.org/art/collection/search/125959",
+      "visibility": "public"
+    },
+    {
+      "id": "mantua",
+      "path": "../../assets/met-81718.jpg",
+      "sha256": "7d009bd2c495723af17d1cb2a59b8f35fc6a58257418a9f25ed28987e4a8d923",
+      "license": "CC0 / Met Open Access",
+      "source": "https://www.metmuseum.org/art/collection/search/81718",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "options",
+      "turn": 1,
+      "quote": "two different arrangements A and B using the same face and pose"
+    },
+    {
+      "id": "ownership",
+      "turn": 1,
+      "quote": "ear ornament belongs to the wearer's right side and the drape to the wearer's left shoulder"
+    },
+    {
+      "id": "back",
+      "turn": 1,
+      "quote": "keep those body-side identities in back view"
+    },
+    {
+      "id": "hierarchy",
+      "turn": 1,
+      "quote": "The face should lead at 160x160"
+    },
+    {
+      "id": "clearance",
+      "turn": 1,
+      "quote": "rather than touching the jaw or hiding the hand"
+    },
+    {
+      "id": "target",
+      "turn": 1,
+      "quote": "not a claimed VRM export"
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Keep A unchanged."
+    },
+    {
+      "id": "ornament",
+      "turn": 2,
+      "quote": "Reduce only the ornament's visual weight and move its hanging end away from the jaw, keeping its ear attachment and body side."
+    },
+    {
+      "id": "preserve",
+      "turn": 2,
+      "quote": "Preserve the face, drape silhouette, palette, and shoulder width."
+    },
+    {
+      "id": "local",
+      "turn": 3,
+      "quote": "Fix only the drape's shoulder-to-underarm overlap in that view, keeping the front/back silhouettes and the accepted ear ornament unchanged."
+    },
+    {
+      "id": "truth",
+      "turn": 3,
+      "quote": "label the movement as a design proposal rather than tested rig motion"
+    }
+  ],
+  "atoms": [
+    {
+      "id": "comparable-arrangements",
+      "dimension": "alternatives",
+      "criterion": "Alternative accessory organizations preserve the common face/pose for meaningful comparison.",
+      "requirement_ids": [
+        "options"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "body-side-identity",
+      "dimension": "cross_view_consistency",
+      "criterion": "Ear ornament and shoulder drape keep distinct wearer-right/wearer-left ownership in all views.",
+      "requirement_ids": [
+        "ownership",
+        "back"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "An accessory changes body side or attaches to the wrong region.",
+        "1": "Ownership is clear in front but ambiguous or reversed in back/raised-arm views.",
+        "2": "Both attachments retain the stated wearer-side ownership across all views."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "thumbnail-face-priority",
+      "dimension": "scale_readability",
+      "criterion": "Face leads the thumbnail, with accessory masses subordinate.",
+      "requirement_ids": [
+        "hierarchy"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "thumb.png"
+        ]
+      }
+    },
+    {
+      "id": "jaw-and-hand-clearance",
+      "dimension": "construction",
+      "criterion": "Accessory outlines avoid touching the jaw or hiding the hand.",
+      "requirement_ids": [
+        "clearance"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "ornament-local-refinement",
+      "dimension": "preservation",
+      "criterion": "The selected ornament changes weight/end clearance while attachment and other accepted design remain fixed.",
+      "requirement_ids": [
+        "ornament",
+        "preserve"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "b.svg",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "unchosen-arrangement-retention",
+      "dimension": "preservation",
+      "criterion": "A remains unchanged during selected B edits.",
+      "requirement_ids": [
+        "scope"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "a.svg",
+          "a.png"
+        ]
+      }
+    },
+    {
+      "id": "raised-arm-contact-repair",
+      "dimension": "construction",
+      "criterion": "Only raised-arm drape overlap clarifies shoulder anchoring and the intended free area.",
+      "requirement_ids": [
+        "local"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "front-back-ornament-retention",
+      "dimension": "preservation",
+      "criterion": "Front/back silhouettes and accepted ornament remain fixed through the raised-arm correction.",
+      "requirement_ids": [
+        "local"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "b.svg",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "proposal-versus-rig",
+      "dimension": "evidence_honesty",
+      "criterion": "Movement and editable sheets are not presented as tested rig motion or exported VRM assets.",
+      "requirement_ids": [
+        "target",
+        "truth"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "notes.md"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "svg"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "MaintainAll self-authored demanding non-expert brief",
+    "feedback": "synthetic staged corrections; no claim of real user acceptance",
+    "created_at": "2026-10-11",
+    "dataset_release": "art-creation-expanded-v3",
+    "domain": "costume_and_avatar",
+    "challenge_axes": [
+      "competing-accessories",
+      "body-side-ownership",
+      "jaw-and-hand-clearance",
+      "view-local-construction-edit",
+      "virtual-target-claim-boundary"
+    ],
+    "reference_authorship": "CC0 Met object photographs and/or explicitly labeled original schematic input; never a replay of private session images",
+    "holdout_policy": "evaluator-only task data after skill snapshot freeze"
+  }
+}

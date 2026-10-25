@@ -1,0 +1,473 @@
+{
+  "schema_version": 2,
+  "id": "expanded-reference-medium-conflict",
+  "version": 1,
+  "family": "reference_transfer",
+  "split": "holdout",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Help me make a small reading-club zine cover titled Loose Ends. I like the kimono photo's narrow vertical edge and the mantua photo's broad lower silhouette, but simply putting both garments together looks costume-like. Show two original cover directions A and B that translate those relationships into flat page structure rather than depicting garments. Keep the title legible before the subtitle Notes on cloth and everyday life. Use a calm field, a clear edge, and a broader lower area, but explain any tension between the two references instead of claiming they belong to one confirmed historical style. Both covers must include Issue 03 and Spring 2027. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [
+        "kimono",
+        "mantua"
+      ],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose B because its lower area feels grounded, not because of its border. Keep A unchanged. Reduce the visual weight of B's vertical edge without moving it, and place the issue and season together where they do not compete with the title. Keep the accepted lower-area silhouette and the title wording. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "I meant a broader lower composition, not a heavier dark rectangle. Change only the lower area's internal spacing and tonal balance; preserve its outer boundary, the softened vertical edge, and the issue/season grouping. Show the same cover at 160x160 and describe which reference relationships survive there. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "kimono",
+      "path": "../../assets/met-125959.jpg",
+      "sha256": "c05affbab0e62582e94808f6bc4b83cd23cb73bd077fed9e5bac4d9c1a508926",
+      "license": "CC0 / Met Open Access",
+      "source": "https://www.metmuseum.org/art/collection/search/125959",
+      "visibility": "public"
+    },
+    {
+      "id": "mantua",
+      "path": "../../assets/met-81718.jpg",
+      "sha256": "7d009bd2c495723af17d1cb2a59b8f35fc6a58257418a9f25ed28987e4a8d923",
+      "license": "CC0 / Met Open Access",
+      "source": "https://www.metmuseum.org/art/collection/search/81718",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "transfer",
+      "turn": 1,
+      "quote": "translate those relationships into flat page structure rather than depicting garments"
+    },
+    {
+      "id": "hierarchy",
+      "turn": 1,
+      "quote": "Keep the title legible before the subtitle"
+    },
+    {
+      "id": "relations",
+      "turn": 1,
+      "quote": "a calm field, a clear edge, and a broader lower area"
+    },
+    {
+      "id": "truth",
+      "turn": 1,
+      "quote": "explain any tension between the two references instead of claiming they belong to one confirmed historical style"
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Keep A unchanged."
+    },
+    {
+      "id": "edge",
+      "turn": 2,
+      "quote": "Reduce the visual weight of B's vertical edge without moving it"
+    },
+    {
+      "id": "grouping",
+      "turn": 2,
+      "quote": "place the issue and season together where they do not compete with the title"
+    },
+    {
+      "id": "local",
+      "turn": 3,
+      "quote": "Change only the lower area's internal spacing and tonal balance; preserve its outer boundary, the softened vertical edge, and the issue/season grouping."
+    },
+    {
+      "id": "small",
+      "turn": 3,
+      "quote": "describe which reference relationships survive there"
+    }
+  ],
+  "atoms": [
+    {
+      "id": "medium-translation",
+      "dimension": "reference_transfer",
+      "criterion": "The flat cover translates garment field/edge/silhouette without drawing garments.",
+      "requirement_ids": [
+        "transfer"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "title-first",
+      "dimension": "hierarchy",
+      "criterion": "The title precedes subtitle and metadata visually.",
+      "requirement_ids": [
+        "hierarchy"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "combined-relations",
+      "dimension": "composition",
+      "criterion": "Calm field, vertical edge, and broad lower area are visible without one swallowing the others.",
+      "requirement_ids": [
+        "relations"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "conflict-honesty",
+      "dimension": "evidence_honesty",
+      "criterion": "Reference tension and uncertain style identification are acknowledged.",
+      "requirement_ids": [
+        "truth"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "alternative-retention",
+      "dimension": "preservation",
+      "criterion": "Unchosen A remains unchanged after both B corrections.",
+      "requirement_ids": [
+        "scope"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "a.svg",
+          "a.png"
+        ]
+      }
+    },
+    {
+      "id": "fixed-edge-refinement",
+      "dimension": "layout_relations",
+      "criterion": "B edge loses weight while retaining location and lower-area silhouette.",
+      "requirement_ids": [
+        "edge"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "metadata-grouping",
+      "dimension": "hierarchy",
+      "criterion": "Issue/season form a subordinate related pair rather than title competition.",
+      "requirement_ids": [
+        "grouping"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "outer-boundary-preservation",
+      "dimension": "preservation",
+      "criterion": "Internal tonal/spacing changes retain the accepted outer region boundary and other accepted relations.",
+      "requirement_ids": [
+        "local"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "b.svg",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "scale-transfer-account",
+      "dimension": "scale_readability",
+      "criterion": "Thumbnail and commentary agree about which field/edge/lower-area relations remain visible.",
+      "requirement_ids": [
+        "small"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "thumb.png",
+          "notes.md"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "svg"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "MaintainAll self-authored demanding non-expert brief",
+    "feedback": "synthetic staged corrections; no claim of real user acceptance",
+    "created_at": "2026-10-11",
+    "dataset_release": "art-creation-expanded-v3",
+    "domain": "reference_interpretation",
+    "challenge_axes": [
+      "conflicting-references",
+      "medium-transfer",
+      "local-tone-versus-geometry",
+      "hierarchical-metadata",
+      "small-view-relations"
+    ],
+    "reference_authorship": "CC0 Met object photographs and/or explicitly labeled original schematic input; never a replay of private session images",
+    "holdout_policy": "evaluator-only task data after skill snapshot freeze"
+  }
+}

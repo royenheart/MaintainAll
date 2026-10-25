@@ -1,0 +1,556 @@
+{
+  "schema_version": 1,
+  "suite_id": "art-creation-expanded-v3",
+  "suite_sha256": "5ad5d956c552d30d63f5807a3413b4f3286b092611161985053e8c45d3a3aed1",
+  "case_count": 16,
+  "turn_count": 48,
+  "split_counts": {
+    "development": 12,
+    "holdout": 4
+  },
+  "backend_groups": {
+    "static": 10,
+    "browser": 3,
+    "blender": 3
+  },
+  "review_policy": "Independent artifact-based review; solver evidence.json is an untrusted claim until verified. Quality atoms require their own evidence, never element/polygon count. Missing evidence stays unverifiable.",
+  "cases": [
+    {
+      "id": "expanded-reference-evidence-transfer",
+      "split": "development",
+      "family": "reference_analysis",
+      "domain": "reference_interpretation",
+      "case_sha256": "edab519747c01fa5b60703283f4ef20785ab19f3d25c5b1dd0fc461e2c65f003",
+      "turns": 3,
+      "atoms": 9,
+      "capabilities": [
+        "real_images",
+        "exact_resume",
+        "svg"
+      ],
+      "challenge_axes": [
+        "direct-reference-preservation",
+        "relationship-transfer",
+        "hierarchy-under-added-copy",
+        "selected-edit-scope",
+        "local-pattern-counterfactual"
+      ],
+      "reference_ids": [
+        "kimono",
+        "weave"
+      ],
+      "rating_dimensions": [
+        "alternatives",
+        "evidence_honesty",
+        "hierarchy",
+        "pattern_relations",
+        "preservation",
+        "reference_transfer",
+        "source_fidelity"
+      ]
+    },
+    {
+      "id": "expanded-editorial-density",
+      "split": "development",
+      "family": "editorial",
+      "domain": "editorial_layout",
+      "case_sha256": "15369a624ab3dbde3df26c60f07a9e0be1022cd1afd0f406cd49135705481d83",
+      "turns": 3,
+      "atoms": 9,
+      "capabilities": [
+        "real_images",
+        "exact_resume",
+        "svg"
+      ],
+      "challenge_axes": [
+        "layout-transfer",
+        "information-density",
+        "semantic-grouping",
+        "small-view-readability",
+        "cross-turn-type-preservation"
+      ],
+      "reference_ids": [
+        "painting",
+        "weave"
+      ],
+      "rating_dimensions": [
+        "alternatives",
+        "composition",
+        "evidence_honesty",
+        "hierarchy",
+        "layout_relations",
+        "preservation",
+        "reference_transfer",
+        "scale_readability"
+      ]
+    },
+    {
+      "id": "expanded-palette-evidence",
+      "split": "development",
+      "family": "color_study",
+      "domain": "palette_and_accessibility",
+      "case_sha256": "6fce925fa90deb7280e30c67f94c96ce056be15c9f1cc5cd4dbaeb347ec6f590",
+      "turns": 3,
+      "atoms": 8,
+      "capabilities": [
+        "real_images",
+        "exact_resume",
+        "svg"
+      ],
+      "challenge_axes": [
+        "palette-provenance",
+        "foreground-background-relations",
+        "price-association",
+        "row-local-edit",
+        "measurement-honesty"
+      ],
+      "reference_ids": [
+        "painting"
+      ],
+      "rating_dimensions": [
+        "analysis_grounding",
+        "composition",
+        "evidence_honesty",
+        "hierarchy",
+        "layout_relations",
+        "preservation"
+      ]
+    },
+    {
+      "id": "expanded-reference-medium-conflict",
+      "split": "holdout",
+      "family": "reference_transfer",
+      "domain": "reference_interpretation",
+      "case_sha256": "cd4c7f845395b44db03477e79254de579ed24792442539a6a59f2707f90b3b0c",
+      "turns": 3,
+      "atoms": 9,
+      "capabilities": [
+        "real_images",
+        "exact_resume",
+        "svg"
+      ],
+      "challenge_axes": [
+        "conflicting-references",
+        "medium-transfer",
+        "local-tone-versus-geometry",
+        "hierarchical-metadata",
+        "small-view-relations"
+      ],
+      "reference_ids": [
+        "kimono",
+        "mantua"
+      ],
+      "rating_dimensions": [
+        "composition",
+        "evidence_honesty",
+        "hierarchy",
+        "layout_relations",
+        "preservation",
+        "reference_transfer",
+        "scale_readability"
+      ]
+    },
+    {
+      "id": "expanded-avatar-silhouette-ownership",
+      "split": "development",
+      "family": "avatar_costume",
+      "domain": "costume_and_avatar",
+      "case_sha256": "221eefa4260a2d8a7f47208bac3c486f74231a8df7f64f5e4686a9a57e099632",
+      "turns": 3,
+      "atoms": 8,
+      "capabilities": [
+        "real_images",
+        "exact_resume",
+        "svg"
+      ],
+      "challenge_axes": [
+        "body-versus-screen-ownership",
+        "multi-view-construction",
+        "small-avatar-silhouette",
+        "material-versus-volume",
+        "target-readiness-honesty"
+      ],
+      "reference_ids": [
+        "kimono"
+      ],
+      "rating_dimensions": [
+        "alternatives",
+        "construction",
+        "cross_view_consistency",
+        "evidence_honesty",
+        "material_cues",
+        "preservation",
+        "reference_transfer",
+        "scale_readability"
+      ]
+    },
+    {
+      "id": "expanded-avatar-layer-boundaries",
+      "split": "development",
+      "family": "avatar_layers",
+      "domain": "costume_and_avatar",
+      "case_sha256": "ec8de3a7c96a73e7f97593c3a790b2dda4410e8484e1684b397d627181b34e15",
+      "turns": 3,
+      "atoms": 9,
+      "capabilities": [
+        "real_images",
+        "exact_resume",
+        "svg"
+      ],
+      "challenge_axes": [
+        "semantic-layer-boundaries",
+        "cross-view-overlap",
+        "face-ornament-competition",
+        "counterfactual-edit",
+        "preview-versus-export"
+      ],
+      "reference_ids": [
+        "mantua"
+      ],
+      "rating_dimensions": [
+        "cross_view_consistency",
+        "editability",
+        "evidence_honesty",
+        "hierarchy",
+        "preservation",
+        "reference_transfer",
+        "scale_readability"
+      ]
+    },
+    {
+      "id": "expanded-costume-function-detail",
+      "split": "development",
+      "family": "costume_function",
+      "domain": "costume_and_avatar",
+      "case_sha256": "73e3e9f8523f537a033c49b847008ee19f9fc4815487f35cd3c3e37cf84d5258",
+      "turns": 3,
+      "atoms": 9,
+      "capabilities": [
+        "real_images",
+        "exact_resume",
+        "svg"
+      ],
+      "challenge_axes": [
+        "functional-versus-decorative-detail",
+        "body-clearance",
+        "motif-versus-boundary-contrast",
+        "local-pattern-edit",
+        "physical-test-claim-boundary"
+      ],
+      "reference_ids": [
+        "weave"
+      ],
+      "rating_dimensions": [
+        "construction",
+        "cross_view_consistency",
+        "evidence_honesty",
+        "hierarchy",
+        "layout_relations",
+        "preservation",
+        "reference_transfer"
+      ]
+    },
+    {
+      "id": "expanded-avatar-accessory-conflict",
+      "split": "holdout",
+      "family": "avatar_accessories",
+      "domain": "costume_and_avatar",
+      "case_sha256": "162d6aaf0b68bc67ec5b459f8d084e6357a9f9d9ed15b852d7c2b263f2f99c86",
+      "turns": 3,
+      "atoms": 9,
+      "capabilities": [
+        "real_images",
+        "exact_resume",
+        "svg"
+      ],
+      "challenge_axes": [
+        "competing-accessories",
+        "body-side-ownership",
+        "jaw-and-hand-clearance",
+        "view-local-construction-edit",
+        "virtual-target-claim-boundary"
+      ],
+      "reference_ids": [
+        "kimono",
+        "mantua"
+      ],
+      "rating_dimensions": [
+        "alternatives",
+        "construction",
+        "cross_view_consistency",
+        "evidence_honesty",
+        "preservation",
+        "scale_readability"
+      ]
+    },
+    {
+      "id": "expanded-flow-field-corridor",
+      "split": "development",
+      "family": "algorithmic_flow",
+      "domain": "procedural_rules",
+      "case_sha256": "b2d23869ae7b211528bfb26c2c0a6ca45aaaf2e939e9338aba11ae828c7bd224",
+      "turns": 3,
+      "atoms": 8,
+      "capabilities": [
+        "real_images",
+        "exact_resume",
+        "svg"
+      ],
+      "challenge_axes": [
+        "seeded-rule-generation",
+        "coherence-versus-repetition",
+        "protected-reading-corridor",
+        "global-direction-counterfactual",
+        "localized-variation"
+      ],
+      "reference_ids": [
+        "painting"
+      ],
+      "rating_dimensions": [
+        "alternatives",
+        "editability",
+        "evidence_honesty",
+        "layout_relations",
+        "pattern_relations",
+        "preservation"
+      ]
+    },
+    {
+      "id": "expanded-pattern-grammar-seam",
+      "split": "development",
+      "family": "algorithmic_pattern",
+      "domain": "procedural_rules",
+      "case_sha256": "67ac0b925d3b54419c35b507b1c6a8288785f2a27861b4c7256b0007949e8e2e",
+      "turns": 3,
+      "atoms": 8,
+      "capabilities": [
+        "real_images",
+        "exact_resume",
+        "svg"
+      ],
+      "challenge_axes": [
+        "periodic-boundary-constraints",
+        "local-irregularity",
+        "grammar-versus-motif-copy",
+        "fixed-centers-scale-edit",
+        "color-versus-geometry"
+      ],
+      "reference_ids": [
+        "weave"
+      ],
+      "rating_dimensions": [
+        "alternatives",
+        "editability",
+        "evidence_honesty",
+        "pattern_relations",
+        "preservation",
+        "reference_transfer"
+      ]
+    },
+    {
+      "id": "expanded-responsive-state-ownership",
+      "split": "development",
+      "family": "browser_state",
+      "domain": "browser_interaction",
+      "case_sha256": "b06d65ad45651d45b4bb3b8d946befbf5edf6e748aa437cf6926b2fcb98a250d",
+      "turns": 3,
+      "atoms": 9,
+      "capabilities": [
+        "real_images",
+        "exact_resume",
+        "browser_capture",
+        "playable_motion"
+      ],
+      "challenge_axes": [
+        "shared-state-ownership",
+        "responsive-mid-transition",
+        "focus-versus-activation",
+        "rapid-retarget",
+        "reduced-motion-equivalence"
+      ],
+      "reference_ids": [
+        "schematic"
+      ],
+      "rating_dimensions": [
+        "alternatives",
+        "interaction",
+        "motion_continuity",
+        "preservation",
+        "state_continuity"
+      ]
+    },
+    {
+      "id": "expanded-attached-motion-retarget",
+      "split": "development",
+      "family": "browser_attachment",
+      "domain": "browser_motion",
+      "case_sha256": "597c8d38d30615dabc872ab5694104d6d0212016df31ab9c3e54f6c285084eeb",
+      "turns": 3,
+      "atoms": 9,
+      "capabilities": [
+        "real_images",
+        "exact_resume",
+        "browser_capture",
+        "playable_motion"
+      ],
+      "challenge_axes": [
+        "structural-attachment-through-motion",
+        "shape-versus-opacity",
+        "transition-idle-join",
+        "interrupted-reversal",
+        "reduced-motion-input"
+      ],
+      "reference_ids": [
+        "schematic"
+      ],
+      "rating_dimensions": [
+        "alternatives",
+        "construction",
+        "interaction",
+        "motion_continuity",
+        "preservation",
+        "scale_readability",
+        "state_continuity"
+      ]
+    },
+    {
+      "id": "expanded-browser-overlay-priority",
+      "split": "holdout",
+      "family": "browser_layers",
+      "domain": "browser_interaction",
+      "case_sha256": "69070287bf02b858f79abfee5659999fdb1499d8223d00df9d05a7a11171ebea",
+      "turns": 3,
+      "atoms": 9,
+      "capabilities": [
+        "real_images",
+        "exact_resume",
+        "browser_capture",
+        "playable_motion"
+      ],
+      "challenge_axes": [
+        "original-image-integrity",
+        "overlay-trigger-ownership",
+        "keyboard-focus-return",
+        "scroll-retention",
+        "close-reopen-retarget"
+      ],
+      "reference_ids": [
+        "painting",
+        "schematic"
+      ],
+      "rating_dimensions": [
+        "alternatives",
+        "construction",
+        "hierarchy",
+        "interaction",
+        "motion_continuity",
+        "preservation",
+        "runtime_evidence",
+        "source_fidelity",
+        "state_continuity"
+      ]
+    },
+    {
+      "id": "expanded-native-courtyard-grammar",
+      "split": "development",
+      "family": "native_architecture",
+      "domain": "native_3d",
+      "case_sha256": "ba3f4c30cf11a5181e9871af1bfeaa334089802324d504ea599cd592882f68a4",
+      "turns": 3,
+      "atoms": 9,
+      "capabilities": [
+        "real_images",
+        "exact_resume",
+        "blender",
+        "native_scene_reopen"
+      ],
+      "challenge_axes": [
+        "native-scene-reopen",
+        "structural-bay-grammar",
+        "camera-envelope-control",
+        "single-parameter-probe",
+        "threshold-continuity"
+      ],
+      "reference_ids": [
+        "schematic"
+      ],
+      "rating_dimensions": [
+        "alternatives",
+        "construction",
+        "editability",
+        "evidence_honesty",
+        "preservation",
+        "spatial_relations"
+      ]
+    },
+    {
+      "id": "expanded-native-garment-clearance",
+      "split": "development",
+      "family": "native_costume",
+      "domain": "native_3d",
+      "case_sha256": "9362d412b108e578687fac0b5467aaaf629802b6c08a302b25005d469e0f2d1a",
+      "turns": 3,
+      "atoms": 9,
+      "capabilities": [
+        "real_images",
+        "exact_resume",
+        "blender",
+        "native_scene_reopen"
+      ],
+      "challenge_axes": [
+        "native-shell-construction",
+        "front-side-clearance",
+        "material-versus-volume",
+        "camera-mannequin-invariance",
+        "modeled-versus-simulated"
+      ],
+      "reference_ids": [
+        "schematic",
+        "kimono"
+      ],
+      "rating_dimensions": [
+        "alternatives",
+        "construction",
+        "cross_view_consistency",
+        "editability",
+        "evidence_honesty",
+        "preservation",
+        "runtime_evidence"
+      ]
+    },
+    {
+      "id": "expanded-native-room-sightlines",
+      "split": "holdout",
+      "family": "native_interior",
+      "domain": "native_3d",
+      "case_sha256": "a1ca4e98173ac24588f4fa2bf7f731c6fe44c1e23f235899db9bb763703f9f20",
+      "turns": 3,
+      "atoms": 10,
+      "capabilities": [
+        "real_images",
+        "exact_resume",
+        "blender",
+        "native_scene_reopen"
+      ],
+      "challenge_axes": [
+        "fixed-camera-sightline",
+        "privacy-versus-occlusion",
+        "ground-contact",
+        "boundary-separation",
+        "native-height-counterfactual"
+      ],
+      "reference_ids": [
+        "schematic"
+      ],
+      "rating_dimensions": [
+        "alternatives",
+        "construction",
+        "editability",
+        "evidence_honesty",
+        "preservation",
+        "runtime_evidence",
+        "spatial_relations"
+      ]
+    }
+  ]
+}

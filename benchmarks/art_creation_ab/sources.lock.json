@@ -1,0 +1,46 @@
+{
+  "schema_version": 1,
+  "backend": {
+    "project": "openai/codex",
+    "version": "codex-cli 0.160.0",
+    "revision": "a956835d020762cb2b570053af06f643a11c0ecc",
+    "license": "Apache-2.0",
+    "source": "https://github.com/openai/codex/tree/a956835d020762cb2b570053af06f643a11c0ecc",
+    "installed_by_runner": false
+  },
+  "researched_alternatives": [
+    {
+      "project": "harbor-framework/harbor",
+      "revision": "07ad34000e4c481451b1a0ea30a4a09548d6de8b",
+      "license": "Apache-2.0",
+      "source": "https://github.com/harbor-framework/harbor/blob/07ad34000e4c481451b1a0ea30a4a09548d6de8b/src/harbor/agents/installed/codex.py",
+      "installed": false
+    },
+    {
+      "project": "NVIDIA/SkillEvaluator",
+      "revision": "f32c88455b6007b7afca9d1d3909283226d52efa",
+      "license": "Apache-2.0",
+      "source": "https://github.com/NVIDIA/SkillEvaluator/blob/f32c88455b6007b7afca9d1d3909283226d52efa/README.md",
+      "tier3_harbor_dependency": "0.24.0",
+      "installed": false
+    }
+  ],
+  "optional_static_renderer": {
+    "project": "CairoSVG",
+    "version": "2.9.0",
+    "python": "3.14.4",
+    "source": "https://pypi.org/project/CairoSVG/2.9.0/",
+    "installation": "private uv virtual environment outside repository",
+    "installed_by_runner": false,
+    "runtime_packages": {
+      "cairocffi": "1.7.1",
+      "cffi": "2.1.1",
+      "cssselect2": "0.10.1",
+      "defusedxml": "0.7.1",
+      "pillow": "12.3.0",
+      "pycparser": "3.1",
+      "tinycss2": "1.5.1",
+      "webencodings": "0.6.1"
+    }
+  }
+}
