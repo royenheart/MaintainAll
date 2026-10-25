@@ -1,0 +1,343 @@
+{
+  "schema_version": 2,
+  "id": "trajectory-content-transition",
+  "version": 2,
+  "family": "trajectory_derived",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Create a local playable transition between a falling-block scene and a golden central halo with lower rings. The attached picture is an original schematic replacement, not the original session reference. The blocks should gather and become the next scene's content rather than simply fading behind an unrelated transition layer. Show two different formation mechanisms: some blocks feed the halo and others form the lower rings. Give actual browser start, intermediate and end captures, the local index.html and notes.md. Explain the intended collapse/formation relationships in plain language.",
+      "attachments": [
+        "replacement"
+      ],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "start.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "middle.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "end.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "The scene transition must change the actual subject content. A layer of burst lines over an unchanged center and unchanged rings does not meet the request. Show how the center, lower field and background deform or form during the transition, with the endpoint becoming the running next scene. Retain the chosen golden identity and component ownership, and show actual intermediate evidence.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "start.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "middle.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "end.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "Choose B's formation direction, while keeping A available for comparison. The loading animation must join the running scene, and the running scene must join the transition without a visible stop or abrupt state reset. Preserve the selected formation mechanism; do not solve continuity only by overlaying a blur. Exercise a full load, run, transition and next-run sequence and distinguish verified playback from assumptions.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "start.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "middle.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "end.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "replacement",
+      "path": "../../assets/transition-replacement.png",
+      "sha256": "f14aef82f61d5ad1ad72db4cc7b93765ecaee47304c6714edfc0a12d863a2055",
+      "license": "CC0 / MaintainAll original schematic",
+      "source": "Self-authored replacement for this abstract task; not an original session image",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "form",
+      "turn": 1,
+      "quote": "blocks should gather and become the next scene's content rather than simply fading behind an unrelated transition layer"
+    },
+    {
+      "id": "roles",
+      "turn": 1,
+      "quote": "some blocks feed the halo and others form the lower rings"
+    },
+    {
+      "id": "content",
+      "turn": 2,
+      "quote": "change the actual subject content"
+    },
+    {
+      "id": "notlayer",
+      "turn": 2,
+      "quote": "A layer of burst lines over an unchanged center and unchanged rings does not meet the request."
+    },
+    {
+      "id": "scope",
+      "turn": 3,
+      "quote": "Choose B's formation direction, while keeping A available for comparison."
+    },
+    {
+      "id": "continuity",
+      "turn": 3,
+      "quote": "without a visible stop or abrupt state reset"
+    },
+    {
+      "id": "fullsequence",
+      "turn": 3,
+      "quote": "Exercise a full load, run, transition and next-run sequence"
+    }
+  ],
+  "atoms": [
+    {
+      "id": "content-formation",
+      "dimension": "motion_relations",
+      "criterion": "Visible blocks feed resulting halo/ring content rather than a superficial overlaid fade.",
+      "requirement_ids": [
+        "form",
+        "roles"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The requested relation is absent or contradicted in actual output.",
+        "1": "The relation is partly visible but ambiguous or unstable.",
+        "2": "The requested relation is visible and supported across relevant states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "start.png",
+          "middle.png",
+          "end.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "subject-deformation",
+      "dimension": "motion_relations",
+      "criterion": "The actual scene subject changes through observed intermediate states.",
+      "requirement_ids": [
+        "content",
+        "notlayer"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The requested relation is absent or contradicted in actual output.",
+        "1": "The relation is partly visible but ambiguous or unstable.",
+        "2": "The requested relation is visible and supported across relevant states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "start.png",
+          "middle.png",
+          "end.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "selection-scope",
+      "dimension": "preservation",
+      "criterion": "Selection keeps B formation direction while A remains available.",
+      "requirement_ids": [
+        "scope"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The requested relation is absent or contradicted in actual output.",
+        "1": "The relation is partly visible but ambiguous or unstable.",
+        "2": "The requested relation is visible and supported across relevant states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "start.png",
+          "middle.png",
+          "end.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "phase-continuity",
+      "dimension": "motion_continuity",
+      "criterion": "Load/run/transition/next-run joins do not visibly stop or reset.",
+      "requirement_ids": [
+        "continuity"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The requested relation is absent or contradicted in actual output.",
+        "1": "The relation is partly visible but ambiguous or unstable.",
+        "2": "The requested relation is visible and supported across relevant states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "start.png",
+          "middle.png",
+          "end.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "full-playback-evidence",
+      "dimension": "runtime_evidence",
+      "criterion": "The entire claimed sequence has actual browser playback evidence.",
+      "requirement_ids": [
+        "fullsequence"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The requested relation is absent or contradicted in actual output.",
+        "1": "The relation is partly visible but ambiguous or unstable.",
+        "2": "The requested relation is visible and supported across relevant states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "start.png",
+          "middle.png",
+          "end.png",
+          "notes.md"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "browser_capture",
+    "playable_motion"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "translated and abstracted from actual user feedback; never a new user acceptance",
+    "source_turns": [
+      {
+        "line": 6124,
+        "user_text_sha256": "bfe61a88733d601b88373b2df14b424959f1a82a4b9a79ea5ef085b04c5e4490"
+      },
+      {
+        "line": 6542,
+        "user_text_sha256": "4225cc3edfe37de28b79675413f1243e2b8f5a015ad1b6a41784b965faa240ea"
+      },
+      {
+        "line": 6681,
+        "user_text_sha256": "2952043cfc223acacb0a7184a68d497efca88160916d745d53a673149ee4e4ee"
+      },
+      {
+        "line": 7961,
+        "user_text_sha256": "e5f49ee8b5da188e9f904439a6927902374dc770e2a117c3e544d4d8b890d6c1"
+      },
+      {
+        "line": 8685,
+        "user_text_sha256": "17b3854bb99a31bdeb3bccfc5302ef55ff4b5bd29f0ad28ccbfafc9e6fe487d9"
+      },
+      {
+        "line": 9304,
+        "user_text_sha256": "ee622ebe771513a3a8f29c1a8603bb6f97d524487876186a8f3f7dc709e38445"
+      }
+    ],
+    "used_to_modify_skill": true,
+    "reference_replacement": true,
+    "replacement_scope": "Original, visibly labeled relationship schematic; exact original private references are separate and license unconfirmed",
+    "added_for_benchmark": "Fixed local deliverable filenames, actual browser evidence and explicit evidence-honesty requirements",
+    "synthetic_staged_feedback": true,
+    "source_session_sha256": "074d30e146858bd9f6404168c1035b5f0eb2e4d4bdc62345fa45cdafd5a7b0a4",
+    "source_thread_sha256": "29937249b41bb4954e56eea42bddf5019800d59cf0dd613f8a7c919465111ba2"
+  }
+}

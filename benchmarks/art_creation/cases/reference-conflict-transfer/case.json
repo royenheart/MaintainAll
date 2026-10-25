@@ -1,0 +1,450 @@
+{
+  "schema_version": 2,
+  "id": "reference-conflict-transfer",
+  "version": 2,
+  "family": "reference_transfer",
+  "split": "holdout",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Create an original night-reading-room announcement using the supplied painting and kimono photograph as contrasting references. I want the painting's continuous movement but the garment's quiet field and narrow contrasting boundary. Translate those relationships, not the pictured landscape or historical outfit. I am not sure how they coexist: show two clearly different arrangements, each as a 720x960 print study and a 360x240 phone study. Keep the exact text NIGHT READING / 8 NOV 2026 / ROOM THREE / FREE ENTRY. The text must remain usable and the treatment must be coherent across sizes. Deliver a-print.svg, b-print.svg, a-phone.svg, b-phone.svg, their PNG renders and notes.md explaining observations, assumptions and tradeoffs.",
+      "attachments": [
+        "painting",
+        "kimono"
+      ],
+      "artifacts": [
+        {
+          "path": "a-print.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a-phone.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b-print.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b-phone.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a-print.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 720,
+          "height": 960
+        },
+        {
+          "path": "a-phone.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 360,
+          "height": 240
+        },
+        {
+          "path": "b-print.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 720,
+          "height": 960
+        },
+        {
+          "path": "b-phone.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 360,
+          "height": 240
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose A only for how its calm field contains the movement; that does not approve its exact typography or every border. Keep B unchanged. The narrow contrast edge should guide attention to event information without enclosing every component in the same frame. Retain the chosen reference balance and all four exact text items; revise both A sizes to make their distinct reading shapes work.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a-print.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a-phone.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b-print.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b-phone.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a-print.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 720,
+          "height": 960
+        },
+        {
+          "path": "a-phone.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 360,
+          "height": 240
+        },
+        {
+          "path": "b-print.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 720,
+          "height": 960
+        },
+        {
+          "path": "b-phone.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 360,
+          "height": 240
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "The A print is accepted and must stay unchanged. Only refine A's phone study: the date and ROOM THREE should form one easy-to-find event group. Keep the movement connected to the quiet field, without adding an unrelated badge or merely reducing every font. Explain what was retained and what the current source cannot establish.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a-print.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a-phone.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b-print.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b-phone.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a-print.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 720,
+          "height": 960
+        },
+        {
+          "path": "a-phone.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 360,
+          "height": 240
+        },
+        {
+          "path": "b-print.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 720,
+          "height": 960
+        },
+        {
+          "path": "b-phone.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 360,
+          "height": 240
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "painting",
+      "path": "../../assets/met-436535.jpg",
+      "sha256": "af0e3486621c210b54932d055294051b5601aa3362af4b84ab97e2831f8163bc",
+      "license": "CC0 / Met public-domain object image",
+      "source": "https://www.metmuseum.org/art/collection/search/436535",
+      "visibility": "public"
+    },
+    {
+      "id": "kimono",
+      "path": "../../assets/met-125959.jpg",
+      "sha256": "c05affbab0e62582e94808f6bc4b83cd23cb73bd077fed9e5bac4d9c1a508926",
+      "license": "CC0 / Met public-domain object image",
+      "source": "https://www.metmuseum.org/art/collection/search/125959",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "transfer",
+      "turn": 1,
+      "quote": "painting's continuous movement but the garment's quiet field and narrow contrasting boundary"
+    },
+    {
+      "id": "notcopy",
+      "turn": 1,
+      "quote": "Translate those relationships, not the pictured landscape or historical outfit."
+    },
+    {
+      "id": "alternatives",
+      "turn": 1,
+      "quote": "two clearly different arrangements"
+    },
+    {
+      "id": "sizes",
+      "turn": 1,
+      "quote": "coherent across sizes"
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Choose A only for how its calm field contains the movement"
+    },
+    {
+      "id": "boundary",
+      "turn": 2,
+      "quote": "narrow contrast edge should guide attention to event information without enclosing every component in the same frame"
+    },
+    {
+      "id": "freeze",
+      "turn": 3,
+      "quote": "The A print is accepted and must stay unchanged. Only refine A's phone study"
+    },
+    {
+      "id": "group",
+      "turn": 3,
+      "quote": "the date and ROOM THREE should form one easy-to-find event group"
+    }
+  ],
+  "atoms": [
+    {
+      "id": "conflict-resolution",
+      "dimension": "reference_transfer",
+      "criterion": "Both contrasting reference mechanisms form a coherent original hierarchy rather than literal collage.",
+      "requirement_ids": [
+        "transfer",
+        "notcopy"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a-print.png",
+          "a-phone.png"
+        ]
+      }
+    },
+    {
+      "id": "alternative-mechanisms",
+      "dimension": "alternatives",
+      "criterion": "Two different arrangements are visibly comparable and meet the shared brief.",
+      "requirement_ids": [
+        "alternatives"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a-print.png",
+          "b-print.png"
+        ]
+      }
+    },
+    {
+      "id": "cross-size-identity",
+      "dimension": "responsive_layout",
+      "criterion": "The phone is recomposed yet retains the chosen field/movement/boundary identity.",
+      "requirement_ids": [
+        "sizes"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a-print.png",
+          "a-phone.png"
+        ]
+      }
+    },
+    {
+      "id": "selection-scope",
+      "dimension": "preservation",
+      "criterion": "Only the stated selection relations are treated as accepted. B remains unchanged.",
+      "requirement_ids": [
+        "scope"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a-print.png",
+          "b-print.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "boundary-function",
+      "dimension": "hierarchy",
+      "criterion": "The contrasting edge supports event attention rather than mechanically framing every item.",
+      "requirement_ids": [
+        "boundary"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a-print.png",
+          "a-phone.png"
+        ]
+      }
+    },
+    {
+      "id": "print-preservation",
+      "dimension": "preservation",
+      "criterion": "Accepted A print and B source/render files are preserved at the final turn.",
+      "requirement_ids": [
+        "freeze"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "measurement",
+        "required_artifacts": [
+          "a-print.svg",
+          "a-print.png",
+          "b-print.svg",
+          "b-phone.svg"
+        ]
+      }
+    },
+    {
+      "id": "event-group",
+      "dimension": "grouping",
+      "criterion": "Date and room visibly form a semantic group in the phone render.",
+      "requirement_ids": [
+        "group"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a-phone.png"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "svg",
+    "real_images",
+    "exact_resume"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "self-authored held-out task",
+    "frozen_at": "2026-10-09",
+    "used_to_modify_skill": false,
+    "reference_images": "Met CC0 exact hashes",
+    "user_acceptance": "none; synthetic staged feedback"
+  }
+}

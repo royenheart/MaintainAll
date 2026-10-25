@@ -3,11 +3,8 @@
  *                  P5.JS GENERATIVE ART - BEST PRACTICES
  * ═══════════════════════════════════════════════════════════════════════════
  *
- * This file shows STRUCTURE and PRINCIPLES for p5.js generative art.
- * It does NOT prescribe what art you should create.
- *
- * Your algorithmic philosophy should guide what you build.
- * These are just best practices for how to structure your code.
+ * Implementation patterns for seeded p5.js generative art.
+ * Adapt the entities, update rules, and controls to the creative brief.
  *
  * ═══════════════════════════════════════════════════════════════════════════
  */
@@ -208,7 +205,6 @@ function exportImage() {
 // REMEMBER
 // ============================================================================
 //
-// These are TOOLS and PRINCIPLES, not a recipe.
 // Your algorithmic philosophy should guide WHAT you create.
 // This structure helps you create it WELL.
 //

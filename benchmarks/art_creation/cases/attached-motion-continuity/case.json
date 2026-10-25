@@ -1,0 +1,419 @@
+{
+  "schema_version": 2,
+  "id": "attached-motion-continuity",
+  "version": 2,
+  "family": "motion",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Build a small local playable motion study of a docked card emerging from a slot. The card must remain visibly connected to its own docking edge and retain a consistent material and silhouette in both retracted and expanded states. Show two timing approaches A and B using the same geometry: one softly buoyant, one deliberately controlled. Include hover and keyboard focus. Deliver index.html with any local files, actual browser a-retracted.png, a-expanded.png, b-retracted.png, b-expanded.png and notes.md; show intermediate motion evidence, not only endpoints. Keep trigger text readable throughout and report what was actually played.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "a-retracted.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "a-expanded.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "b-retracted.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "b-expanded.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose A only for its continuity and restrained speed. Keep B as it was. Remove bounce at the end without introducing a pause between the transition and the slow idle material drift. Preserve the attachment, geometry and text hierarchy. Show actual intermediate and endpoint browser evidence, and explain the continuity relation rather than calling it natural without evidence.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "a-retracted.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "a-expanded.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "b-retracted.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "b-expanded.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "If a second selection arrives halfway through emergence, retarget from the current position. Only the selected card should emerge; the others stay docked. Retracting must end at the same docking geometry, not a separate rectangle that suddenly replaces the card. Include a reduced-motion path that conveys the same selected ownership without spatial travel. Exercise those states and distinguish actual playback from proposals.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "a-retracted.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "a-expanded.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "b-retracted.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "b-expanded.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [],
+  "requirements": [
+    {
+      "id": "attach",
+      "turn": 1,
+      "quote": "remain visibly connected to its own docking edge"
+    },
+    {
+      "id": "shape",
+      "turn": 1,
+      "quote": "consistent material and silhouette in both retracted and expanded states"
+    },
+    {
+      "id": "options",
+      "turn": 1,
+      "quote": "two timing approaches A and B using the same geometry"
+    },
+    {
+      "id": "observed",
+      "turn": 1,
+      "quote": "show intermediate motion evidence, not only endpoints"
+    },
+    {
+      "id": "continuity",
+      "turn": 2,
+      "quote": "Remove bounce at the end without introducing a pause between the transition and the slow idle material drift."
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Keep B as it was."
+    },
+    {
+      "id": "retarget",
+      "turn": 3,
+      "quote": "retarget from the current position"
+    },
+    {
+      "id": "single",
+      "turn": 3,
+      "quote": "Only the selected card should emerge; the others stay docked."
+    },
+    {
+      "id": "dock",
+      "turn": 3,
+      "quote": "same docking geometry, not a separate rectangle that suddenly replaces the card"
+    },
+    {
+      "id": "reduced",
+      "turn": 3,
+      "quote": "reduced-motion path that conveys the same selected ownership without spatial travel"
+    }
+  ],
+  "atoms": [
+    {
+      "id": "attached-motion",
+      "dimension": "attachment",
+      "criterion": "The card remains related to its owning edge through actual playback.",
+      "requirement_ids": [
+        "attach"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "state-material-identity",
+      "dimension": "material_cues",
+      "criterion": "Endpoint material and silhouette are compatible rather than replacement components.",
+      "requirement_ids": [
+        "shape"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a-retracted.png",
+          "a-expanded.png"
+        ]
+      }
+    },
+    {
+      "id": "timing-alternatives",
+      "dimension": "alternatives",
+      "criterion": "The shared geometry makes two distinct timing mechanisms comparable.",
+      "requirement_ids": [
+        "options"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "intermediate-evidence",
+      "dimension": "runtime_evidence",
+      "criterion": "Actual playback/intermediate states are evidenced rather than inferred from endpoints.",
+      "requirement_ids": [
+        "observed"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "transition-idle-continuity",
+      "dimension": "motion_continuity",
+      "criterion": "The chosen timing joins the idle drift without bounce or visible stop.",
+      "requirement_ids": [
+        "continuity"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "alternative-preservation",
+      "dimension": "preservation",
+      "criterion": "B source/render behavior remains unchanged while only A timing is revised.",
+      "requirement_ids": [
+        "scope"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "b-retracted.png",
+          "b-expanded.png"
+        ]
+      }
+    },
+    {
+      "id": "interrupted-retarget",
+      "dimension": "motion_continuity",
+      "criterion": "Mid-transition selection retargets continuously and exposes one selected card.",
+      "requirement_ids": [
+        "retarget",
+        "single"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "retraction-identity",
+      "dimension": "construction",
+      "criterion": "Retraction ends at the original geometry without an abrupt substitute.",
+      "requirement_ids": [
+        "dock"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "reduced-motion-ownership",
+      "dimension": "interaction",
+      "criterion": "Reduced motion keeps selected ownership clear without spatial travel.",
+      "requirement_ids": [
+        "reduced"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "notes.md"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "browser_capture",
+    "playable_motion",
+    "exact_resume"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "self-authored natural brief",
+    "reference_images": "Met Open Access; exact downloaded image hashes",
+    "user_acceptance": "none; synthetic staged feedback",
+    "created_at": "2026-10-09"
+  }
+}

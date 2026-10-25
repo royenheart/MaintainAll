@@ -1,0 +1,31 @@
+{
+  "schema_version": 2,
+  "id": "art-creation-refinement-development-v1",
+  "version": 1,
+  "cases": [
+    {
+      "path": "cases/editorial-transfer/case.json",
+      "sha256": "08a03eb189c0aa87b511940e7c74ebba148ba05021a48a545b4f16137740aac5"
+    },
+    {
+      "path": "cases/reference-costume/case.json",
+      "sha256": "e2dc844efa30871134435e44bf6e7bf4ed54ab19224515ccd78cb109e68d409e"
+    },
+    {
+      "path": "expanded/cases/expanded-reference-evidence-transfer/case.json",
+      "sha256": "edab519747c01fa5b60703283f4ef20785ab19f3d25c5b1dd0fc461e2c65f003"
+    },
+    {
+      "path": "expanded/cases/expanded-flow-field-corridor/case.json",
+      "sha256": "b2d23869ae7b211528bfb26c2c0a6ca45aaaf2e939e9338aba11ae828c7bd224"
+    },
+    {
+      "path": "expanded/cases/expanded-attached-motion-retarget/case.json",
+      "sha256": "597c8d38d30615dabc872ab5694104d6d0212016df31ab9c3e54f6c285084eeb"
+    },
+    {
+      "path": "expanded/cases/expanded-native-garment-clearance/case.json",
+      "sha256": "9362d412b108e578687fac0b5467aaaf629802b6c08a302b25005d469e0f2d1a"
+    }
+  ]
+}

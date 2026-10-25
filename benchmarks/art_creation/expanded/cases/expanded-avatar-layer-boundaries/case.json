@@ -1,0 +1,524 @@
+{
+  "schema_version": 2,
+  "id": "expanded-avatar-layer-boundaries",
+  "version": 1,
+  "family": "avatar_layers",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "I want a friendly virtual host with the mantua reference's broad lower balance, but an original modern outfit rather than a period reconstruction. Show two outfit directions A and B on matching front and back character sheets. Keep the face and hair readable above the clothes, and make the outer jacket, collar, underlayer, and waist fastening visibly separate where they overlap. Organize those garment pieces as named editable groups in the SVG so changing one is possible without repainting the whole character. Show a 160x160 face-and-shoulder preview. This is a design and layer-planning sheet; explain what it does and does not establish about a Live2D export. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, layer-probe.svg, layer-probe.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [
+        "mantua"
+      ],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "layer-probe.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "layer-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose A for its collar-to-jacket relationship, not its decoration. Keep B unchanged. Remove ornament near the jaw and adjust the underlayer so it remains visible through the jacket opening. Preserve the face, hair outline, jacket silhouette, and fastening position. Keep the named garment groups usable. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, layer-probe.svg, layer-probe.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "layer-probe.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "layer-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "I need proof that the pieces are separate. In a separate layer-probe SVG and PNG, recolor only the underlayer and hide only the collar, leaving the face, hair, jacket, and fastening in their accepted positions. Keep the main A sheet unchanged from the previous turn. Describe any boundary that is still only a proposed drawing seam, not tested rig behavior. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, layer-probe.svg, layer-probe.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "layer-probe.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "layer-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "mantua",
+      "path": "../../assets/met-81718.jpg",
+      "sha256": "7d009bd2c495723af17d1cb2a59b8f35fc6a58257418a9f25ed28987e4a8d923",
+      "license": "CC0 / Met Open Access",
+      "source": "https://www.metmuseum.org/art/collection/search/81718",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "transfer",
+      "turn": 1,
+      "quote": "an original modern outfit rather than a period reconstruction"
+    },
+    {
+      "id": "views",
+      "turn": 1,
+      "quote": "matching front and back character sheets"
+    },
+    {
+      "id": "overlap",
+      "turn": 1,
+      "quote": "outer jacket, collar, underlayer, and waist fastening visibly separate where they overlap"
+    },
+    {
+      "id": "groups",
+      "turn": 1,
+      "quote": "named editable groups in the SVG"
+    },
+    {
+      "id": "focus",
+      "turn": 1,
+      "quote": "Keep the face and hair readable above the clothes"
+    },
+    {
+      "id": "target",
+      "turn": 1,
+      "quote": "explain what it does and does not establish about a Live2D export"
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Keep B unchanged."
+    },
+    {
+      "id": "jaw",
+      "turn": 2,
+      "quote": "Remove ornament near the jaw"
+    },
+    {
+      "id": "opening",
+      "turn": 2,
+      "quote": "the underlayer so it remains visible through the jacket opening"
+    },
+    {
+      "id": "accepted",
+      "turn": 2,
+      "quote": "Preserve the face, hair outline, jacket silhouette, and fastening position."
+    },
+    {
+      "id": "probe",
+      "turn": 3,
+      "quote": "recolor only the underlayer and hide only the collar, leaving the face, hair, jacket, and fastening in their accepted positions"
+    },
+    {
+      "id": "main",
+      "turn": 3,
+      "quote": "Keep the main A sheet unchanged from the previous turn."
+    }
+  ],
+  "atoms": [
+    {
+      "id": "original-lower-balance",
+      "dimension": "reference_transfer",
+      "criterion": "The lower balance inspires a new modern outfit rather than a period costume copy.",
+      "requirement_ids": [
+        "transfer"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "front-back-construction",
+      "dimension": "cross_view_consistency",
+      "criterion": "Garment layers and fastening remain coherent across matching front/back views.",
+      "requirement_ids": [
+        "views",
+        "overlap"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "semantic-layer-editability",
+      "dimension": "editability",
+      "criterion": "Named SVG groups isolate the jacket, collar, underlayer, and fastening.",
+      "requirement_ids": [
+        "groups"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "Pieces are flattened or not individually identifiable in editable SVG.",
+        "1": "Some pieces can be isolated, but a required layer is entangled with another.",
+        "2": "Each requested garment piece has a named independent editable group."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "a.svg",
+          "b.svg"
+        ]
+      }
+    },
+    {
+      "id": "face-layer-priority",
+      "dimension": "scale_readability",
+      "criterion": "Face/hair remain visually prior to costume in the thumbnail.",
+      "requirement_ids": [
+        "focus"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "thumb.png"
+        ]
+      }
+    },
+    {
+      "id": "opening-and-jaw-edit",
+      "dimension": "hierarchy",
+      "criterion": "A removes jaw competition and exposes the underlayer through the opening.",
+      "requirement_ids": [
+        "jaw",
+        "opening"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png"
+        ]
+      }
+    },
+    {
+      "id": "accepted-layer-preservation",
+      "dimension": "preservation",
+      "criterion": "The accepted face/hair/jacket/fastening remain fixed while B is retained.",
+      "requirement_ids": [
+        "scope",
+        "accepted"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "a.svg",
+          "b.svg",
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "selective-layer-probe",
+      "dimension": "editability",
+      "criterion": "The isolated probe alters only the underlayer color and collar visibility, leaving accepted pieces fixed.",
+      "requirement_ids": [
+        "probe"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [
+        "semantic-layer-editability"
+      ],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "a.svg",
+          "layer-probe.svg",
+          "layer-probe.png"
+        ]
+      }
+    },
+    {
+      "id": "main-versus-probe",
+      "dimension": "preservation",
+      "criterion": "The main A sheet stays unchanged while the separate counterfactual probe is produced.",
+      "requirement_ids": [
+        "main"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "a.svg",
+          "a.png"
+        ]
+      }
+    },
+    {
+      "id": "target-ready-claim-boundary",
+      "dimension": "evidence_honesty",
+      "criterion": "The sheet and selective edit are not presented as a verified Live2D export or rig.",
+      "requirement_ids": [
+        "target"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "notes.md"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "svg"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "MaintainAll self-authored demanding non-expert brief",
+    "feedback": "synthetic staged corrections; no claim of real user acceptance",
+    "created_at": "2026-10-11",
+    "dataset_release": "art-creation-expanded-v3",
+    "domain": "costume_and_avatar",
+    "challenge_axes": [
+      "semantic-layer-boundaries",
+      "cross-view-overlap",
+      "face-ornament-competition",
+      "counterfactual-edit",
+      "preview-versus-export"
+    ],
+    "reference_authorship": "CC0 Met object photographs and/or explicitly labeled original schematic input; never a replay of private session images",
+    "holdout_policy": "development task data"
+  }
+}

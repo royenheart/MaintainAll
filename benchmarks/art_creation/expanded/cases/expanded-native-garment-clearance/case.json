@@ -1,0 +1,545 @@
+{
+  "schema_version": 2,
+  "id": "expanded-native-garment-clearance",
+  "version": 1,
+  "family": "native_costume",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Build an original simple 3D costume shell in Blender using the garment-section schematic and the kimono's quiet body/red boundary as references. The schematic is an authored clearance diagram, not a physically simulated garment. Show A with a folded shoulder-to-waist shell and B with a softer layered shell, on the same simple mannequin and under the same camera and lighting. The outer shell should visibly anchor at the shoulders, leave clearance around the torso and forearms, and have a readable lower edge rather than intersecting the body. Preserve the mannequin's proportions in both directions. Expose shell offset, fold depth, and lower-edge flare in source.py; demonstrate a real shell-offset parameter edit while keeping the camera and mannequin fixed. Include a side render and distinguish modeled clearance from untested cloth simulation or VRM rigging. Deliver scene.blend, source.py, a.png, b.png, side.png, parameter-probe.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. All four PNGs are actual 640x480 Blender renders. Save both labeled alternatives in scene.blend; expose meaningful parameters in source.py and document a real parameter change and independent saved-scene reopen in evidence.json. Native scene editability is required; a flat drawing is insufficient.",
+      "attachments": [
+        "schematic",
+        "kimono"
+      ],
+      "artifacts": [
+        {
+          "path": "scene.blend",
+          "kind": "editable",
+          "format": "blend"
+        },
+        {
+          "path": "source.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "side.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "parameter-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose A for its shoulder attachment, not its lower width. Keep B unchanged. Refine only fold depth so the layered edge reads lighter without making the material transparent or widening the overall silhouette. Keep the shoulder anchors, mannequin, shell clearance, red-boundary palette, camera, and lighting. Deliver scene.blend, source.py, a.png, b.png, side.png, parameter-probe.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. All four PNGs are actual 640x480 Blender renders. Save both labeled alternatives in scene.blend; expose meaningful parameters in source.py and document a real parameter change and independent saved-scene reopen in evidence.json. Native scene editability is required; a flat drawing is insufficient.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "scene.blend",
+          "kind": "editable",
+          "format": "blend"
+        },
+        {
+          "path": "source.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "side.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "parameter-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "The front is good, but in side view the lower shell still cuts into the forearm space. Change only the lower-edge flare and local clearance there. Keep the accepted front shoulder outline, fold depth, torso proportions, palette, and camera. Repeat the same shell-offset parameter probe and reopen the native scene before rendering; do not describe it as a finished rig or a successful cloth simulation. Deliver scene.blend, source.py, a.png, b.png, side.png, parameter-probe.png, evidence.json, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. All four PNGs are actual 640x480 Blender renders. Save both labeled alternatives in scene.blend; expose meaningful parameters in source.py and document a real parameter change and independent saved-scene reopen in evidence.json. Native scene editability is required; a flat drawing is insufficient.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "scene.blend",
+          "kind": "editable",
+          "format": "blend"
+        },
+        {
+          "path": "source.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "side.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "parameter-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 640,
+          "height": 480
+        },
+        {
+          "path": "evidence.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "schematic",
+      "path": "../../assets/garment-section.png",
+      "sha256": "237918169eefcea45c03b1d630c1b63cda3bba87812910b884c3e9135ae2e19a",
+      "license": "CC0-1.0",
+      "source": "MaintainAll authored schematic reference",
+      "visibility": "public"
+    },
+    {
+      "id": "kimono",
+      "path": "../../assets/met-125959.jpg",
+      "sha256": "c05affbab0e62582e94808f6bc4b83cd23cb73bd077fed9e5bac4d9c1a508926",
+      "license": "CC0 / Met Open Access",
+      "source": "https://www.metmuseum.org/art/collection/search/125959",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "options",
+      "turn": 1,
+      "quote": "A with a folded shoulder-to-waist shell and B with a softer layered shell"
+    },
+    {
+      "id": "common",
+      "turn": 1,
+      "quote": "the same simple mannequin and under the same camera and lighting"
+    },
+    {
+      "id": "clearance",
+      "turn": 1,
+      "quote": "anchor at the shoulders, leave clearance around the torso and forearms"
+    },
+    {
+      "id": "intersection",
+      "turn": 1,
+      "quote": "a readable lower edge rather than intersecting the body"
+    },
+    {
+      "id": "proportions",
+      "turn": 1,
+      "quote": "Preserve the mannequin's proportions in both directions."
+    },
+    {
+      "id": "controls",
+      "turn": 1,
+      "quote": "Expose shell offset, fold depth, and lower-edge flare in source.py"
+    },
+    {
+      "id": "probe",
+      "turn": 1,
+      "quote": "a real shell-offset parameter edit while keeping the camera and mannequin fixed"
+    },
+    {
+      "id": "truth",
+      "turn": 1,
+      "quote": "distinguish modeled clearance from untested cloth simulation or VRM rigging"
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Keep B unchanged."
+    },
+    {
+      "id": "fold",
+      "turn": 2,
+      "quote": "Refine only fold depth"
+    },
+    {
+      "id": "material",
+      "turn": 2,
+      "quote": "without making the material transparent or widening the overall silhouette"
+    },
+    {
+      "id": "preserve",
+      "turn": 2,
+      "quote": "Keep the shoulder anchors, mannequin, shell clearance, red-boundary palette, camera, and lighting."
+    },
+    {
+      "id": "lower",
+      "turn": 3,
+      "quote": "Change only the lower-edge flare and local clearance there."
+    },
+    {
+      "id": "accepted",
+      "turn": 3,
+      "quote": "Keep the accepted front shoulder outline, fold depth, torso proportions, palette, and camera."
+    },
+    {
+      "id": "repeat",
+      "turn": 3,
+      "quote": "Repeat the same shell-offset parameter probe and reopen the native scene before rendering"
+    }
+  ],
+  "atoms": [
+    {
+      "id": "native-shell-alternatives",
+      "dimension": "alternatives",
+      "criterion": "Folded versus soft-layered shell directions are comparable under the same mannequin/camera/light.",
+      "requirement_ids": [
+        "options",
+        "common"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "scene.blend",
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "shoulder-and-body-clearance",
+      "dimension": "construction",
+      "criterion": "Shoulder anchors and torso/forearm clearance are readable in front/side projections.",
+      "requirement_ids": [
+        "clearance",
+        "intersection"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The shell floats from shoulders or visibly intersects required body clearance.",
+        "1": "Front contact looks plausible but side view reveals unresolved collision/attachment.",
+        "2": "Shoulder contact and visible torso/forearm clearance are consistent in requested projections."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "side.png"
+        ]
+      }
+    },
+    {
+      "id": "mannequin-proportion-retention",
+      "dimension": "cross_view_consistency",
+      "criterion": "Alternative shells preserve the same mannequin proportions.",
+      "requirement_ids": [
+        "proportions"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "scene.blend",
+          "a.png",
+          "b.png",
+          "side.png"
+        ]
+      }
+    },
+    {
+      "id": "separate-shell-parameters",
+      "dimension": "editability",
+      "criterion": "Shell offset, fold depth, and lower flare are meaningful distinct generator controls.",
+      "requirement_ids": [
+        "controls"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "source.py"
+        ]
+      }
+    },
+    {
+      "id": "offset-only-counterfactual",
+      "dimension": "editability",
+      "criterion": "Actual shell-offset probe retains camera/mannequin while changing shell-body clearance.",
+      "requirement_ids": [
+        "probe"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "scene.blend",
+          "source.py",
+          "parameter-probe.png",
+          "evidence.json"
+        ]
+      }
+    },
+    {
+      "id": "fold-material-edit-scope",
+      "dimension": "preservation",
+      "criterion": "A fold-depth change lightens layering without transparency/width changes; accepted fixed relations and B remain.",
+      "requirement_ids": [
+        "scope",
+        "fold",
+        "material",
+        "preserve"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "scene.blend",
+          "source.py",
+          "a.png",
+          "b.png",
+          "side.png"
+        ]
+      }
+    },
+    {
+      "id": "local-lower-clearance",
+      "dimension": "construction",
+      "criterion": "The lower flare correction frees side forearm space while accepted upper/front structure remains.",
+      "requirement_ids": [
+        "lower",
+        "accepted"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "a.png",
+          "side.png",
+          "scene.blend"
+        ]
+      }
+    },
+    {
+      "id": "native-probe-repeat",
+      "dimension": "runtime_evidence",
+      "criterion": "Saved scene reopen and the same offset counterfactual are actually evidenced after refinement.",
+      "requirement_ids": [
+        "repeat"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "scene.blend",
+          "parameter-probe.png",
+          "evidence.json"
+        ]
+      }
+    },
+    {
+      "id": "model-versus-simulation",
+      "dimension": "evidence_honesty",
+      "criterion": "Modeled shell clearance is not presented as verified cloth simulation or a finished VRM rig.",
+      "requirement_ids": [
+        "truth"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "notes.md"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "blender",
+    "native_scene_reopen"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "MaintainAll self-authored demanding non-expert brief",
+    "feedback": "synthetic staged corrections; no claim of real user acceptance",
+    "created_at": "2026-10-11",
+    "dataset_release": "art-creation-expanded-v3",
+    "domain": "native_3d",
+    "challenge_axes": [
+      "native-shell-construction",
+      "front-side-clearance",
+      "material-versus-volume",
+      "camera-mannequin-invariance",
+      "modeled-versus-simulated"
+    ],
+    "reference_authorship": "CC0 Met object photographs and/or explicitly labeled original schematic input; never a replay of private session images",
+    "holdout_policy": "development task data"
+  }
+}

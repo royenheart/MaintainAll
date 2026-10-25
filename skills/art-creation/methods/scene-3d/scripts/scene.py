@@ -84,7 +84,7 @@ def projected_svg(vertices, faces, yaw, height):
             '<title>Actual mesh: orthographic flat-shaded form study</title>\n'
             '<rect width="640" height="640" fill="#f4f1e9"/>\n' + "\n".join(polygons) +
             '<text x="24" y="610" font-family="sans-serif" font-size="14" fill="#253c40">'
-            'Orthographic form study; no physical material rendering</text>\n</svg>\n')
+            'Orthographic form study; flat shading</text>\n</svg>\n')
 
 
 def main():
@@ -107,7 +107,7 @@ def main():
                   "shape": args.shape, "width": args.width, "height": args.height,
                   "segments": args.segments, "yawDegrees": args.yaw,
                   "profile": PROFILES[args.shape], "projection": "orthographic",
-                  "previewLimit": "Flat shading and painter sorting; no physical material rendering"}
+                  "previewLimit": "Flat shading and painter sorting"}
         paths[0].write_text(obj_text(vertices, faces))
         paths[1].write_text(svg)
         paths[2].write_text(json.dumps(recipe, indent=2) + "\n")

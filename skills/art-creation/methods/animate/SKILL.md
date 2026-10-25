@@ -1,6 +1,6 @@
 ---
 name: animate
-description: Use within art-creation when an interaction or visual sequence needs motion studies, timing, easing, continuity, or playable alternatives; not static styling or frame-rendered video export.
+description: Use within art-creation when an interaction or visual sequence needs motion studies, timing, easing, continuity, or playable alternatives.
 license: Apache-2.0; see LICENSE and NOTICE.md
 ---
 
@@ -15,14 +15,14 @@ Determine what movement should express: feedback, a relationship, spatial contin
 ## Build comparable playable studies
 
 1. Choose distinctly different motion vocabularies for an open brief: spatial travel, reveal/occlusion, scale/depth, or shape change when appropriate.
-2. Use CSS for simple interaction states; Web Animations API or an existing library for scrubbing, interruption, or sequences. Do not add a library for an effect the available runtime already expresses.
+2. Use CSS for simple interaction states, or Web Animations API and suitable libraries for scrubbing, interruption, and sequences.
 3. [The motion starter](templates/motion-study.html) demonstrates three real keyframe mechanisms, playback, scrubbing, duration control, reset, and recipe export without an external library. Replace its example subject and states.
-4. Hold content, canvas size, and comparison duration fixed unless one is the experimental variable. Actually play the results; stills cannot demonstrate timing or easing. Display timestamped stills only as a disclosed fallback.
+4. Hold content, canvas size, and comparison duration fixed unless one is the experimental variable. Play the studies to compare timing and easing; use timestamped stills for key states.
 
 ## Improve by mechanism
 
-If feedback says abrupt, compare the initial speed, easing, or state discontinuity. If it says sluggish, inspect delay, travel distance, and when useful feedback occurs. If it says chaotic, inspect overlapping actions and attention shifts. Do not simply make every animation slower or apply the same curve everywhere.
+If feedback says abrupt, compare the initial speed, easing, or state discontinuity. If it says sluggish, inspect delay, travel distance, and when useful feedback occurs. If it says chaotic, inspect overlapping actions and attention shifts.
 
-Keep content visible if the script fails. For interface motion, check keyboard use, repeat/interruption, target-device performance, and reduced movement while retaining meaningful state feedback. Expressive character or film animation may need a different timing vocabulary from UI feedback.
+For interface motion, check keyboard use, repeat/interruption, target-device performance, and reduced movement while retaining meaningful state feedback. Develop character or film timing from the expressive brief.
 
-For frame-accurate video, route to [Remotion video](../remotion-video/SKILL.md): wall-clock CSS/WAAPI playback is not a deterministic video export mechanism. Return playable source, a timing recipe, inspected states, limitations, and the user decision to the parent workflow.
+For frame-accurate video, use [Remotion video](../remotion-video/SKILL.md). Return playable source, a timing recipe, key states, and user feedback.

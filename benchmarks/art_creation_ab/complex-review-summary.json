@@ -1,0 +1,89 @@
+{
+  "schema_version": 1,
+  "experiment": "20261009-multiref-ab",
+  "model": "gpt-6.1-sol",
+  "effort": "low",
+  "rating_record_sha256": "ab70418c3c78ec441e05a40490c0f6a5f9b941812d5c04379ef4132f530da7d5",
+  "quality_status": "manual_review",
+  "reviewer": "root-agent artifact review; single agent, not a human preference panel",
+  "method": "PNG inspection first, then handoff and preservation evidence; repeated byte-identical images reuse prior observation.",
+  "arm_mapping_seen_before_rating": false,
+  "preview_slots": 48,
+  "reviewed_unique_pngs": 28,
+  "rating_atoms": 94,
+  "per_arm": {
+    "old": {
+      "atoms": 47,
+      "scores": {
+        "0": 0,
+        "1": 3,
+        "2": 43,
+        "unverifiable": 1
+      }
+    },
+    "new": {
+      "atoms": 47,
+      "scores": {
+        "0": 0,
+        "1": 4,
+        "2": 42,
+        "unverifiable": 1
+      }
+    }
+  },
+  "automatic_quality_pass": null,
+  "aggregate_aesthetic_score": null,
+  "demonstrated_quality_gain": false,
+  "version_discrimination": "No stable version separation is established by these two tasks with one fixed-order repetition.",
+  "rubric_alignment_exceptions": [
+    {
+      "task": "editorial-transfer",
+      "turn": 1,
+      "atom": "reading-hierarchy",
+      "reason": "The frozen atom requires date/venue before supporting copy; first-round brief only requires a clear reading order. Withheld rather than penalizing an additional evaluator preference."
+    }
+  ],
+  "observed_partials": [
+    {
+      "arms": [
+        "old",
+        "new"
+      ],
+      "task": "reference-costume",
+      "turn": 1,
+      "finding": "Construction and attachment-side ownership are only partially legible."
+    },
+    {
+      "arms": [
+        "old",
+        "new"
+      ],
+      "task": "reference-costume",
+      "turn": 3,
+      "finding": "Airy material treatment remains relatively flat and partly depends on handoff annotation."
+    },
+    {
+      "arms": [
+        "new"
+      ],
+      "task": "editorial-transfer",
+      "turn": 1,
+      "finding": "Small-corner FREE ENTRY readability is partial in this artifact review; this is not a universal font-size threshold."
+    }
+  ],
+  "source_editability_verified": false,
+  "execution": {
+    "completion_basis": "immutable result rows, not the stored manifest.state label",
+    "stored_manifest_state": "running",
+    "planned_cli_calls": 12,
+    "actual_cli_calls": 12,
+    "completed_cli_calls": 12,
+    "delivery_pass": 12,
+    "model_retries": 0
+  },
+  "limitations": [
+    "Root single-agent artifact review with partial anonymization; no independent human preference validation.",
+    "Ratings and task cards remain frozen; the first-turn alignment exception is withheld rather than counted as a model error.",
+    "Fixed model alias/effort, fixed order, two tasks and one repetition cannot establish a causal or general artistic-quality effect."
+  ]
+}

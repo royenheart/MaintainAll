@@ -1,0 +1,39 @@
+{
+  "schema_version": 2,
+  "id": "art-creation-core-v2",
+  "version": 1,
+  "cases": [
+    {
+      "path": "cases/attached-motion-continuity/case.json",
+      "sha256": "70c62677ffe1c8d994fe8ac5ed424ed2b5b9adb07bdbce91ad41aa1e176fb59f"
+    },
+    {
+      "path": "cases/costume-attachment-scope/case.json",
+      "sha256": "c19b435db2d6386db770a848600d06ac262cc3e27e92a9fbeb5a15d1b8f80fa1"
+    },
+    {
+      "path": "cases/editorial-transfer/case.json",
+      "sha256": "08a03eb189c0aa87b511940e7c74ebba148ba05021a48a545b4f16137740aac5"
+    },
+    {
+      "path": "cases/procedural-facade-preservation/case.json",
+      "sha256": "cdf643d360efe9ed7f70cd789a75f02eb8c4a87c763af65b3791d8917b1482dc"
+    },
+    {
+      "path": "cases/reference-annotation/case.json",
+      "sha256": "1fbdd7cfdfc79420650bfe351ce6b5bf9c239f50d0fba85fc67d375510010800"
+    },
+    {
+      "path": "cases/reference-conflict-transfer/case.json",
+      "sha256": "40f4316f92c4e591c3e11444a43b798c92639d130b8f1598b214bc3df7c1fb96"
+    },
+    {
+      "path": "cases/reference-costume/case.json",
+      "sha256": "e2dc844efa30871134435e44bf6e7bf4ed54ab19224515ccd78cb109e68d409e"
+    },
+    {
+      "path": "cases/stateful-layout/case.json",
+      "sha256": "5daaf7aafcd6a0008c500a2a99944b8cfb3080eb41d855d9f2335547b8958577"
+    }
+  ]
+}

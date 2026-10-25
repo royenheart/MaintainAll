@@ -1,0 +1,382 @@
+{
+  "schema_version": 2,
+  "id": "procedural-facade-preservation",
+  "version": 2,
+  "family": "procedural_3d",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Build an editable procedural 3D study of a compact riverside reading hall. It should feel welcoming and calm, with a legible entrance and a facade rhythm that derives from structural bays rather than ornaments pasted onto a wall. Show two different facade grammars A and B using the same building envelope and camera. Make the generator expose meaningful parameters for bay rhythm, opening proportions and shaded threshold depth; explain their effects without treating polygon count or number of parts as artistic quality. Deliver generator.py, a.blend, b.blend, actual rendered a.png and b.png, and notes.md. Use Blender and independently reopen the saved scenes; report unavailable renderer or native support rather than replacing this with a drawn 3D-looking SVG.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "generator.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "a.blend",
+          "kind": "editable",
+          "format": "blend"
+        },
+        {
+          "path": "b.blend",
+          "kind": "editable",
+          "format": "blend"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose A only for its entrance-to-bay relationship. Keep B unchanged and preserve the envelope, camera and entrance position. Vary A's upper openings to reduce mechanical repetition while keeping plausible vertical support and a clear circulation threshold. Show a render and explain which rules changed versus accepted relations.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "generator.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "a.blend",
+          "kind": "editable",
+          "format": "blend"
+        },
+        {
+          "path": "b.blend",
+          "kind": "editable",
+          "format": "blend"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "Keep the new upper rhythm. Only refine the entrance's shade transition so the threshold belongs to the facade and does not look like a detached awning. Preserve the structural alignment, envelope and camera. Reopen the resulting native scene and render it, and distinguish verified generator behavior from untested architecture or construction claims.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "generator.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "a.blend",
+          "kind": "editable",
+          "format": "blend"
+        },
+        {
+          "path": "b.blend",
+          "kind": "editable",
+          "format": "blend"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [],
+  "requirements": [
+    {
+      "id": "native",
+      "turn": 1,
+      "quote": "Use Blender and independently reopen the saved scenes"
+    },
+    {
+      "id": "grammar",
+      "turn": 1,
+      "quote": "facade rhythm that derives from structural bays rather than ornaments pasted onto a wall"
+    },
+    {
+      "id": "options",
+      "turn": 1,
+      "quote": "two different facade grammars A and B using the same building envelope and camera"
+    },
+    {
+      "id": "parameters",
+      "turn": 1,
+      "quote": "meaningful parameters for bay rhythm, opening proportions and shaded threshold depth"
+    },
+    {
+      "id": "preserve",
+      "turn": 2,
+      "quote": "Keep B unchanged and preserve the envelope, camera and entrance position."
+    },
+    {
+      "id": "variation",
+      "turn": 2,
+      "quote": "reduce mechanical repetition while keeping plausible vertical support"
+    },
+    {
+      "id": "attached",
+      "turn": 3,
+      "quote": "threshold belongs to the facade and does not look like a detached awning"
+    },
+    {
+      "id": "honesty",
+      "turn": 3,
+      "quote": "distinguish verified generator behavior from untested architecture or construction claims"
+    }
+  ],
+  "atoms": [
+    {
+      "id": "native-reopen",
+      "dimension": "runtime_evidence",
+      "criterion": "A saved Blender scene is independently reopened and rendered; SVG or file existence cannot substitute.",
+      "requirement_ids": [
+        "native"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "a.blend",
+          "a.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "structural-grammar",
+      "dimension": "construction",
+      "criterion": "Visible opening rhythm aligns with a supported structural-bay interpretation.",
+      "requirement_ids": [
+        "grammar"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "alternative-rules",
+      "dimension": "alternatives",
+      "criterion": "A/B implement different grammar mechanisms within the same envelope/camera.",
+      "requirement_ids": [
+        "options"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "parameter-effects",
+      "dimension": "procedural_control",
+      "criterion": "Parameter changes have documented observable effects on the intended relationships.",
+      "requirement_ids": [
+        "parameters"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "generator.py",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "accepted-scene-preservation",
+      "dimension": "preservation",
+      "criterion": "B and accepted A envelope/camera/entrance remain stable through targeted revisions.",
+      "requirement_ids": [
+        "preserve"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "a.blend",
+          "b.blend",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "nonmechanical-rhythm",
+      "dimension": "pattern_relations",
+      "criterion": "Upper variation changes rhythm without removing plausible support.",
+      "requirement_ids": [
+        "variation"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png"
+        ]
+      }
+    },
+    {
+      "id": "attached-threshold",
+      "dimension": "attachment",
+      "criterion": "Shade/threshold transition belongs to the facade rather than detached overlay.",
+      "requirement_ids": [
+        "attached"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png"
+        ]
+      }
+    },
+    {
+      "id": "architecture-honesty",
+      "dimension": "evidence_honesty",
+      "criterion": "Native procedural validation is separated from untested construction claims.",
+      "requirement_ids": [
+        "honesty"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "notes.md"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "blender",
+    "native_scene_reopen",
+    "exact_resume"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "self-authored natural brief",
+    "reference_images": "Met Open Access; exact downloaded image hashes",
+    "user_acceptance": "none; synthetic staged feedback",
+    "created_at": "2026-10-09"
+  }
+}

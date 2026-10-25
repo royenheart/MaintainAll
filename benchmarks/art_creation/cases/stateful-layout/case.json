@@ -1,0 +1,419 @@
+{
+  "schema_version": 2,
+  "id": "stateful-layout",
+  "version": 2,
+  "family": "interactive_layout",
+  "split": "holdout",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Build a small local interactive exhibition index, not a static illustration of one. Use the supplied woven-cloth image only to inform irregular spacing and quiet material cues. There are four sessions: OPEN STUDIO, PRINT TALK, NIGHT READING and ARCHIVE TOUR. The interface has a persistent main area and a compact lower-right session slot; choosing a session exposes its own card while the other cards stay docked. The active card must remain visibly attached to the slot, with a readable title, date and action in both 1100x700 and 390x844 windows. Show actual browser captures of the default and selected states at both sizes. Deliver index.html with local supporting files, desktop-default.png, desktop-selected.png, mobile-default.png, mobile-selected.png and notes.md. Identify what you observed versus assumed from the reference.",
+      "attachments": [
+        "weave"
+      ],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "desktop-default.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1100,
+          "height": 700
+        },
+        {
+          "path": "desktop-selected.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1100,
+          "height": 700
+        },
+        {
+          "path": "mobile-default.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 390,
+          "height": 844
+        },
+        {
+          "path": "mobile-selected.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 390,
+          "height": 844
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Keep the chosen slot silhouette and main-area balance. The active card should emerge vertically from its own docking edge, not appear as an unrelated tooltip; inactive cards must stay retracted. Show a playable selection transition and an actual intermediate-state capture at both sizes. Preserve the existing content and both-size identity, and explain how focus and hover address the same action.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "desktop-default.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1100,
+          "height": 700
+        },
+        {
+          "path": "desktop-selected.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1100,
+          "height": 700
+        },
+        {
+          "path": "mobile-default.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 390,
+          "height": 844
+        },
+        {
+          "path": "mobile-selected.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 390,
+          "height": 844
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "Only one selected card is allowed to emerge at a time. During rapid selection of a different session, retarget from the current state rather than resetting all cards or leaving the previous card open. Support keyboard focus as well as hover, without moving the trigger button on click. Keep the selected and retracted shapes consistent, with their ownership still clear. Update all captures and the playable local page, and document which interaction states were actually exercised.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "desktop-default.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1100,
+          "height": 700
+        },
+        {
+          "path": "desktop-selected.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 1100,
+          "height": 700
+        },
+        {
+          "path": "mobile-default.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 390,
+          "height": 844
+        },
+        {
+          "path": "mobile-selected.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 390,
+          "height": 844
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "weave",
+      "path": "../../assets/met-45406.jpg",
+      "sha256": "24fcad8ac8807557be50fff389b5326ae29b561dcbe5e26f3dab17f1c45ed916",
+      "license": "CC0 / Met public-domain object image",
+      "source": "https://www.metmuseum.org/art/collection/search/45406",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "runtime",
+      "turn": 1,
+      "quote": "actual browser captures"
+    },
+    {
+      "id": "attached",
+      "turn": 1,
+      "quote": "active card must remain visibly attached to the slot"
+    },
+    {
+      "id": "readable",
+      "turn": 1,
+      "quote": "readable title, date and action in both 1100x700 and 390x844 windows"
+    },
+    {
+      "id": "emerge",
+      "turn": 2,
+      "quote": "emerge vertically from its own docking edge, not appear as an unrelated tooltip"
+    },
+    {
+      "id": "inactive",
+      "turn": 2,
+      "quote": "inactive cards must stay retracted"
+    },
+    {
+      "id": "continuity",
+      "turn": 3,
+      "quote": "retarget from the current state rather than resetting all cards or leaving the previous card open"
+    },
+    {
+      "id": "focus",
+      "turn": 3,
+      "quote": "Support keyboard focus as well as hover, without moving the trigger button on click"
+    },
+    {
+      "id": "evidence",
+      "turn": 3,
+      "quote": "document which interaction states were actually exercised"
+    }
+  ],
+  "atoms": [
+    {
+      "id": "actual-state-evidence",
+      "dimension": "runtime_evidence",
+      "criterion": "Captures and trace document actual browser default/selected states at both sizes.",
+      "requirement_ids": [
+        "runtime"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "desktop-default.png",
+          "desktop-selected.png",
+          "mobile-default.png",
+          "mobile-selected.png"
+        ]
+      }
+    },
+    {
+      "id": "slot-ownership",
+      "dimension": "attachment",
+      "criterion": "The selected card visibly retains its docking relation in both layouts.",
+      "requirement_ids": [
+        "attached"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "desktop-selected.png",
+          "mobile-selected.png"
+        ]
+      }
+    },
+    {
+      "id": "readability-by-state",
+      "dimension": "legibility",
+      "criterion": "Session text and action remain readable at actual captures without covering the persistent main area.",
+      "requirement_ids": [
+        "readable"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "desktop-selected.png",
+          "mobile-selected.png"
+        ]
+      }
+    },
+    {
+      "id": "emergence-direction",
+      "dimension": "motion_relations",
+      "criterion": "Playable transition originates at the owning edge rather than detached tooltip placement.",
+      "requirement_ids": [
+        "emerge"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "inactive-preservation",
+      "dimension": "preservation",
+      "criterion": "Other cards remain retracted through the selected-card animation.",
+      "requirement_ids": [
+        "inactive"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "rapid-retarget",
+      "dimension": "motion_continuity",
+      "criterion": "Changing selection mid-transition preserves continuity and exposes one active card.",
+      "requirement_ids": [
+        "continuity"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "focus-trigger-stability",
+      "dimension": "interaction",
+      "criterion": "Hover/focus share ownership and clicked trigger geometry stays fixed.",
+      "requirement_ids": [
+        "focus"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "state-honesty",
+      "dimension": "evidence_honesty",
+      "criterion": "Handoff distinguishes actual exercised states from unverified claims.",
+      "requirement_ids": [
+        "evidence"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or visibly contradicted.",
+        "1": "The relation is partly established, with a material ambiguity.",
+        "2": "The required relation is observable and consistent in the declared evidence."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "notes.md"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "browser_capture",
+    "playable_motion"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "self-authored held-out task",
+    "frozen_at": "2026-10-09",
+    "used_to_modify_skill": false,
+    "reference_images": "Met CC0 exact hash",
+    "user_acceptance": "none; synthetic staged feedback"
+  }
+}

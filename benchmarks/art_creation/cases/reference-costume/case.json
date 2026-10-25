@@ -1,0 +1,518 @@
+{
+  "schema_version": 2,
+  "id": "reference-costume",
+  "version": 2,
+  "family": "costume",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "I am designing an original virtual performer: a quiet riverside archivist who occasionally tells mischievous stories. I do not know costume vocabulary. I like the calm body and surprising red edge in kimono.jpg, and the poised waist and layered lower-body weight in mantua.jpg; I do not want a historical reproduction or both outfits pasted together. It should feel airy and natural, with purposeful asymmetry rather than random ornaments. Most viewers see the face and shoulders in a small livestream window, but I also need a coherent full outfit and enough freedom to raise one arm. Please show two genuinely different directions, labeled A and B, and briefly explain what each interprets from the references and what you are assuming. For each direction show a front, back, and raised-arm costume study in one sheet, plus a 160x160 head-and-shoulders livestream preview. A simple original figure is sufficient; treat these as design studies, not a finished Live2D/VRM model. Deliver editable a.svg and b.svg with actual rendered a.png and b.png sheets and thumb-a.png and thumb-b.png. Use whatever construction is useful; inspect the rendered work before presenting it. Put a short plain-language handoff in notes.md.",
+      "attachments": [
+        "kimono",
+        "mantua"
+      ],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "thumb-a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "thumb-b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose A for its quiet face area and more restrained overall balance; that is the scope of my preference, not approval of every seam or ornament. Keep B as it was. I now want more presence in the lower half without making the shoulders or sleeves larger. The character should have one noticeable asymmetric feature that feels structurally attached, not a sticker or a floating charm. Keep the red-edge identity and the face clear in the small livestream preview. Update A's front/back/raised-arm views and thumbnail so I can compare the same costume across them. Briefly distinguish what you retained, changed, and still do not know. Keep the same deliverable filenames.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "thumb-a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "thumb-b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "Clarification: by airy I mean light material and visible separation between layers, not a huge cape, a see-through torso, or simply a wider skirt. The new lower-body presence and the red-edge identity are accepted. Refine only the layer/sleeve transition and the attachment of that asymmetric feature so the garment reads naturally when the arm is raised and does not change its construction between front and back. Preserve the chosen face/shoulder silhouette, main palette, and lower-body volume; B stays unchanged. Show the revised A sheet and thumbnail and explain what these flat studies can and cannot establish about deformation or a Live2D/VRM handoff.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "thumb-a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "thumb-b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "kimono",
+      "path": "../../assets/met-125959.jpg",
+      "sha256": "c05affbab0e62582e94808f6bc4b83cd23cb73bd077fed9e5bac4d9c1a508926",
+      "license": "CC0 / Met public-domain object image",
+      "source": "https://www.metmuseum.org/art/collection/search/125959",
+      "visibility": "public"
+    },
+    {
+      "id": "mantua",
+      "path": "../../assets/met-81718.jpg",
+      "sha256": "7d009bd2c495723af17d1cb2a59b8f35fc6a58257418a9f25ed28987e4a8d923",
+      "license": "CC0 / Met public-domain object image",
+      "source": "https://www.metmuseum.org/art/collection/search/81718",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "transfer",
+      "turn": 1,
+      "quote": "I like the calm body and surprising red edge in kimono.jpg, and the poised waist and layered lower-body weight in mantua.jpg; I do not want a historical reproduction or both outfits pasted together."
+    },
+    {
+      "id": "options",
+      "turn": 1,
+      "quote": "Please show two genuinely different directions, labeled A and B"
+    },
+    {
+      "id": "face",
+      "turn": 1,
+      "quote": "Most viewers see the face and shoulders in a small livestream window"
+    },
+    {
+      "id": "views",
+      "turn": 1,
+      "quote": "For each direction show a front, back, and raised-arm costume study"
+    },
+    {
+      "id": "asymmetry",
+      "turn": 1,
+      "quote": "purposeful asymmetry rather than random ornaments"
+    },
+    {
+      "id": "attachment",
+      "turn": 2,
+      "quote": "one noticeable asymmetric feature that feels structurally attached, not a sticker or a floating charm"
+    },
+    {
+      "id": "locality",
+      "turn": 2,
+      "quote": "Keep B as it was."
+    },
+    {
+      "id": "refinement",
+      "turn": 3,
+      "quote": "Preserve the chosen face/shoulder silhouette, main palette, and lower-body volume; B stays unchanged."
+    },
+    {
+      "id": "airy",
+      "turn": 3,
+      "quote": "by airy I mean light material and visible separation between layers, not a huge cape, a see-through torso, or simply a wider skirt"
+    },
+    {
+      "id": "scope",
+      "turn": 3,
+      "quote": "explain what these flat studies can and cannot establish about deformation or a Live2D/VRM handoff"
+    },
+    {
+      "id": "inspect",
+      "turn": 1,
+      "quote": "inspect the rendered work before presenting it"
+    }
+  ],
+  "atoms": [
+    {
+      "id": "reference-transfer",
+      "dimension": "reference_transfer",
+      "criterion": "The two real references inform different transferable design rules, rather than literal photographic collage or an undifferentiated historical mashup.",
+      "requirement_ids": [
+        "transfer"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "No observable reference transfer, or copied photographs substitute for costume design.",
+        "1": "One reference is legible or both are used mainly as decoration.",
+        "2": "Calm field/red boundary and waist/layer logic are translated into one coherent original costume, with supported interpretation."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "thumb-a.png",
+          "thumb-b.png"
+        ]
+      }
+    },
+    {
+      "id": "alternative-mechanisms",
+      "dimension": "alternatives",
+      "criterion": "A and B offer different ways to express the brief, beyond recoloring or adding ornaments.",
+      "requirement_ids": [
+        "options"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "Effectively identical, or only one option.",
+        "1": "Visible changes, but mainly superficial.",
+        "2": "Different silhouette/layer/focal strategies are visible and both remain plausible for the brief."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "thumb-a.png",
+          "thumb-b.png"
+        ]
+      }
+    },
+    {
+      "id": "small-scale-face-priority",
+      "dimension": "legibility",
+      "criterion": "In the actual 160x160 view the face remains the primary readable area and a restrained costume signature survives.",
+      "requirement_ids": [
+        "face"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "Face obscured/competes with dominant ornament, or thumbnail missing.",
+        "1": "Face visible, but identity disappears or nearby contrast competes.",
+        "2": "Face is primary while a quiet red-boundary or attached signature stays readable without enlarging decoration."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "thumb-a.png",
+          "thumb-b.png"
+        ]
+      }
+    },
+    {
+      "id": "cross-view-construction",
+      "dimension": "construction",
+      "criterion": "Front, back and raised-arm studies describe compatible garment openings, waist treatment, layers and attachment sites.",
+      "requirement_ids": [
+        "views"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "Views are missing or plainly contradictory.",
+        "1": "Views present but important overlaps/attachment/volume are ambiguous.",
+        "2": "Seam/overlap/attachment relations and garment volume agree across actual views."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "thumb-a.png",
+          "thumb-b.png"
+        ]
+      }
+    },
+    {
+      "id": "attached-asymmetry",
+      "dimension": "attachment",
+      "criterion": "One intended asymmetric feature has a visible and plausible support/attachment relation that remains identifiable across views.",
+      "requirement_ids": [
+        "attachment"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "Random scattered imbalance or floating feature.",
+        "1": "A focal asymmetry exists but support is not legible in all relevant views.",
+        "2": "Focal asymmetry is visibly supported by garment construction; its relation stays stable across views."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "thumb-a.png",
+          "thumb-b.png"
+        ]
+      }
+    },
+    {
+      "id": "arm-clearance",
+      "dimension": "motion_scope",
+      "criterion": "The raised arm changes relevant sleeve/overlap relations without implausibly stretching a rigid silhouette, blocking the face, or intersecting the torso.",
+      "requirement_ids": [
+        "views"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "Arm study absent or obvious incompatible intersections.",
+        "1": "Arm moves but garment relation remains unclear or schematic.",
+        "2": "Actual raised-arm drawing explains clearance/overlap and preserves face visibility; simulation is not implied."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "thumb-a.png",
+          "thumb-b.png"
+        ]
+      }
+    },
+    {
+      "id": "feedback-locality-t2",
+      "dimension": "preservation",
+      "criterion": "More lower-body presence is achieved without enlarging the accepted head/shoulder silhouette or replacing the palette; untouched B is preserved.",
+      "requirement_ids": [
+        "locality"
+      ],
+      "active_turns": [
+        2
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "Feedback scope or B is violated.",
+        "1": "Most scope retained with a noticeable unintended change.",
+        "2": "Images/source support the localized change and all accepted visual invariants remain recognizable; B hashes agree."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "thumb-a.png",
+          "thumb-b.png"
+        ]
+      }
+    },
+    {
+      "id": "feedback-locality-t3",
+      "dimension": "preservation",
+      "criterion": "More lower-body presence is achieved without enlarging the accepted head/shoulder silhouette or replacing the palette; untouched B is preserved.",
+      "requirement_ids": [
+        "locality",
+        "refinement"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "Feedback scope or B is violated.",
+        "1": "Most scope retained with a noticeable unintended change.",
+        "2": "Images/source support the localized change and all accepted visual invariants remain recognizable; B hashes agree."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "thumb-a.png",
+          "thumb-b.png"
+        ]
+      }
+    },
+    {
+      "id": "airy-reinterpretation",
+      "dimension": "material_cues",
+      "criterion": "Final lightness comes from layer/material/edge relationships rather than simply width, transparency, particles or a cape.",
+      "requirement_ids": [
+        "airy"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "Width/transparent torso/large cape substitutes for the clarification.",
+        "1": "Some layer separation, but effect is mainly labeling or extra ornament.",
+        "2": "Visible staggered layers/weight cues/controlled overlap express lightness while accepted lower-body volume is retained."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "thumb-a.png",
+          "thumb-b.png"
+        ]
+      }
+    },
+    {
+      "id": "honest-handoff",
+      "dimension": "evidence_honesty",
+      "criterion": "The handoff distinguishes visible design study evidence, interpretation, accepted preference scope and unverified deformation/runtime capability.",
+      "requirement_ids": [
+        "inspect"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "Claims a finished rig/runtime/physical validation without evidence.",
+        "1": "Some limitations stated, but feedback scope or implementation assumptions blur.",
+        "2": "Clear scoped acceptance and specific unresolved rig/deformation information; no self-score substitutes for evidence."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "thumb-a.png",
+          "thumb-b.png"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "svg",
+    "real_images",
+    "exact_resume"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "legacy complex pilot; prompts byte-identical after JSON decoding",
+    "legacy_card_sha256": "1c09a07789ce461a8bb8fae8c0d8c0a98f2d9c49c46e9dfb411d93c943883cbf",
+    "rubric_changes": "requirements are linked to exact prompt quotes; hierarchy/recomposition/balance begin only at their explicit turn, structural attachment begins at explicit turn 2",
+    "user_acceptance": "none; synthetic staged feedback",
+    "created_at": "2026-10-09"
+  }
+}

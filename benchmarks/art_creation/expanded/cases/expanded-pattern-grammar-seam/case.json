@@ -1,0 +1,499 @@
+{
+  "schema_version": 2,
+  "id": "expanded-pattern-grammar-seam",
+  "version": 1,
+  "family": "algorithmic_pattern",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Create an original repeat-pattern study based on the woven cloth's irregular rhythm. Do not extract or trace its actual motif. Show A using clustered rosette-like marks and B using a different branching grammar, with the same limited palette. Each full sheet must show a base tile next to a two-by-two repeat at the same scale so edge joins can be inspected. I want irregular local placement that still joins continuously across opposite tile edges, rather than a visible grid of identical centers. Expose the seed, mark scale, local offset range, and tile size in source.py and parameters.json. Produce a separately labeled parameter-probe render from one actual setting change and explain the rule that keeps the edge joins consistent. Deliver a.svg, a.png, b.svg, b.png, source.py, parameters.json, parameter-probe.svg, parameter-probe.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 960x720.",
+      "attachments": [
+        "weave"
+      ],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "source.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "parameters.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "parameter-probe.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "parameter-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose A for its edge continuity, not its crowded middle. Keep B unchanged. Reduce A's mark scale while keeping the seed, motif-center locations, tile size, and edge-join rule fixed. The local spacing should read more clearly without making a new distribution. Show both the base tile and repeated surface again. Deliver a.svg, a.png, b.svg, b.png, source.py, parameters.json, parameter-probe.svg, parameter-probe.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "source.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "parameters.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "parameter-probe.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "parameter-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "Keep that spacing. Refine only color assignment so neighboring marks do not merge into one dark band at the tile edge; preserve the mark geometry, centers, and palette colors. The repeat should remain continuous without a frame hiding the seam. Record which parameters changed and rerun the same-seed probe. Deliver a.svg, a.png, b.svg, b.png, source.py, parameters.json, parameter-probe.svg, parameter-probe.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "source.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "parameters.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "parameter-probe.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "parameter-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "weave",
+      "path": "../../assets/met-45406.jpg",
+      "sha256": "24fcad8ac8807557be50fff389b5326ae29b561dcbe5e26f3dab17f1c45ed916",
+      "license": "CC0 / Met Open Access",
+      "source": "https://www.metmuseum.org/art/collection/search/45406",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "original",
+      "turn": 1,
+      "quote": "Do not extract or trace its actual motif."
+    },
+    {
+      "id": "grammar",
+      "turn": 1,
+      "quote": "A using clustered rosette-like marks and B using a different branching grammar"
+    },
+    {
+      "id": "inspection",
+      "turn": 1,
+      "quote": "a base tile next to a two-by-two repeat at the same scale so edge joins can be inspected"
+    },
+    {
+      "id": "relation",
+      "turn": 1,
+      "quote": "irregular local placement that still joins continuously across opposite tile edges"
+    },
+    {
+      "id": "editable",
+      "turn": 1,
+      "quote": "Expose the seed, mark scale, local offset range, and tile size in source.py and parameters.json."
+    },
+    {
+      "id": "probe",
+      "turn": 1,
+      "quote": "a separately labeled parameter-probe render from one actual setting change"
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Keep B unchanged."
+    },
+    {
+      "id": "scale",
+      "turn": 2,
+      "quote": "Reduce A's mark scale while keeping the seed, motif-center locations, tile size, and edge-join rule fixed."
+    },
+    {
+      "id": "color",
+      "turn": 3,
+      "quote": "Refine only color assignment so neighboring marks do not merge into one dark band at the tile edge"
+    },
+    {
+      "id": "preserve",
+      "turn": 3,
+      "quote": "preserve the mark geometry, centers, and palette colors"
+    },
+    {
+      "id": "seam",
+      "turn": 3,
+      "quote": "remain continuous without a frame hiding the seam"
+    },
+    {
+      "id": "record",
+      "turn": 3,
+      "quote": "Record which parameters changed and rerun the same-seed probe."
+    }
+  ],
+  "atoms": [
+    {
+      "id": "original-grammar-transfer",
+      "dimension": "reference_transfer",
+      "criterion": "New mark grammar inherits irregular rhythm without extracting the photographed motif.",
+      "requirement_ids": [
+        "original"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "distinct-pattern-grammars",
+      "dimension": "alternatives",
+      "criterion": "Rosette-cluster and branching alternatives differ in spatial generation rules.",
+      "requirement_ids": [
+        "grammar"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "inspectable-periodic-seam",
+      "dimension": "pattern_relations",
+      "criterion": "Base tile and same-scale repeat expose opposite-edge continuity.",
+      "requirement_ids": [
+        "inspection",
+        "relation"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "Opposite edges break visibly or a frame conceals the joins.",
+        "1": "Some joins continue, but another edge or repeated corner shows a discontinuity.",
+        "2": "Opposite edges and repeated corners join consistently while local placements remain irregular."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "explicit-pattern-controls",
+      "dimension": "editability",
+      "criterion": "Source exposes meaningful seed/scale/offset/tile controls.",
+      "requirement_ids": [
+        "editable"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "source.py",
+          "parameters.json"
+        ]
+      }
+    },
+    {
+      "id": "actual-rule-probe",
+      "dimension": "evidence_honesty",
+      "criterion": "A separately labeled probe results from one recorded setting change.",
+      "requirement_ids": [
+        "probe"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "source.py",
+          "parameters.json",
+          "parameter-probe.svg",
+          "parameter-probe.png"
+        ]
+      }
+    },
+    {
+      "id": "scale-with-distribution-freeze",
+      "dimension": "preservation",
+      "criterion": "A scale shrinks without reseeding/repositioning centers or changing B.",
+      "requirement_ids": [
+        "scope",
+        "scale"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "a.svg",
+          "b.svg",
+          "parameters.json",
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "color-only-band-repair",
+      "dimension": "preservation",
+      "criterion": "Local color assignment removes edge merging while retaining geometry/centers/palette values.",
+      "requirement_ids": [
+        "color",
+        "preserve"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "a.svg",
+          "a.png",
+          "parameters.json"
+        ]
+      }
+    },
+    {
+      "id": "seam-and-probe-retention",
+      "dimension": "pattern_relations",
+      "criterion": "Final repeat exposes a continuous unframed seam, with same-seed edit record.",
+      "requirement_ids": [
+        "seam",
+        "record"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "parameter-probe.png",
+          "parameters.json"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "svg"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "MaintainAll self-authored demanding non-expert brief",
+    "feedback": "synthetic staged corrections; no claim of real user acceptance",
+    "created_at": "2026-10-11",
+    "dataset_release": "art-creation-expanded-v3",
+    "domain": "procedural_rules",
+    "challenge_axes": [
+      "periodic-boundary-constraints",
+      "local-irregularity",
+      "grammar-versus-motif-copy",
+      "fixed-centers-scale-edit",
+      "color-versus-geometry"
+    ],
+    "reference_authorship": "CC0 Met object photographs and/or explicitly labeled original schematic input; never a replay of private session images",
+    "holdout_policy": "development task data"
+  }
+}

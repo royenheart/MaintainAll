@@ -1,0 +1,498 @@
+{
+  "schema_version": 2,
+  "id": "expanded-flow-field-corridor",
+  "version": 1,
+  "family": "algorithmic_flow",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Make an original program-generated cover study inspired by the painting's large flowing movement, not a tracing of its brushstrokes. The title is River Routes. Show two different rule systems A and B using the same palette and seed: one with broad coherent paths, one with finer local swirls. Leave a calm title corridor so the paths guide attention toward the title without crossing its letters. I want natural variation, meaning neighboring paths share a direction but are not identical copies. Put the seed, direction, local variation, and corridor settings in source.py and parameters.json, and actually regenerate a parameter-probe SVG/PNG with one stated change. The probe should demonstrate what the changed rule does, not just be manually redrawn. Deliver a.svg, a.png, b.svg, b.png, source.py, parameters.json, parameter-probe.svg, parameter-probe.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 960x720.",
+      "attachments": [
+        "painting"
+      ],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "source.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "parameters.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "parameter-probe.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "parameter-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose A for its broad movement, not the empty corners. Keep B unchanged. Change only the directional rule so the paths lead from the lower left toward the upper right, while keeping the title position, corridor boundary, palette, and seed. Show the regenerated result and explain how neighboring-path coherence differs from identical repetition. Deliver a.svg, a.png, b.svg, b.png, source.py, parameters.json, parameter-probe.svg, parameter-probe.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "source.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "parameters.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "parameter-probe.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "parameter-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "The new direction is right, but the paths become too noisy beside the title. Reduce local directional variation only near the corridor; keep the overall direction, path density elsewhere, palette, title, and seed. Regenerate the parameter probe with the same seed, changing only corridor-adjacent variation, and record the exact changed setting. Deliver a.svg, a.png, b.svg, b.png, source.py, parameters.json, parameter-probe.svg, parameter-probe.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "source.py",
+          "kind": "editable",
+          "format": "py"
+        },
+        {
+          "path": "parameters.json",
+          "kind": "evidence",
+          "format": "json"
+        },
+        {
+          "path": "parameter-probe.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "parameter-probe.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "painting",
+      "path": "../../assets/met-436535.jpg",
+      "sha256": "af0e3486621c210b54932d055294051b5601aa3362af4b84ab97e2831f8163bc",
+      "license": "CC0 / Met Open Access",
+      "source": "https://www.metmuseum.org/art/collection/search/436535",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "options",
+      "turn": 1,
+      "quote": "two different rule systems A and B using the same palette and seed"
+    },
+    {
+      "id": "corridor",
+      "turn": 1,
+      "quote": "a calm title corridor so the paths guide attention toward the title without crossing its letters"
+    },
+    {
+      "id": "variation",
+      "turn": 1,
+      "quote": "neighboring paths share a direction but are not identical copies"
+    },
+    {
+      "id": "editable",
+      "turn": 1,
+      "quote": "Put the seed, direction, local variation, and corridor settings in source.py and parameters.json"
+    },
+    {
+      "id": "probe",
+      "turn": 1,
+      "quote": "actually regenerate a parameter-probe SVG/PNG with one stated change"
+    },
+    {
+      "id": "manual",
+      "turn": 1,
+      "quote": "not just be manually redrawn"
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Keep B unchanged."
+    },
+    {
+      "id": "direction",
+      "turn": 2,
+      "quote": "Change only the directional rule so the paths lead from the lower left toward the upper right"
+    },
+    {
+      "id": "preserve",
+      "turn": 2,
+      "quote": "keeping the title position, corridor boundary, palette, and seed"
+    },
+    {
+      "id": "local",
+      "turn": 3,
+      "quote": "Reduce local directional variation only near the corridor"
+    },
+    {
+      "id": "rest",
+      "turn": 3,
+      "quote": "keep the overall direction, path density elsewhere, palette, title, and seed"
+    },
+    {
+      "id": "final-probe",
+      "turn": 3,
+      "quote": "changing only corridor-adjacent variation, and record the exact changed setting"
+    }
+  ],
+  "atoms": [
+    {
+      "id": "distinct-rule-systems",
+      "dimension": "alternatives",
+      "criterion": "A/B use broad-coherent versus local-swirl rules under common palette/seed.",
+      "requirement_ids": [
+        "options"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "title-corridor-contact",
+      "dimension": "layout_relations",
+      "criterion": "Paths guide toward the title while keeping letters and the corridor clear.",
+      "requirement_ids": [
+        "corridor"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "coherent-nonidentical-flow",
+      "dimension": "pattern_relations",
+      "criterion": "Neighboring paths share orientation with observable local variation.",
+      "requirement_ids": [
+        "variation"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "meaningful-rule-controls",
+      "dimension": "editability",
+      "criterion": "Source and parameter records expose the stated seed/direction/variation/corridor controls.",
+      "requirement_ids": [
+        "editable"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "source.py",
+          "parameters.json"
+        ]
+      }
+    },
+    {
+      "id": "generated-counterfactual",
+      "dimension": "evidence_honesty",
+      "criterion": "The probe is reproducibly generated from one recorded setting change.",
+      "requirement_ids": [
+        "probe",
+        "manual"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "source.py",
+          "parameters.json",
+          "parameter-probe.svg",
+          "parameter-probe.png"
+        ]
+      }
+    },
+    {
+      "id": "global-direction-local-scope",
+      "dimension": "preservation",
+      "criterion": "A changes directional rule while preserving its fixed relationships and leaving B unchanged.",
+      "requirement_ids": [
+        "scope",
+        "direction",
+        "preserve"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "a.svg",
+          "b.svg",
+          "a.png",
+          "b.png",
+          "parameters.json"
+        ]
+      }
+    },
+    {
+      "id": "corridor-only-variation",
+      "dimension": "pattern_relations",
+      "criterion": "Final noise reduction is local to the title corridor rather than flattening all movement.",
+      "requirement_ids": [
+        "local",
+        "rest"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png"
+        ]
+      }
+    },
+    {
+      "id": "same-seed-final-probe",
+      "dimension": "editability",
+      "criterion": "The final probe keeps seed/global settings fixed and records only the corridor-adjacent variation change.",
+      "requirement_ids": [
+        "final-probe"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "source.py",
+          "parameters.json",
+          "parameter-probe.svg",
+          "parameter-probe.png"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "svg"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "MaintainAll self-authored demanding non-expert brief",
+    "feedback": "synthetic staged corrections; no claim of real user acceptance",
+    "created_at": "2026-10-11",
+    "dataset_release": "art-creation-expanded-v3",
+    "domain": "procedural_rules",
+    "challenge_axes": [
+      "seeded-rule-generation",
+      "coherence-versus-repetition",
+      "protected-reading-corridor",
+      "global-direction-counterfactual",
+      "localized-variation"
+    ],
+    "reference_authorship": "CC0 Met object photographs and/or explicitly labeled original schematic input; never a replay of private session images",
+    "holdout_policy": "development task data"
+  }
+}

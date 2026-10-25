@@ -12,12 +12,12 @@ Separate geometry, camera, lighting, and material parameters. An apparent shape 
 
 ## Portable lathe study
 
-The bundled Python generator samples explicit radius/height profiles into rings, joins neighboring rings with quads, and closes ends with triangles. The vase profile is a solid silhouette study, not a hollow vessel. OBJ indices are one-based. The same vertices are rotated for the chosen camera view and projected into SVG; faces are depth-sorted and receive simple normal-based shading.
+The bundled Python generator samples radius/height profiles into rings, joins neighboring rings with quads, and closes ends with triangles. The vase profile forms a solid mesh. OBJ indices are one-based. The same vertices are rotated for the camera view and projected into SVG; faces are depth-sorted and receive normal-based shading.
 
-This preview uses orthographic projection and painter-style face ordering. It does not model perspective, realistic materials, transparency, cast shadows, or general intersecting-scene occlusion. Use a real 3D renderer for those questions, or use the browser-3D method. The recipe records these limits.
+The SVG preview uses orthographic projection and painter-style face ordering. Use a 3D renderer or the browser-3D method for perspective, materials, transparency, shadows, and intersecting geometry.
 
 ## Improve a selected model
 
-If the silhouette is wrong, adjust its profile or proportions. If depth is unclear, test view angle or projection while preserving the mesh. If faceting is the issue, increase radial segments or use the target renderer's smoothing; extra geometry does not fix an unsuitable overall form. For materials, compare roughness, light placement, or texture scale in an actual material renderer.
+For silhouette changes, adjust profile or proportions. For depth, compare view angles or projection while preserving the mesh. For faceting, adjust radial segments or smoothing. For materials, compare roughness, light placement, or texture scale in a material renderer.
 
-Before an export claim, inspect bounds, finite coordinates, valid indices, face orientation, and whether required surfaces are open or closed. For production work, check the target application's topology, units, normals, and export needs. Choose an available modeler for detailed editing; report its actual version and the artifact it produces. A shape study cannot certify fabrication suitability.
+Inspect mesh bounds, coordinates, indices, face orientation, and open or closed surfaces. For production export, use the target application's topology, units, normals, and format requirements.

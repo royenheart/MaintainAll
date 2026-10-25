@@ -1,0 +1,47 @@
+name: Art Creation skill checks
+
+on:
+  pull_request:
+    paths:
+      - skills/**
+      - .agents/skills/**
+      - tests/skills/**
+      - benchmarks/art_creation/**
+      - benchmarks/skill_bench/**
+      - .github/workflows/art-creation-skill.yml
+  push:
+    paths:
+      - skills/**
+      - .agents/skills/**
+      - tests/skills/**
+      - benchmarks/art_creation/**
+      - benchmarks/skill_bench/**
+      - .github/workflows/art-creation-skill.yml
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  static:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@11d5960a326750d5838078e36cf38b85af677262 # v4
+        with:
+          persist-credentials: false
+          lfs: true
+      - uses: actions/setup-python@a26af69be951a213d495a4c3e4e4022e16d87065 # v5
+        with:
+          python-version: '3.12'
+      - name: Validate routing and resource coverage
+        run: python skills/art-creation/scripts/check_index.py --json
+      - name: Check helpers and English skill resources
+        env:
+          PYTHONDONTWRITEBYTECODE: '1'
+        run: python -m unittest discover -s tests/skills -p 'test_*.py' -v
+      - name: Check read-only CLI entry points
+        run: |
+          python skills/art-creation/scripts/check_index.py --help
+          python skills/art-creation/scripts/probe_runtime.py --help
+          python skills/art-creation/scripts/capture_browser.py --help

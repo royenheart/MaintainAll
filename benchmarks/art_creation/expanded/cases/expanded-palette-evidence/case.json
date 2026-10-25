@@ -1,0 +1,452 @@
+{
+  "schema_version": 2,
+  "id": "expanded-palette-evidence",
+  "version": 1,
+  "family": "color_study",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "I like the painting's blue-green and pale warm areas, but making everything pastel tends to look washed out. Explain a small palette using sampled or explicitly estimated colors from the supplied painting. Show two original cafe menu studies A and B using the same words: Quay Cafe, Tea 4, Coffee 5, Soup 8, and Open 09:00–17:00. Make item names easy to scan, prices easy to match to their items, and the opening time clearly secondary. Keep enough quiet area that the colors do not fight. Do not claim a measured contrast ratio unless you actually compute it from the applied foreground and background colors. The painting is a reference, not menu background art. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [
+        "painting"
+      ],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose A for its balance, not the weak pale text. Keep B unchanged. Darken text only where it is hard to read; do not replace the palette with black and white. Keep the item-price alignment, background colors, and title size. In notes.md record each changed foreground/background pair and the measured contrast, or clearly say the contrast is unmeasured. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "The soup price is too far from its name now. Correct only the spacing and alignment in that row, preserving the accepted colors and all other rows. Show a 160x160 preview as well as the full sheets. Explain whether price association and the opening-time hierarchy remain observable at that size, without pretending the thumbnail is a full accessibility audit. Deliver a.svg, a.png, b.svg, b.png, thumb.svg, thumb.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 160x160, 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "thumb.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "thumb.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 160,
+          "height": 160
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "painting",
+      "path": "../../assets/met-436535.jpg",
+      "sha256": "af0e3486621c210b54932d055294051b5601aa3362af4b84ab97e2831f8163bc",
+      "license": "CC0 / Met Open Access",
+      "source": "https://www.metmuseum.org/art/collection/search/436535",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "palette",
+      "turn": 1,
+      "quote": "sampled or explicitly estimated colors from the supplied painting"
+    },
+    {
+      "id": "association",
+      "turn": 1,
+      "quote": "prices easy to match to their items"
+    },
+    {
+      "id": "hierarchy",
+      "turn": 1,
+      "quote": "the opening time clearly secondary"
+    },
+    {
+      "id": "quiet",
+      "turn": 1,
+      "quote": "enough quiet area that the colors do not fight"
+    },
+    {
+      "id": "truth",
+      "turn": 1,
+      "quote": "Do not claim a measured contrast ratio unless you actually compute it"
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Keep B unchanged."
+    },
+    {
+      "id": "targeted",
+      "turn": 2,
+      "quote": "Darken text only where it is hard to read; do not replace the palette with black and white."
+    },
+    {
+      "id": "preserve",
+      "turn": 2,
+      "quote": "Keep the item-price alignment, background colors, and title size."
+    },
+    {
+      "id": "row",
+      "turn": 3,
+      "quote": "Correct only the spacing and alignment in that row, preserving the accepted colors and all other rows."
+    },
+    {
+      "id": "audit",
+      "turn": 3,
+      "quote": "without pretending the thumbnail is a full accessibility audit"
+    }
+  ],
+  "atoms": [
+    {
+      "id": "palette-provenance",
+      "dimension": "analysis_grounding",
+      "criterion": "Applied palette colors have reference-grounded sampled or explicitly estimated origins.",
+      "requirement_ids": [
+        "palette"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "item-price-pairing",
+      "dimension": "layout_relations",
+      "criterion": "Prices remain clearly associated with their corresponding names.",
+      "requirement_ids": [
+        "association"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "secondary-opening",
+      "dimension": "hierarchy",
+      "criterion": "Opening time is visually subordinate to menu name/item content.",
+      "requirement_ids": [
+        "hierarchy"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "palette-balance",
+      "dimension": "composition",
+      "criterion": "Quiet areas and controlled accents prevent color competition.",
+      "requirement_ids": [
+        "quiet"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "contrast-claim-honesty",
+      "dimension": "evidence_honesty",
+      "criterion": "Contrast claims match actual measurements or are labeled unmeasured.",
+      "requirement_ids": [
+        "truth"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "selected-contrast-scope",
+      "dimension": "preservation",
+      "criterion": "A foreground refinement preserves backgrounds/title/alignment, and B remains unchanged.",
+      "requirement_ids": [
+        "scope",
+        "targeted",
+        "preserve"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "a.svg",
+          "b.svg",
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "row-local-correction",
+      "dimension": "preservation",
+      "criterion": "Final correction changes the soup-row spacing only while retaining accepted colors and other rows.",
+      "requirement_ids": [
+        "row"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "a.svg",
+          "a.png"
+        ]
+      }
+    },
+    {
+      "id": "thumbnail-limits",
+      "dimension": "evidence_honesty",
+      "criterion": "The preview assessment reports observable association/hierarchy with explicit audit limits.",
+      "requirement_ids": [
+        "audit"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "thumb.png",
+          "notes.md"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "svg"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "MaintainAll self-authored demanding non-expert brief",
+    "feedback": "synthetic staged corrections; no claim of real user acceptance",
+    "created_at": "2026-10-11",
+    "dataset_release": "art-creation-expanded-v3",
+    "domain": "palette_and_accessibility",
+    "challenge_axes": [
+      "palette-provenance",
+      "foreground-background-relations",
+      "price-association",
+      "row-local-edit",
+      "measurement-honesty"
+    ],
+    "reference_authorship": "CC0 Met object photographs and/or explicitly labeled original schematic input; never a replay of private session images",
+    "holdout_policy": "development task data"
+  }
+}

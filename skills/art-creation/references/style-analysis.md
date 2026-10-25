@@ -4,13 +4,13 @@ Use this as the complete instruction for a teaching-oriented reference analysis.
 
 ## Report contract
 
-Write in accessible Chinese. Translate the chapter, section, and feature names below into Chinese; write the chapter numbers as Chinese words. Output exactly two top-level chapters, in the given order. Do not add an introduction, a third chapter, or a closing summary. Put evidence, explanations, sources, and practical suggestions in Chapter Two. Its conclusions must agree with Chapter One.
+Write in accessible Chinese. Translate the chapter, section, and feature names below into Chinese; write the chapter numbers as Chinese words. The report consists of the following two top-level chapters, in order. Chapter One summarizes the conclusions; Chapter Two contains evidence, explanations, sources, and practical suggestions.
 
-Professional terms need a plain-language explanation on first use. Throughout, distinguish direct observation, style interpretation, and implementation suggestion. Use reliable sources when checking authorship, history, or other uncertain facts; place citations inside the relevant Chapter Two section.
+Explain professional terms in plain language on first use. Identify observations, style interpretations, and implementation suggestions. Cite sources for authorship and historical context in the relevant Chapter Two section.
 
 ### Chapter One: Design Overview
 
-This chapter contains only one numbered list: no images, tables, nested lists, or expanded explanations. Each line follows `number. Feature name: One sentence`. Extract conclusions from Chapter Two, retaining the most distinctive concrete visual information. Avoid empty praise such as sophisticated, beautiful, or well-designed. Use this order, adapting feature names to the medium when needed:
+Use a single numbered list with twelve one-sentence items in the form `number. Feature name: One sentence`. Summarize the most distinctive visual findings from Chapter Two in this order, adapting feature names to the medium:
 
 1. Design type: Medium, purpose, and use context.
 2. Style: Principal style and its most apparent blend.
@@ -22,10 +22,8 @@ This chapter contains only one numbered list: no images, tables, nested lists, o
 8. Typography: Letterform, weight, and typesetting characteristics.
 9. Shape and material: Contours, borders, depth, and texture.
 10. Imagery and decoration: Treatment of photos, illustrations, icons, and accents.
-11. Interaction and motion: Confirmable cues; explicitly say when unconfirmed.
+11. Interaction and motion: Visible cues and their role in the design.
 12. Learning focus: The most useful design rules to borrow.
-
-Each item is exactly one sentence. Do not move detailed evidence, terminology, source attribution, or implementation specifications into this speed-reading list.
 
 ### Chapter Two: Full Design Analysis
 
@@ -33,41 +31,39 @@ Expand the analysis in exactly these seven numbered sections. Subheadings, lists
 
 #### 1. Overall Recognition and First Impression
 
-Identify the design type and scenario, what receives visual emphasis, and the three most noticeable impressions. For every impression, identify concrete evidence and explain why those features produce the feeling. Abstract adjectives alone are insufficient.
+Identify the design type and scenario, what receives visual emphasis, and the three most noticeable impressions. Explain which visual features produce each impression.
 
-If provenance or historical context is recognizable, separate confirmed information from hypotheses. Verify when necessary; do not invent an attribution or present visual resemblance as proof of origin.
+Include relevant provenance or historical context with its sources.
 
 #### 2. Component Breakdown and Direct Visual Annotation
 
 Identify main regions, components, and containment relationships. Use names suited to the medium: a webpage may have navigation, hero, cards, and form; a poster may have headline, main image, and supporting text.
 
-Prefer annotation directly on the supplied material. A dedicated image editor is not required. If existing tools can create an overlay and visibly display it, actually produce and show the result. Read [Programmatic visual methods](visual-methods.md) for execution options.
+Annotate and display the supplied material using an image overlay, rendered webpage, SVG, or canvas. Read [Programmatic visual methods](visual-methods.md) for execution options.
 
 - Image input: Overlay red boundaries or equally visible marks and component numbers on the original image.
-- Webpage input: Overlay boundaries and numbers on the actually rendered page, or annotate a screenshot of that page and display it. Do not label an invented page.
+- Webpage input: Overlay boundaries and numbers on the rendered page or its screenshot.
 - Other visual input: Use an appropriate overlay on that actual material. For video, use identifiable source frames with timestamps and regions when relevant.
 
 Annotation requirements:
 
-- Preserve source content, aspect ratio, and layout; add markings only. Do not regenerate the design to make it easier to label.
+- Overlay markings while retaining source content, aspect ratio, and layout.
 - Use clear red boundaries and numbers. If red disappears against the background, use an equivalent high-contrast treatment.
 - Make each number correspond to the explanation, and avoid hiding important content.
 - Distinguish region-level boundaries from their internal components. If nesting becomes confusing, show separate overview and local-detail views; mark any crop.
 - Split long webpages or complex material into sections when helpful, retaining continuous numbering. Record viewport or source-frame context as appropriate.
-- Check actual boundary placement, label readability, and number correspondence after rendering. File creation alone does not establish a correct annotation.
+- Check boundary placement, label readability, and number correspondence after rendering.
 
 First directly display the annotated input material, then provide a table with:
 
 | Number | Component name | Parent region | Purpose | Visible features |
 |---|---|---|---|---|
 
-The table explains the annotation; it cannot replace it. Do not supply only a path, download link, HTML source, or coordinate list if direct display is possible.
-
-Fall back to text only if this environment genuinely cannot create or display the annotated view. Briefly name the specific limitation within this section. Provide component locations and containment; add coordinates or boundaries if source dimensions are available. Missing input is not evidence: obtain the actual material before claiming an analysis of it.
+In a text-only environment, describe component locations and containment, with coordinates or boundaries when available.
 
 #### 3. Style, Categories, and Keywords
 
-Identify the closest principal style and plausible blends without forcing a single historical label. Keep these categories distinct:
+Identify the principal style and relevant blends using these categories:
 
 - Historical movements.
 - Industry style labels.
@@ -89,17 +85,19 @@ Analyze the following relevant dimensions:
 - Imagery and decoration: Photography, illustration, icons, and their treatment.
 - Consistency: Repeated rules that coordinate different components.
 
-Explain the chain `visual technique -> resulting effect -> role in the whole`; do not merely list attributes. Mark every supplied color value, dimension, or ratio as measured, visually estimated, or recommended for implementation. When useful, identify the measurement method and sampled region. Do not present an uncertain font family or technical implementation as a confirmed fact.
+Explain the chain `visual technique -> resulting effect -> role in the whole`. Label color values, dimensions, and ratios as measured, visually estimated, or suggested for implementation. Include the measurement method and sampled region where useful.
 
 #### 5. Description Dimensions I May Have Missed
 
-Expand only dimensions that matter to this reference. Candidates include period character, emotion, rhythm, brand personality, content versus decoration, interaction feedback, animation, sound, responsiveness, readability, and accessibility. Do not mechanically fill every category.
+Expand dimensions that matter to this reference, such as period character, emotion, rhythm, brand personality, content versus decoration, interaction feedback, animation, sound, responsiveness, readability, and accessibility.
 
-Mark interaction or animation unavailable from a static screenshot as unconfirmed. Mark proposed implementations as suggestions. If a detail deserves adjustment, explain its role in the original, the effect of keeping or changing it, and how the use context changes that judgment.
+For static references, describe visible interaction cues and suggest possible motion treatments. When proposing an adjustment, explain the detail's original role, the effect of changing it, and its relationship to the intended use.
 
 #### 6. Teach Me How to Describe It
 
-Give at least three examples of `vague wording -> specific wording`, tailored to this reference. Specific wording includes an object, visual attributes, relationships between elements, and an expected effect. Adding more adjectives does not qualify.
+Give at least three examples of `vague wording -> specific wording`, tailored to this reference. Specific wording includes an object, visual attributes, relationships between elements, and an expected effect.
+
+Use [Intent and evidence](intent-and-evidence.md) when it helps clarify the current interpretation; keep it within this report's existing sections.
 
 Identify:
 
@@ -107,16 +105,12 @@ Identify:
 - Details that can change with the new use context.
 - Details whose substantial alteration would weaken the style.
 
-Help distinguish liking the overall style from liking one element. Do not make every feature of the reference a mandatory reproduction requirement.
+Help the learner identify whether they like the overall style or particular elements.
 
 #### 7. Turn It Into an Implementation Prompt
 
 Finish with one complete, ready-to-use design implementation prompt. Specify the purpose, layout, color, typographic hierarchy, shapes and materials, imagery treatment, important components, and observable acceptance criteria.
 
-Match the reference's medium: a painting, poster, animation, or physical object does not automatically become a webpage. Clearly distinguish inherited features, adjustments for the new use, and new suggestions inside the prompt. If the intended use is unknown, state a reasonable assumption before giving the prompt.
+Match the intended medium: painting, poster, animation, webpage, physical object, or another requested format. Organize the prompt around inherited features, adjustments for the new use, and new suggestions. If the intended use is open, choose and state a reasonable use case.
 
-Do not treat unconfirmed technology, interaction, or motion as existing properties of the source. Translate impressions into checkable outcomes: placement, contrast, relative prominence, readable text, visible texture, or temporal behavior as relevant.
-
-## Completion check
-
-Check the finished report for the two-chapter contract, twelve one-sentence overview items, seven full-analysis sections, actual-input annotation or a specific capability limitation, at least three teaching examples, uncertainty labels, source support, and a complete medium-appropriate prompt. Repair disagreements between the overview and the detailed analysis before presenting it.
+Translate impressions into observable outcomes: placement, contrast, relative prominence, readable text, visible texture, or temporal behavior.

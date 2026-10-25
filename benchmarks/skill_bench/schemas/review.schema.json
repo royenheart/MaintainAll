@@ -1,0 +1,60 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "required": [
+    "schema_version",
+    "review_id",
+    "entries",
+    "pairs"
+  ],
+  "properties": {
+    "schema_version": {
+      "const": 1
+    },
+    "review_id": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{24}$"
+    },
+    "entries": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "case_id",
+          "repeat",
+          "status",
+          "turns",
+          "atoms"
+        ],
+        "properties": {
+          "repeat": {
+            "type": "integer",
+            "minimum": 1
+          },
+          "status": {
+            "enum": [
+              "completed",
+              "failed",
+              "interrupted",
+              "unsupported"
+            ]
+          }
+        }
+      }
+    },
+    "pairs": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "required": [
+          "id",
+          "left",
+          "right",
+          "case_id",
+          "repeat"
+        ]
+      }
+    }
+  }
+}

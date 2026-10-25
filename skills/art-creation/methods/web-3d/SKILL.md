@@ -9,14 +9,14 @@ This is an original method informed by the Three.js [scene guide](https://threej
 
 ## Create a view that tests the question
 
-Separate scene, camera, geometry, material, lighting, and interaction. Choose an orthographic view for proportions or a perspective view when depth is the subject of the experiment. Begin with primitives or a procedural mesh instead of unrelated model assets. Keep page chrome from competing with the actual scene.
+Separate scene, camera, geometry, material, lighting, and interaction. Choose an orthographic view for proportions or a perspective view for depth. Begin with primitives or a procedural mesh and give the scene visual prominence.
 
-[The Three.js starter](templates/scene.html) builds actual lathe geometry, exposes shape, width, camera angle, and material roughness, and exports the current recipe. It loads Three.js 0.180.0 from a pinned CDN URL; an explicit `three` query parameter can point to an available same-origin module instead. The matching core module must also be available for that build. Serve the copied study over HTTP, verify runtime loading and WebGL, and then display it. Neither the library nor a browser is installed by this skill.
+[The Three.js starter](templates/scene.html) builds lathe geometry with controls for shape, width, camera angle, and roughness, plus recipe export. It loads Three.js 0.180.0 from a CDN; the `three` query parameter selects a compatible same-origin module with its matching core dependency. Serve the study over HTTP and display it in a WebGL-capable browser.
 
 ## Make experiments interpretable
 
-Render several distinct form or material directions under comparable framing. After the user chooses, retain the mesh and adjust one or two dimensions. Rebuild geometry only for geometry changes; camera and material adjustments should preserve shape. Display current values and provide reset. Capture the current recipe when the user selects a result, not just startup defaults.
+Render distinct form or material directions under comparable framing. After selection, adjust one or two unresolved properties. Rebuild geometry for shape changes and update camera/material properties independently. Display current values, provide reset, and capture the recipe on selection.
 
-Size the renderer to the actual container, update camera projection on resize, and bound pixel ratio for the target device. Dispose of replaced geometry and stop unneeded work when hidden. Keep a static fallback when WebGL is unavailable, clearly identifying which interactive/material properties it cannot demonstrate.
+Size the renderer to its container, update camera projection on resize, and set pixel ratio for the target device. Dispose of replaced geometry and pause rendering when hidden. A rendered image can provide a static preview.
 
-Check loading errors, nonempty pixels, resizing, changed-control effects, reset, and recipe replay. For motion destined for video, load [Remotion video](../remotion-video/SKILL.md); a free-running render loop is not a frame-accurate export. Return editable scene, actual preview, recipe, dependency requirements, limitations, and the next feedback decision.
+Check rendering, resizing, controls, reset, and recipe replay. For video export, use [Remotion video](../remotion-video/SKILL.md). Return the editable scene, preview, recipe, dependencies, and next feedback question.

@@ -1,0 +1,370 @@
+{
+  "schema_version": 2,
+  "id": "trajectory-slot-ownership",
+  "version": 2,
+  "family": "trajectory_derived",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "Make a local playable information-slot study. The attached picture is an original schematic replacement, not the original session reference. A card should emerge from its own slot while staying attached, rather than appearing as an independent floating tooltip. Use a consistent expanded and retracted identity. Show two motion approaches, and show actual browser start, intermediate and end captures. Keep the component text readable. Deliver index.html, start.png, middle.png, end.png and notes.md. Explain what was inferred and what was actually exercised.",
+      "attachments": [
+        "replacement"
+      ],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "start.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "middle.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "end.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "Choose the restrained vertical emergence approach. Only the active card should emerge; all other cards stay retracted rather than opening behind it. Keep the chosen expanded-card identity. The retracted card should share that identity, without arbitrary heights or a sudden plain rectangle. Update the same playable study and captures.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "start.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "middle.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "end.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "Make the retracted state feel more natural: shorten its left edge so it clears the slot's curved boundary, reduce its height, and let it remain slightly more transparent than the translucent slot behind it. Keep the same transparency relation across themes. Clicking an icon must not shift its position. Preserve the accepted emergence direction; explain the observed clearance, opacity and state relations instead of merely describing it as natural.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "index.html",
+          "kind": "editable",
+          "format": "html"
+        },
+        {
+          "path": "start.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "middle.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "end.png",
+          "kind": "preview",
+          "format": "png"
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "replacement",
+      "path": "../../assets/slot-replacement.png",
+      "sha256": "f46abcf52752197a7723dbed13308b4bf407b4b90777eef17352fc155aea9e8d",
+      "license": "CC0 / MaintainAll original schematic",
+      "source": "Self-authored replacement for this abstract task; not an original session image",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "attached",
+      "turn": 1,
+      "quote": "emerge from its own slot while staying attached, rather than appearing as an independent floating tooltip"
+    },
+    {
+      "id": "states",
+      "turn": 1,
+      "quote": "consistent expanded and retracted identity"
+    },
+    {
+      "id": "active",
+      "turn": 2,
+      "quote": "Only the active card should emerge; all other cards stay retracted"
+    },
+    {
+      "id": "identity",
+      "turn": 2,
+      "quote": "retracted card should share that identity"
+    },
+    {
+      "id": "clearance",
+      "turn": 3,
+      "quote": "shorten its left edge so it clears the slot's curved boundary, reduce its height"
+    },
+    {
+      "id": "opacity",
+      "turn": 3,
+      "quote": "slightly more transparent than the translucent slot behind it"
+    },
+    {
+      "id": "stable",
+      "turn": 3,
+      "quote": "Clicking an icon must not shift its position."
+    }
+  ],
+  "atoms": [
+    {
+      "id": "slot-attachment",
+      "dimension": "attachment",
+      "criterion": "Active card retains its slot ownership through actual emergence.",
+      "requirement_ids": [
+        "attached"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The requested relation is absent or contradicted in actual output.",
+        "1": "The relation is partly visible but ambiguous or unstable.",
+        "2": "The requested relation is visible and supported across relevant states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "start.png",
+          "middle.png",
+          "end.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "state-identity",
+      "dimension": "construction",
+      "criterion": "Retracted/expanded shape and material stay compatible.",
+      "requirement_ids": [
+        "states",
+        "identity"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The requested relation is absent or contradicted in actual output.",
+        "1": "The relation is partly visible but ambiguous or unstable.",
+        "2": "The requested relation is visible and supported across relevant states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "index.html",
+          "start.png",
+          "middle.png",
+          "end.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "one-active-card",
+      "dimension": "interaction",
+      "criterion": "Only the selected card emerges through observed state changes.",
+      "requirement_ids": [
+        "active"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The requested relation is absent or contradicted in actual output.",
+        "1": "The relation is partly visible but ambiguous or unstable.",
+        "2": "The requested relation is visible and supported across relevant states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "start.png",
+          "middle.png",
+          "end.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "retracted-clearance",
+      "dimension": "spatial_relations",
+      "criterion": "Left edge and reduced height visibly clear the slot curve.",
+      "requirement_ids": [
+        "clearance"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The requested relation is absent or contradicted in actual output.",
+        "1": "The relation is partly visible but ambiguous or unstable.",
+        "2": "The requested relation is visible and supported across relevant states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "index.html",
+          "start.png",
+          "middle.png",
+          "end.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "opacity-relation",
+      "dimension": "material_cues",
+      "criterion": "Retracted card is slightly more transparent than its parent slot across themes.",
+      "requirement_ids": [
+        "opacity"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The requested relation is absent or contradicted in actual output.",
+        "1": "The relation is partly visible but ambiguous or unstable.",
+        "2": "The requested relation is visible and supported across relevant states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "index.html",
+          "start.png",
+          "middle.png",
+          "end.png",
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "trigger-stability",
+      "dimension": "interaction",
+      "criterion": "Observed icon click feedback does not translate its geometry.",
+      "requirement_ids": [
+        "stable"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The requested relation is absent or contradicted in actual output.",
+        "1": "The relation is partly visible but ambiguous or unstable.",
+        "2": "The requested relation is visible and supported across relevant states."
+      },
+      "evidence": {
+        "kind": "trace",
+        "required_artifacts": [
+          "index.html",
+          "start.png",
+          "middle.png",
+          "end.png",
+          "notes.md"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "browser_capture",
+    "playable_motion"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "translated and abstracted from actual user feedback; never a new user acceptance",
+    "source_turns": [
+      {
+        "line": 14036,
+        "user_text_sha256": "e85addcd45bb5ae3b3f355fbd29ac40d02a91109daeed94a847c4a75f084d8cd"
+      },
+      {
+        "line": 14087,
+        "user_text_sha256": "82beaeefa657c2f6b53b981f089519343c0914c86771e9a3e52cd5f08307c39a"
+      },
+      {
+        "line": 14356,
+        "user_text_sha256": "1eb9775d8f61ce1d235f87c01da025564fcbc36b97ff1b369e321c0922c7cf44"
+      },
+      {
+        "line": 14441,
+        "user_text_sha256": "8812e552298db68b74db024bc25f253f6b80ec1196a6f039e9df3d0a15615ad1"
+      },
+      {
+        "line": 14788,
+        "user_text_sha256": "d4883b642a5cbffd0447738401dc2db107712ba165a0dbf4f540be95d5cf8cd3"
+      },
+      {
+        "line": 15128,
+        "user_text_sha256": "70963f9aaead4b464bbc47023e4fd0790ab5304a754faf52ba0b466fd29aa0a3"
+      }
+    ],
+    "used_to_modify_skill": true,
+    "reference_replacement": true,
+    "replacement_scope": "Original, visibly labeled relationship schematic; exact original private references are separate and license unconfirmed",
+    "added_for_benchmark": "Fixed local deliverable filenames, actual browser evidence and explicit evidence-honesty requirements",
+    "synthetic_staged_feedback": true,
+    "source_session_sha256": "074d30e146858bd9f6404168c1035b5f0eb2e4d4bdc62345fa45cdafd5a7b0a4",
+    "source_thread_sha256": "29937249b41bb4954e56eea42bddf5019800d59cf0dd613f8a7c919465111ba2"
+  }
+}

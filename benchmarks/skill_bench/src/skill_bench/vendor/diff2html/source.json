@@ -1,0 +1,22 @@
+{
+  "package": "diff2html",
+  "version": "3.4.56",
+  "source": "https://github.com/rtfpessoa/diff2html",
+  "tarball": "https://registry.npmjs.org/diff2html/-/diff2html-3.4.56.tgz",
+  "integrity": "sha512-u9gfn+BlbHcyO7vItCIC4z49LJDUt31tODzOfAuJ5R1E7IdlRL6KjugcB9zOpejD+XiR+dDZbsnHSQ3g6A/u8A==",
+  "license": "MIT",
+  "files": {
+    "diff2html.min.js": {
+      "sha256": "a2110a09cee157bd5466da77be02107ac81a0baa2bc1f3fe81aac8183314598e",
+      "bytes": 77747
+    },
+    "diff2html.min.css": {
+      "sha256": "d3ecc0e9b2b1e5c8466c19de29bed052fd0863475d25829ecc858446efded372",
+      "bytes": 17331
+    },
+    "LICENSE.md": {
+      "sha256": "6de794566a8feb4233594420299cec2dbfba51ae57201763541a5e7d627cb245",
+      "bytes": 1091
+    }
+  }
+}

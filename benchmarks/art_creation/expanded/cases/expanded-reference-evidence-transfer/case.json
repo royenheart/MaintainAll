@@ -1,0 +1,485 @@
+{
+  "schema_version": 2,
+  "id": "expanded-reference-evidence-transfer",
+  "version": 1,
+  "family": "reference_analysis",
+  "split": "development",
+  "turns": [
+    {
+      "id": "t1",
+      "prompt": "I like the quiet body and sharp edge in the kimono photo, but I do not know the right design words. Mark the main garment regions directly over the supplied kimono photograph without changing its aspect ratio or replacing it with a similar drawing. Use the woven-cloth photo as a separate rhythm reference. Explain what is observed, what is only an interpretation, and what you propose. Make two visibly different original invitations for a small textile exhibition called Between Threads, on 18 May at the River Hall. Borrow relationships of field, edge, and repetition rather than garment shapes or a copied textile. Keep the exhibition name easiest to find, with date and location next. Show the actual photo annotation and the invitations together in notes.md so I can understand why each choice follows from the inputs. Deliver a.svg, a.png, b.svg, b.png, annotated.svg, annotated.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 308x624, 960x720.",
+      "attachments": [
+        "kimono",
+        "weave"
+      ],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "annotated.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "annotated.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 308,
+          "height": 624
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t2",
+      "prompt": "I prefer A for its quiet field, not its decorative frame. Keep B unchanged. The invitation now also needs the sentence A small exhibition about cloth, rhythm, and everyday care. Fit it into A without enlarging the title or narrowing the photo annotation. Keep the narrow red accent attached to a meaningful layout edge, rather than using a red rectangle around everything. Deliver a.svg, a.png, b.svg, b.png, annotated.svg, annotated.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 308x624, 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "annotated.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "annotated.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 308,
+          "height": 624
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    },
+    {
+      "id": "t3",
+      "prompt": "The repeated motif in A still looks like wallpaper. Change only its local spacing and scale so the pattern becomes denser near the red edge and fades toward the reading area. Preserve the accepted title/date relationship and the red edge location. Label every palette value and historical claim as measured, estimated, proposed, or unconfirmed, as appropriate. Deliver a.svg, a.png, b.svg, b.png, annotated.svg, annotated.png, notes.md. Keep these filenames on every turn. PNG previews must use the declared dimensions; include actual rendered results, not an empty placeholder. PNG sizes: 308x624, 960x720.",
+      "attachments": [],
+      "artifacts": [
+        {
+          "path": "a.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "a.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "b.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "b.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 960,
+          "height": 720
+        },
+        {
+          "path": "annotated.svg",
+          "kind": "editable",
+          "format": "svg"
+        },
+        {
+          "path": "annotated.png",
+          "kind": "preview",
+          "format": "png",
+          "width": 308,
+          "height": 624
+        },
+        {
+          "path": "notes.md",
+          "kind": "notes",
+          "format": "md"
+        }
+      ]
+    }
+  ],
+  "assets": [
+    {
+      "id": "kimono",
+      "path": "../../assets/met-125959.jpg",
+      "sha256": "c05affbab0e62582e94808f6bc4b83cd23cb73bd077fed9e5bac4d9c1a508926",
+      "license": "CC0 / Met Open Access",
+      "source": "https://www.metmuseum.org/art/collection/search/125959",
+      "visibility": "public"
+    },
+    {
+      "id": "weave",
+      "path": "../../assets/met-45406.jpg",
+      "sha256": "24fcad8ac8807557be50fff389b5326ae29b561dcbe5e26f3dab17f1c45ed916",
+      "license": "CC0 / Met Open Access",
+      "source": "https://www.metmuseum.org/art/collection/search/45406",
+      "visibility": "public"
+    }
+  ],
+  "requirements": [
+    {
+      "id": "source",
+      "turn": 1,
+      "quote": "Mark the main garment regions directly over the supplied kimono photograph without changing its aspect ratio or replacing it with a similar drawing."
+    },
+    {
+      "id": "grounding",
+      "turn": 1,
+      "quote": "Explain what is observed, what is only an interpretation, and what you propose."
+    },
+    {
+      "id": "transfer",
+      "turn": 1,
+      "quote": "Borrow relationships of field, edge, and repetition rather than garment shapes or a copied textile."
+    },
+    {
+      "id": "hierarchy",
+      "turn": 1,
+      "quote": "Keep the exhibition name easiest to find, with date and location next."
+    },
+    {
+      "id": "alternatives",
+      "turn": 1,
+      "quote": "two visibly different original invitations"
+    },
+    {
+      "id": "scope",
+      "turn": 2,
+      "quote": "Keep B unchanged."
+    },
+    {
+      "id": "copy",
+      "turn": 2,
+      "quote": "Fit it into A without enlarging the title or narrowing the photo annotation."
+    },
+    {
+      "id": "boundary",
+      "turn": 2,
+      "quote": "Keep the narrow red accent attached to a meaningful layout edge"
+    },
+    {
+      "id": "rhythm",
+      "turn": 3,
+      "quote": "denser near the red edge and fades toward the reading area"
+    },
+    {
+      "id": "preserve",
+      "turn": 3,
+      "quote": "Preserve the accepted title/date relationship and the red edge location."
+    },
+    {
+      "id": "uncertainty",
+      "turn": 3,
+      "quote": "Label every palette value and historical claim as measured, estimated, proposed, or unconfirmed"
+    }
+  ],
+  "atoms": [
+    {
+      "id": "actual-reference",
+      "dimension": "source_fidelity",
+      "criterion": "The numbered annotation retains the actual kimono photograph and its aspect ratio.",
+      "requirement_ids": [
+        "source"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The actual photograph remains legible and proportionate under component marks."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "annotated.png"
+        ]
+      }
+    },
+    {
+      "id": "separated-claims",
+      "dimension": "evidence_honesty",
+      "criterion": "The explanation distinguishes observations, interpretation, and proposed transfer.",
+      "requirement_ids": [
+        "grounding"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "notes.md"
+        ]
+      }
+    },
+    {
+      "id": "relationship-transfer",
+      "dimension": "reference_transfer",
+      "criterion": "Invitations inherit field/edge/repetition relationships without depicting or tracing the original garment.",
+      "requirement_ids": [
+        "transfer"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "reading-order",
+      "dimension": "hierarchy",
+      "criterion": "The exhibition name precedes date/location and supporting copy visually.",
+      "requirement_ids": [
+        "hierarchy"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "Date, decoration, or body copy overwhelms the exhibition title.",
+        "1": "The title leads, but date/location or body copy is difficult to find.",
+        "2": "The exhibition title leads, date/location follow, and added copy remains subordinate."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "meaningful-options",
+      "dimension": "alternatives",
+      "criterion": "A and B differ in field/edge/repetition organization, rather than only swapping color.",
+      "requirement_ids": [
+        "alternatives"
+      ],
+      "active_turns": [
+        1,
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "unchosen-preservation",
+      "dimension": "preservation",
+      "criterion": "B remains unchanged through both A-only corrections.",
+      "requirement_ids": [
+        "scope"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "b.svg",
+          "b.png"
+        ]
+      }
+    },
+    {
+      "id": "copy-without-title-growth",
+      "dimension": "hierarchy",
+      "criterion": "The new sentence fits in A without title enlargement or annotation narrowing.",
+      "requirement_ids": [
+        "copy"
+      ],
+      "active_turns": [
+        2,
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png",
+          "annotated.png"
+        ]
+      }
+    },
+    {
+      "id": "edge-and-density",
+      "dimension": "pattern_relations",
+      "criterion": "The red accent remains on its accepted layout edge while repetition fades into the reading area.",
+      "requirement_ids": [
+        "boundary",
+        "rhythm",
+        "preserve"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "visual",
+        "required_artifacts": [
+          "a.png"
+        ]
+      }
+    },
+    {
+      "id": "numerical-status",
+      "dimension": "evidence_honesty",
+      "criterion": "Numerical and historical assertions disclose their evidence status.",
+      "requirement_ids": [
+        "uncertainty"
+      ],
+      "active_turns": [
+        3
+      ],
+      "depends_on": [],
+      "anchors": {
+        "0": "The required relation is absent or contradicted by the declared evidence.",
+        "1": "The relation is present in only some relevant views or states, or a visible exception remains.",
+        "2": "The relation is visible and consistent across the requested views or states."
+      },
+      "evidence": {
+        "kind": "source",
+        "required_artifacts": [
+          "notes.md"
+        ]
+      }
+    }
+  ],
+  "capabilities": [
+    "real_images",
+    "exact_resume",
+    "svg"
+  ],
+  "limits": {
+    "turn_seconds": 600,
+    "max_file_bytes": 8388608,
+    "max_workspace_bytes": 33554432
+  },
+  "provenance": {
+    "origin": "MaintainAll self-authored demanding non-expert brief",
+    "feedback": "synthetic staged corrections; no claim of real user acceptance",
+    "created_at": "2026-10-11",
+    "dataset_release": "art-creation-expanded-v3",
+    "domain": "reference_interpretation",
+    "challenge_axes": [
+      "direct-reference-preservation",
+      "relationship-transfer",
+      "hierarchy-under-added-copy",
+      "selected-edit-scope",
+      "local-pattern-counterfactual"
+    ],
+    "reference_authorship": "CC0 Met object photographs and/or explicitly labeled original schematic input; never a replay of private session images",
+    "holdout_policy": "development task data"
+  }
+}
