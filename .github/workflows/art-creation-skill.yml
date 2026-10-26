@@ -45,3 +45,4 @@ jobs:
           python skills/art-creation/scripts/check_index.py --help
           python skills/art-creation/scripts/probe_runtime.py --help
           python skills/art-creation/scripts/capture_browser.py --help
+          python skills/art-creation/methods/game-engine/scripts/godot_project.py --help

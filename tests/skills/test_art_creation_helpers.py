@@ -59,6 +59,15 @@ class IndexTests(unittest.TestCase):
                     "| Current question | Destination |")
         self.assertIn("expected exactly one table", self.errors())
 
+    def test_feedback_setup_and_streaming_routes_are_checked(self):
+        for path, header in [("references/feedback-setup.md", "| Current need | Read | Verify |"), ("methods/game-engine/references/remote-preview.md", "| Option | Read | Role |")]:
+            with self.subTest(path=path):
+                resource = self.root / path
+                original = resource.read_text()
+                resource.write_text(original.replace(header, "| Invalid | Header |", 1))
+                self.assertIn("expected exactly one table", self.errors())
+                resource.write_text(original)
+
     def test_missing_resource_target(self):
         (self.root / "references/delegation.md").unlink()
         self.assertIn("missing link target", self.errors())
@@ -66,6 +75,11 @@ class IndexTests(unittest.TestCase):
     def test_unindexed_resource_is_detected(self):
         (self.root / "references/added.md").write_text("# Added\n")
         self.assertIn("unindexed resource: references/added.md", self.errors())
+
+    def test_unindexed_native_game_resource_is_detected(self):
+        relative = "methods/game-engine/templates/feel-lab/added.gd"
+        (self.root / relative).write_text("extends Node\n")
+        self.assertIn("unindexed resource: " + relative, self.errors())
 
     def test_duplicate_id_and_target(self):
         p = self.root / index.INDEX

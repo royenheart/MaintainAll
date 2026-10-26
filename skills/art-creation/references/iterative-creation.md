@@ -14,6 +14,7 @@ Choose a representation that answers the next question, then read the relevant m
 | Compare directions, adjust a few properties, preserve a choice | [Visual variants](../methods/visual-variants/SKILL.md) | Portable comparison viewer, explicit selection and live recipe capture |
 | Object form, silhouette, proportions, spatial arrangement | [Procedural 3D](../methods/scene-3d/SKILL.md) | Mesh construction, OBJ and SVG generation from the same geometry |
 | Camera, material, interactive 3D in a webpage | [Web 3D](../methods/web-3d/SKILL.md) | Actual Three.js scene, controls, resizing and resource guidance |
+| Game controls, rules, level space, feel, or engine delivery | [Game engine](../methods/game-engine/SKILL.md) | Native Godot project, playable profiles, feedback and Web/Linux exports |
 | Shots, sound, frame-accurate animation, video export | [Remotion video](../methods/remotion-video/SKILL.md) | Imported topic references, frame-derived composition starter |
 
 Use a runtime that fits the question. [Programmatic visual methods](visual-methods.md) describes inspection and display options; [upstream sources](upstream-sources.md) records adopted material.
@@ -24,7 +25,11 @@ Extract purpose, medium, essential content, constraints, stated likes/dislikes, 
 
 Use [style analysis](style-analysis.md) for a full reference report or decision-relevant findings during exploration. For ambiguous language, [Intent and evidence](intent-and-evidence.md) helps turn possible interpretations into observable comparisons.
 
+Establish the [feedback path](feedback-setup.md) for this decision before constructing detailed alternatives. Reuse a working path, and extend its capabilities as the question becomes more specific.
+
 ## 2. Analyze and construct with language and programs first
+
+Decompose the next unresolved intent into meaningful atoms: the object or state, observable property or relationship, accepted baseline, and decision to test. Split only as far as a useful observation or short response can resolve, and carry dependencies and retained choices into construction.
 
 Inspect available source, text, geometry, pixels, or timing and choose an inspectable representation. Start at the fidelity needed to settle the question and increase detail as the direction develops.
 
@@ -40,7 +45,7 @@ Give candidates stable IDs and brief explanations of their mechanisms. Display t
 
 ## 4. Get a reaction
 
-After showing the candidates, ask one compact question that resolves the current uncertainty. Use the response to choose the next direction: a selection, rejection, everyday description, or combination of parts. Explain useful vocabulary through the visible difference.
+After showing the candidates, ask one compact question that resolves the current uncertainty. Tie the question and answer to the displayed version, object, and state; use A/B or Yes / No / Not sure choices when they resolve the decision. Use the response to choose the next direction: a selection, rejection, everyday description, or combination of parts. Explain useful vocabulary through the visible difference.
 
 ## 5. Refine and preserve choices
 
@@ -59,6 +64,8 @@ Provide the visible result, a medium-appropriate implementation prompt, observab
 Execute this instruction in Chinese unless the user chooses another language:
 
     Help me discover and express a creative result from my rough words, sketch, reference, or clip. Begin with a useful interpretation of my purpose, medium, and preferences.
+    Establish a working way for me to inspect or experience the next result and give a version-linked response, reusing available tools and expanding setup as needed.
+    Decompose the next uncertainty into observable properties or relationships that a small experiment and short response can resolve.
     Use inspectable language and programs first, with specialist perceptual assistance for unresolved visual questions.
     Show labeled, comparable directions that test meaningful differences, explain them in ordinary language, and ask one small feedback question.
     Preserve my accepted choices while refining unresolved ones. Hand off the visible result, creative brief, implementation prompt, and editable sources.

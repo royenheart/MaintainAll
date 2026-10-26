@@ -8,6 +8,7 @@ This connects a construction method to [Iterative creation](iterative-creation.m
 - The next design question and stage: broad exploration or focused refinement.
 - Accepted choices, constraints, and the current baseline.
 - Renderer, project version, and comparison conditions such as size, seed, and time.
+- The established [feedback path](feedback-setup.md): launch/viewing route, tested conditions, and question/answer channel.
 
 Resolve linked resources relative to their containing file. The [resource index](resource-index.md) locates detailed guidance; [Intent and evidence](intent-and-evidence.md) helps clarify aesthetic language.
 
@@ -21,6 +22,7 @@ Return a small, concrete result containing:
 | Candidate IDs and differences | Stable identifiers and intentional changes |
 | Source and preview | Editable artifact plus displayed render or playback |
 | Recipe | Current parameters, assets, dimensions, seed, timing, version, and replay method as relevant |
+| Feedback path | How the user opens or experiences the result, responds to its version, and reuses the setup |
 | Feedback | Selected, retained, and rejected features |
 | Next question | One understandable choice or reaction that resolves the uncertainty |
 

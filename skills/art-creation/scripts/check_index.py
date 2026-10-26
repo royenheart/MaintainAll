@@ -19,6 +19,8 @@ ROUTING_TABLES = {
     ),
     "references/fashion-design.md": ("Current question", "Useful representation or route"),
     "references/tool-capabilities.md": ("Selected backend", "Read when useful"),
+    "references/feedback-setup.md": ("Current need", "Read", "Verify"),
+    "methods/game-engine/references/remote-preview.md": ("Option", "Read", "Role"),
     "methods/remotion-video/SKILL.md": ("Need", "Read"),
 }
 INDEX = "references/resource-index.md"
@@ -121,7 +123,7 @@ def inventory(root: Path) -> set[Path]:
         if path.name == "SKILL.md" or any(
             part in relative.parts for part in ("references", "scripts", "templates")
         ):
-            if path.suffix in {".md", ".py", ".js", ".jsx", ".html", ".svg"}:
+            if path.suffix in {".md", ".py", ".js", ".jsx", ".html", ".svg", ".godot", ".tscn", ".gd", ".cfg"}:
                 resources.add(path.resolve())
     resources.discard((root / INDEX).resolve())
     return resources
