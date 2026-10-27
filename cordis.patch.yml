@@ -1,0 +1,9 @@
+# Bundle patch for @royenheart/dsh-plugin-maintainall.
+# The package's own host row. `dsh plugin add` reconciles this package into
+# `dsh.profile.bundles`, so no manual bundle/cordis include entry is needed.
+# The package's second bundle patch, `preset/ops.patch.yml`, declares the
+# `ops` agent preset.
+- insert:
+    - id: maintainall
+      name: '@royenheart/dsh-plugin-maintainall'
+      config: {}

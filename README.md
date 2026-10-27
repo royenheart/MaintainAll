@@ -1,145 +1,36 @@
 # MaintainAll
 
-面向个人 / 实验室环境的运维资产仓库，外加一套 **AIOps Agent**：用自然语言驱动仓库内的脚本、部署配置与模板，在白名单命令约束下完成检查、巡检与固化任务。
+`@royenheart/dsh-plugin-maintainall` is a DeepSeek Harness (dsh) plugin that turns a successful ops session into a reusable task asset and replays it into a new session when a deterministic trigger fires.
 
-详细设计与开发说明见 [`AGENTS.md`](./AGENTS.md)。
+- Architecture and persisted-state model: [docs/architecture.md](docs/architecture.md)
+- Development, build, and profile install: [docs/development.md](docs/development.md)
+- Testing policy and current gaps: [docs/testing.md](docs/testing.md)
+- Development map: [.agents/skills/maintainall/SKILL.md](.agents/skills/maintainall/SKILL.md)
+- Decision records: [.agents/skills/maintainall/decisions/README.md](.agents/skills/maintainall/decisions/README.md)
 
-Environment Modules: [modulefile CLI](scripts/modulefiles/manage_modules.py); run `python3 scripts/modulefiles/manage_modules.py --help` from the repository root.
+## What it does
 
-## Creative skills
+1. Run an ops task once in a normal dsh session.
+2. Save the session as a task asset: `AGENTS.md`, skills, scripts, a replay seed, and trigger declarations.
+3. When a trigger fires (schedule, file change, Docker event, journald, webhook, or command transition), create a new session from the seed and inject the trigger context.
 
-[Art Creation](skills/art-creation/SKILL.md) indexes teaching-oriented style analysis
-and progressive creative exploration for non-experts. Disclosure follows the root
-skill, the [iterative workflow](skills/art-creation/references/iterative-creation.md),
-then a selected method: algorithmic art, canvas design, animation, visual variants,
-frame-based video, scene modeling, or browser 3D. Methods include focused generation
-and improvement guidance plus editable templates or executable helpers.
+Trigger decisions are deterministic: source filter, optional CEL `when`, debounce/rate limit, then dispatch. The model never participates in the trigger decision.
 
-The workflow uses direct annotations of supplied references, visible alternatives,
-user feedback, and language/program-first methods to build a precise creative brief.
-The [practice review](skills/art-creation/references/practice-review.md) compares
-industry mechanisms; the [source inventory](skills/art-creation/references/upstream-sources.md)
-records adapted sources, licenses, and runtime boundaries. This standalone domain
-skill is separate from the engineering model policy below. Distribute its complete
-directory; copying the root SKILL.md alone omits method instructions and resources.
 
-## 开发技能与模型策略
+## Demo
 
-[Performance Investigation](skills/performance-investigation/SKILL.md) establishes a repeatable testbed and guides hypothesis-driven experiments through progressively loaded domain methods. [Change Review Preview](skills/change-review-preview/SKILL.md) prepares portable issue/PR evidence, provides an offline local review page and verified ZIP packages, and guides authorized publication checks. Each complete directory includes its focused references and resources.
+![MaintainAll live product demo: five stages from a new session to a replay result](docs/assets/maintainall-demo.gif)
 
-可复用的开发技能在 [`skills/`](./skills/)，与 AIOps 的 `.agents/skills/` 分开维护。
-技能按任务描述触发，再通过共享 [`model-policy`](./skills/model-policy/SKILL.md)
-选择执行指导。模型/推理配置/任务阶梯、证据与辅助技能统一在
-[`registry.json`](./skills/model-policy/registry.json)，不在各技能重复维护排名。
+A live product demo recorded from a scratch DSH instance with the real model, in the English light theme. A vertical chapter-index rail stays on the left while the live DSH UI remains on the right: initialize, run checks, save task, replay, result. The recording types the task fields at a readable pace, then enters the replay session immediately after Run once and follows it to `DEPLOY_CHECK_OK`.
 
-初始阶梯是待校准的候选配置，不是已实测的模型优劣结论；未知或过期证据使用保守指导。
-解析器只输出建议，不切换模型、不调用付费 API，也不改变 AIOps 运行时设置。
-description 通过技能名 `model-policy` 指向共享索引；正文优先使用宿主目录提供的实际位置，
-普通文件安装才按当前 SKILL.md 的真实位置解析同级依赖，不依赖 shell 工作目录。
-安装时需要保留完整策略资源及辅助技能；缺失时明确降级，不能保证任意单文件安装可用。
-证据标准、来源、安装依赖及命令见 [分级方法](./skills/model-policy/methodology.md)。
+The chapter rail is a recording overlay, not product chrome. The visible replay run is `20261028-030658-cf17aabf` from task `payments-deploy-light2` on code commit `5ea65f1`.
 
-```bash
-python3 skills/model-policy/scripts/resolve.py --validate
-python3 skills/model-policy/scripts/resolve.py --check-install skills
-python3 skills/model-policy/scripts/resolve.py --model gpt-6-sol --variant medium --skill systematic-debugging
-python3 -m unittest discover -s tests -p 'test_model_policy.py' -v
+## Install
+
+```sh
+npm install
+npm run build
+dsh plugin --profile <profile> add link:<checkout>
 ```
 
----
-
-## AIOps Agent
-
-Agent 以本仓库为工作区，把运维先验（Skills）和可重复流程（Missions）接到同一条工作流上：
-
-```
-提问 → 评估可行性 → 生成任务板 → 人工 Review → 执行（ReAct）→ 校验 → 写报告
-```
-
-| 概念 | 位置 | 作用 |
-|---|---|---|
-| **Skills** | `.agents/skills/` | 领域先验（何时用、怎么做、约束与示例） |
-| **Missions** | `.agents/missions/` | 可固化的任务 DAG + `allowed_commands` 白名单（可带 cron） |
-| **Reports / Logs / History** | `~/.maintainall/{reports,logs,history}/`（或 Settings 的 `data_dir`） | 运行报告、会话日志、输入历史与 daemon 状态（不纳入版本控制） |
-
-报告正文语言由设置项 `report_language` 控制（默认 `zh-CN`，F1 可改），只约束 OBSERVE / 报告内容，不影响思考链等其它输出。会话结束时 TUI 会打印报告全文。
-
-交互入口是 Textual TUI（`python maintain.py` / `maintainall`）：中央为对话与思考流，右侧为 Missions / Skills；运行中展示任务板与命令执行计数。固化 mission 可由 systemd user daemon 按 cron 调度（跳过人工 Review）。
-
-交互模式（`Shift+Tab`）：
-
-| 模式 | 行为 |
-|---|---|
-| **`readonly`**（默认） | 可规划与 Review，**不执行**任何 shell / `task.script` |
-| **`restricted`** | Review 后仅执行 `allowed_commands` 白名单（整行 `re.fullmatch`） |
-| **`unlimited`** | 自动 Review，命令不受白名单限制 |
-
-真正执行时命令仍经应用层门禁（`run_allowed`），不是模型自觉约束。
-
-### 快速开始
-
-```bash
-pip install -e ".[dev]"
-python maintain.py          # 或 maintainall
-```
-
-配置与密钥：非密钥在 `~/.config/maintainall/config.toml`，API Key / SMTP 密码与 OAuth refresh token 进 OS keyring（详见 `AGENTS.md`）。Gmail/Outlook 通知走官方 API OAuth；Custom 走传统 SMTP。
-
-运行时数据默认写在 `~/.maintainall/`（可用 Settings / `data_dir` / `MAINTAINALL_DATA_DIR` 覆盖）。各工作区只存放版本化的 `.agents/{missions,skills}`；daemon 会扫描配置里的 **trusted_dirs**（TUI 首次进入某目录时可确认加入）。
-
-### 部署 user systemd daemon
-
-使用安装脚本，从**当前**环境解析绝对路径并写入 user unit：
-
-```bash
-pip install -e .
-chmod +x deploy/systemd/install-user-daemon.sh
-./deploy/systemd/install-user-daemon.sh
-# 预览将要写入的 unit：
-# ./deploy/systemd/install-user-daemon.sh --dry-run
-# 或显式指定解释器：
-# ./deploy/systemd/install-user-daemon.sh --python "$CONDA_PREFIX/bin/python"
-```
-
-如果更换了 conda/venv 环境，在新环境里再跑一遍安装脚本即可覆盖 `ExecStart`。
-
-```bash
-systemctl --user status maintainall-agent
-journalctl --user -u maintainall-agent -f
-# 可选：无图形登录会话时也保持运行
-# loginctl enable-linger "$USER"
-```
-
-daemon 每轮重新 `load_settings()`，因此改 `trusted_dirs` 或 mission 的 `schedule` 后一般无需重启 unit。更多说明见 `AGENTS.md`。
-
----
-
-## 仓库一级目录
-
-本仓库同时存放「可被 Agent 引用的运维资产」。一级目录职责如下（不展开内部具体项目）：
-
-| 目录 | 用途 |
-|---|---|
-| **`apps/`** | 独立小工具 / 应用工程（自包含代码与说明），与集群或日常工作流配套，但不属于通用部署清单。 |
-| **`deploy/`** | 服务与基础设施的部署资产：compose、配置片段、systemd unit 等，用于把组件落到机器或集群上。 |
-| **`scripts/`** | 通用运维与辅助脚本集合（含模块化子目录），覆盖打包、环境、模块文件管理、网络诊断等可复用能力。账号管理统一入口为 `scripts/usermgr.py`（create / list / show / modify / passwd / lock / unlock / move-home / delete / group / sudo），其中 `sudo grant|revoke|list` 提供由 systemd timer 自动收回的临时 sudo。 |
-| **`stow-configs/`** | 以 [GNU Stow](https://www.gnu.org/software/stow/) 管理的 dotfile / 用户级配置包，按包链接到 `$HOME`。 |
-| **`templates/`** | 可填充的配置与 modulefile 等模板，供生成正式配置或由 Agent / 脚本实例化。 |
-
-与 Agent 强相关、但通常不手改业务内容的目录：
-
-| 目录 | 用途 |
-|---|---|
-| **`.agents/`** | Agent 版本化资产：`skills/`、`missions/`（入库）。运行产物在 `data_dir`（默认 `~/.maintainall`）。 |
-| **`src/MaintainAll/`** | Agent 与 TUI 的 Python 包实现。 |
-| **`docs/`** | 补充文档（若存在）。 |
-
----
-
-## 文档索引
-
-| 文档 | 内容 |
-|---|---|
-| [`AGENTS.md`](./AGENTS.md) | Agent 架构、Skills/Missions、配置、快捷键、开发测试 |
-| `stow-configs/README.md` | Stow 包的安装与使用约定 |
-| 各 `apps/*`、`deploy/*` 内 README | 对应应用或部署栈的说明（按需查阅） |
+Restart dsh for host changes. The plugin's data root is `$DSH_HOME/@royenheart/dsh-plugin-maintainall`; see [docs/architecture.md](docs/architecture.md#persisted-state).

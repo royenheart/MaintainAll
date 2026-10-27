@@ -1,0 +1,124 @@
+# Agent preset `ops`: a proper `@deepseek-ai/dsh-agent-preset` declaration.
+# The plugin bundle patch lists this file alongside `cordis.patch.yml`, so the
+# preset is registered whenever the plugin is installed. The skill watcher is
+# disabled because every replay run has a fresh cwd; discovery still scans it.
+- insert:
+    - id: preset-ops
+      name: '@deepseek-ai/dsh-agent-preset'
+      config:
+        id: ops
+        name: Ops
+        description: Ops runbook replay preset
+        order: 50
+        plugins:
+          # The `ops` agent preset: a minimal ops/runbook-replay agent, mounted once per
+          # process. Modeled on the deployment's `standard` preset — see that file for the
+          # full commentary.
+          #
+          # This file is an AGENT-PLANE composition. The roster mounts it ONCE under a
+          # standing scope; every session naming it joins by scope parentage. The host
+          # composition keeps everything a preset must not own: the registries, the
+          # sandbox and approval stack, persistence, and the model route.
+          #
+          # A service row here that PUBLISHES a service name MUST sit inside a group
+          # carrying an `isolate` realm (see `plan-mode` below); rows that only register
+          # tools into the host registries need no realm.
+
+          # ── identity ────────────────────────────────────────────────────────────────
+
+          # The preset's own persona, shadowing the deployment default for this agent.
+          # Only dsh's registered prompt variables may appear here.
+          - id: persona
+            name: '@deepseek-ai/dsh-persona'
+            config:
+              prefix: >-
+                You are an ops agent powered by the {{model}} model.
+
+                You execute and maintain operational runbooks: follow the task's AGENTS.md and scripts, prefer deterministic checks over guesswork, and report what you changed and what you observed.
+
+          - id: agent-instructions
+            name: '@deepseek-ai/dsh-agent-instructions'
+            config:
+              maxBytes: 65536
+
+          # ── shell ───────────────────────────────────────────────────────────────────
+
+          # `shell-env` and the sandbox executors stay in the HOST composition; the shell
+          # tools here consume the host registry.
+          - id: tool-bash
+            name: '@deepseek-ai/dsh-tool-bash'
+            disabled: !!js process.platform === 'win32'
+
+          - id: tool-pwsh
+            name: '@deepseek-ai/dsh-tool-pwsh'
+            disabled: !!js process.platform !== 'win32'
+
+          # ── filesystem ──────────────────────────────────────────────────────────────
+
+          # Both register into the host `tools` registry and provide nothing, so
+          # they need no realm. The `fs` service and its policy stay in the host.
+          - id: tool-fs
+            name: '@deepseek-ai/dsh-tool-fs'
+
+          - id: tool-fs-search
+            name: '@deepseek-ai/dsh-tool-fs-search'
+            config:
+              sampleOverCapGlobResults: false
+
+          # ── background jobs ─────────────────────────────────────────────────────────
+
+          # Only the model-facing controls; the task registry stays on the host plane.
+          - id: tool-jobs
+            name: '@deepseek-ai/dsh-tool-jobs'
+
+          # ── skills ──────────────────────────────────────────────────────────────────
+
+          # The skill REGISTRY lives in the host composition and is layered per scope:
+          # these rows register into THIS preset's layer of it, so they need no realm.
+          # `skill-filesystem` contributes local-root discovery (task assets carry their
+          # own `.agents/skills/`), and `tool-skill` gives the agent the catalog and
+          # loader. Watching is disabled: every replayed run gets a fresh run cwd, so a
+          # live watcher would add one inotify project root per run while the run's
+          # skill catalog is static. Discovery and loading still scan the run cwd.
+          # Deployments that need live skill edits during a long run can set
+          # `watch: true`; the preset already caps retained watch projects at 8, and
+          # `watchUsePolling: true` avoids inotify entirely if needed.
+          - id: skill-filesystem
+            name: '@deepseek-ai/dsh-skill-filesystem'
+            config:
+              watch: false
+              # Defense in depth if an operator turns watching back on: keep only the
+              # most recent run project roots watched.
+              watchMaxProjects: 8
+
+          - id: tool-skill
+            name: '@deepseek-ai/dsh-tool-skill'
+
+          # ── remaining model-facing rows ─────────────────────────────────────────────
+
+          - id: todo
+            name: '@deepseek-ai/dsh-tool-todo'
+            config:
+              allowParallelInProgress: true
+
+          # Agent-scoped durable reminders over the host schedule service; the tool
+          # package registers into the host `tools` registry. The host composition owns
+          # the `schedule` service itself.
+          - id: tool-schedule
+            name: '@deepseek-ai/dsh-tool-schedule'
+
+          # ── plan mode ───────────────────────────────────────────────────────────────
+
+          # Plan state is per-agent by nature, so an entry-local realm is not a
+          # workaround here — it is the correct lifetime.
+          - id: planning
+            name: cordis:group
+            group: true
+            isolate:
+              planMode: true
+            config:
+              - id: plan-mode
+                name: '@deepseek-ai/dsh-plan-mode'
+                config:
+                  section: |
+                    You are in plan mode. Explore first with non-mutating reads, searches, and static analysis, then present a complete implementation plan. Do not edit, write, or execute changes until the user approves the plan. Use exit_plan_mode to present it.

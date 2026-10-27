@@ -1,0 +1,80 @@
+{
+  "name": "@royenheart/dsh-plugin-maintainall",
+  "description": "dsh plugin: turn successful ops sessions into reusable task assets and replay them when deterministic triggers fire",
+  "version": "0.1.0",
+  "license": "MIT",
+  "type": "module",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/royenheart/MaintainAll.git"
+  },
+  "main": "lib/index.js",
+  "types": "lib/types/index.d.ts",
+  "exports": {
+    ".": {
+      "types": "./lib/types/index.d.ts",
+      "default": "./lib/index.js"
+    },
+    "./client": {
+      "types": "./lib/types/client.d.ts",
+      "default": "./lib/client.js"
+    },
+    "./package.json": "./package.json"
+  },
+  "files": [
+    "cordis.patch.yml",
+    "lib/index.js",
+    "lib/client.js",
+    "lib/types/**/*.d.ts",
+    "preset"
+  ],
+  "scripts": {
+    "build": "node build.mjs",
+    "prepare": "node build.mjs",
+    "test": "node --test tests/core/*.test.ts tests/triggers/*.test.ts tests/client/*.test.ts tests/dispatch/*.test.ts tests/engine/*.test.ts",
+    "typecheck": "tsc --noEmit",
+    "lint": "oxlint src tests"
+  },
+  "dsh": {
+    "bundle": {
+      "patch": ["./cordis.patch.yml", "./preset/ops.patch.yml"]
+    },
+    "client": {
+      "inject": [
+        "@deepseek-ai/dsh-client-locale",
+        "@deepseek-ai/dsh-client-ui-conversation",
+        "@deepseek-ai/dsh-client-ui-sidebar",
+        "@deepseek-ai/dsh-client-ui-renderer",
+        "@deepseek-ai/dsh-client-ui-session",
+        "@deepseek-ai/dsh-client-ui-settings",
+        "@deepseek-ai/dsh-client-ui-workspace",
+        "@deepseek-ai/dsh-client-ui-primitives"
+      ],
+      "platform": "web"
+    }
+  },
+  "peerDependencies": {
+    "react": "^18.2.0",
+    "@deepseek-ai/cordis": "^4.0.2",
+    "@deepseek-ai/dsh-client-locale": "^0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-conversation": "^0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-sidebar": "^0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-renderer": "^0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-session": "^0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-settings": "^0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-workspace": "^0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-primitives": "^0.2.1-rc.3",
+    "@deepseek-ai/dsh-client-ui-slots": "^0.2.1-rc.3"
+  },
+  "devDependencies": {
+    "typescript": "^5.7.0",
+    "tsdown": "^0.22.2",
+    "oxlint": "^1.89.0",
+    "@types/node": "*",
+    "@types/react": "~18.3.1",
+    "react": "^18.2.0"
+  },
+  "dependencies": {
+    "yaml": "^2.4.0"
+  }
+}

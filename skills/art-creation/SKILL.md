@@ -14,6 +14,8 @@ Turn references and rough ideas into observable design decisions, visible altern
 | Understand a supplied image, webpage, or design; learn how to describe its style | Style analysis with direct annotation and a two-chapter teaching report | [Style analysis](references/style-analysis.md) |
 | Start with a vague idea, sketch, or reference and discover the desired result through feedback | Progressive creative exploration with contrasting previews and controlled refinement | [Iterative creation](references/iterative-creation.md) |
 | Develop a game idea through sketches, playable experiments, and player feedback | Native engine creation with atomic game decisions | [Game creation](references/game-creation.md) |
+| Plan a README demo or product motion artifact | Evidence-vs-narrative workflow, artifact specs, and progressive product-demo decisions | [Product demo workflows](references/product-demo-workflows.md) |
+| Borrow one-take motion logic for a launch or concept film | Carry, rhythm, camera, UI rebuild, and continuity verification | [Onetake method](references/onetake-method.md) |
 
 Select the relevant capability. When reference analysis and exploration are both requested, use analysis to inform exploration. Use the two-chapter format for a full analysis report and compact comparisons for exploration rounds.
 
@@ -39,5 +41,7 @@ Progressive disclosure follows `Art Creation -> relevant capability -> feedback 
 For ambiguous aesthetic intent, consult [Intent and evidence](references/intent-and-evidence.md). Consider [optional delegation](references/delegation.md) for independent research, construction, or review.
 
 For clothing or virtual-character design, use [Fashion and avatar design](references/fashion-design.md); for application backends, use [Tool capabilities](references/tool-capabilities.md).
+
+For a product demo, use [Iterative creation](references/iterative-creation.md) first for intent, comparison, and feedback, then use [product demo workflows](references/product-demo-workflows.md) for the artifact-specific evidence and format decisions. Project-specific demo records belong in the project development skill, not in this personal library.
 
 For research comparisons, read [Practice review](references/practice-review.md). For adopted source revisions, licenses, and local changes, read [Upstream sources](references/upstream-sources.md).
