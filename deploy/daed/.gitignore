@@ -5,3 +5,4 @@ config/*.bak*
 config/subscriptions.txt
 exported/
 __pycache__/
+.env

@@ -1,7 +1,8 @@
-# docker-compose.yml
+# Runtime configuration only. Build candidates with docker-compose.build.yml.
 services:
   daed:
-    image: ghcr.io/daeuniverse/daed
+    # Keep the existing image until an operator explicitly selects a replacement.
+    image: ${DAED_IMAGE:-ghcr.io/daeuniverse/daed@sha256:13e8cb126fbb6764234d1be682e708d735fa15417f8f3141e415064e660cde51}
     container_name: daed
     privileged: true
     network_mode: host

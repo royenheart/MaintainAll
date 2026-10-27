@@ -2,6 +2,78 @@
 
 基于 [daed](https://github.com/daeuniverse/daed) (dae + web UI) 的透明代理方案，搭配 gost 提供 SOCKS5/HTTP 代理端口共享。
 
+## Maintaining the private fork
+
+The maintained source is the private [royenheart/daed repository](https://github.com/royenheart/daed), checked out locally at `~/projects/daed`. [docker-compose.yml](docker-compose.yml) selects the runtime image through `DAED_IMAGE`; without an override it pins the existing production image by digest. It has no build step. Editing these files, rendering Compose configuration, and building an image do not apply a deployment. An explicit `up`, restart, reload, or replacement of the running service requires the operator's approval. The quick-start commands below describe first-time installation, not maintenance of the running instance.
+
+Paths and candidate image names in the command examples are customizable. `~/projects/daed` is this host's example checkout location, not a hard-coded build path. Set `DAED_SOURCE_DIR` to the actual source directory, `DAED_BUILD_IMAGE` to the desired build output tag, and `DAED_IMAGE` to the reviewed runtime image tag or digest. Agents must inspect the target host and operator's requested image before selecting these values; the examples do not authorize deploying them.
+
+The `./config:/etc/daed` mount, host network/PID modes, privileges, and restart policy stay the same. `config/wing.db` remains the panel's source of truth. Do not run `daed-init.py`, change routing/DNS, or launch a second privileged daed against the host as part of an image upgrade.
+
+### Source and dependency preparation
+
+Importing the repository does not update its nested dependencies. Initialize the recorded submodules before a build:
+
+```bash
+export DAED_SOURCE_DIR="${DAED_SOURCE_DIR:-$HOME/projects/daed}"
+git -C "$DAED_SOURCE_DIR" submodule update --init --recursive
+git -C "$DAED_SOURCE_DIR" submodule status --recursive
+```
+
+The imported checkout currently records wing `dc503088945812c11235b35362d2bfa1a4c3bdf0`. That dependency chain includes the upstream HTTP probe fix and only the earlier AnyTLS lifecycle fixes; it does not contain all current dae fixes or the additional blocked-TLS-close patch. Update and test the wing/core/outbound pins in the source repository before calling an image fixed. Commit the exact submodule revisions and effective Go module replacements. A clean, recursively initialized checkout is required for a source revision label to identify the build accurately.
+
+### Prepare a local candidate without deploying
+
+The explicit [docker-compose.build.yml](docker-compose.build.yml) overlay builds from the existing local checkout, so Docker does not need a GitHub token or SSH key to fetch the private top-level repository. It requires a separate candidate image name and revision; it cannot silently use the production image as the build output. It uses the source repository's `Dockerfile`, which must be maintained alongside the fork's dependencies.
+
+From `deploy/daed`, set build metadata and render the merged configuration first:
+
+```bash
+export DAED_SOURCE_DIR="${DAED_SOURCE_DIR:-$HOME/projects/daed}"
+export DAED_REVISION="$(git -C "$DAED_SOURCE_DIR" rev-parse HEAD)"
+export DAED_VERSION="git-$DAED_REVISION"
+export DAED_BUILD_IMAGE="daed-local:$DAED_VERSION"
+
+git -C "$DAED_SOURCE_DIR" status --short
+git -C "$DAED_SOURCE_DIR" submodule status --recursive
+docker compose -f docker-compose.yml -f docker-compose.build.yml config --quiet
+```
+
+Resolve dirty files, uninitialized submodules (`-`), mismatched submodule commits (`+`), or conflicts (`U`) before building. When the source and resource budget have been reviewed, the following command builds the candidate image only:
+
+```bash
+docker compose -f docker-compose.yml -f docker-compose.build.yml build daed
+docker image inspect "$DAED_BUILD_IMAGE" --format '{{.Id}} {{json .Config.Labels}}'
+```
+
+Do not use `up`, `up --build`, or `run` with this overlay while preparing a candidate. A build does not restart daed, but compilation still consumes host CPU and memory; prefer CI or a separate build host when production resource headroom is limited. Complete the source regression/race tests and isolated memory benchmarks before requesting a deployment. Do not reuse the live config directory or host eBPF attachment points in those tests. The build instructions are not evidence that this particular checkout has built or passed tests.
+
+### Optional private GHCR distribution
+
+Once CI publishes a private package, the runtime can instead select `ghcr.io/royenheart/daed@sha256:<published-manifest-digest>` through `DAED_IMAGE`. Repository privacy and package visibility are separate settings; verify the package stays private. For a manual pull, use `docker login ghcr.io` with a classic personal access token that has `read:packages`, supplying the token through `--password-stdin` or an interactive prompt. Do not place a token in Compose, a build argument, a Git URL, or a committed env file. See [GitHub's registry documentation](https://docs.github.com/en/packages/working-with-a-github-packages-registry/working-with-the-container-registry).
+
+The imported release workflow also logs into Docker Hub and Quay and publishes there. It needs a fork-specific review before use; simply importing it does not establish a working private GHCR publication pipeline. This deployment configuration neither triggers CI nor publishes an image.
+
+### Approval, cutover, and rollback
+
+Before asking to switch, record the current container ID, image, PID, start time, restart count, and the candidate image ID/digest. Preserve the old image locally. Back up `wing.db` with SQLite's online backup API, and preserve the rest of `config/` in a private backup location; copying a live SQLite file without its transaction state is not a reliable backup. Check the candidate's database migrations and configuration compatibility. Rollback may require the matching database backup as well as the old image if a migration is incompatible.
+
+Use [`.env.example`](.env.example) as the runtime selection template. Preview a candidate without changing the active `.env`:
+
+```bash
+DAED_IMAGE="$DAED_BUILD_IMAGE" docker compose config --quiet
+docker inspect daed --format 'ID={{.Id}} Image={{.Image}} PID={{.State.Pid}} Started={{.State.StartedAt}} Restarts={{.RestartCount}}'
+```
+
+For a registry candidate, substitute its reviewed digest for `$DAED_BUILD_IMAGE` and pull that exact digest before the approved maintenance window. Neither a preview nor a pull authorizes activation. After explicit approval, select the candidate in the local, ignored `.env`, then use the runtime Compose file only. The following command **recreates the running service and interrupts existing connections**; it is a manual cutover step, not part of preparation:
+
+```bash
+# Run only after explicit approval for this deployment.
+docker compose up -d --no-deps --no-build --pull never daed
+```
+
+After activation, check the panel, proxy connectivity, memory/goroutine/FD trends, and resource reclamation under the same workload used for the baseline. If rollback is approved, restore the old `DAED_IMAGE` and any required compatible database backup, then recreate using the same runtime command. Do not run `docker compose down` or prune the previous image during this process. There is no automatic update, migration, restart, or rollback command in the preparation path.
+
 ## 网络拓扑
 
 ```

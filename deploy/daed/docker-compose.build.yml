@@ -1,0 +1,14 @@
+# Opt-in build overlay; never loaded by a plain `docker compose` command.
+# `build` creates an image only. `up` with this overlay would replace daed.
+services:
+  daed:
+    image: ${DAED_BUILD_IMAGE:?Set DAED_BUILD_IMAGE to a new candidate tag}
+    pull_policy: never
+    build:
+      context: ${DAED_SOURCE_DIR:?Set DAED_SOURCE_DIR to the local private checkout}
+      dockerfile: Dockerfile
+      args:
+        DAED_VERSION: ${DAED_VERSION:-self-build}
+      labels:
+        org.opencontainers.image.source: https://github.com/royenheart/daed
+        org.opencontainers.image.revision: ${DAED_REVISION:?Set DAED_REVISION to the full source commit}
