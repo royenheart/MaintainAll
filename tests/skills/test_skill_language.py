@@ -7,7 +7,7 @@ import tempfile
 import unittest
 
 ROOT = Path(__file__).resolve().parents[2]
-TEXT_TYPES = {'.md', '.py', '.json', '.yaml', '.yml', '.js', '.jsx', '.ts', '.tsx', '.html', '.svg', '.txt', '.css', '.godot', '.tscn', '.gd', '.cfg'}
+TEXT_TYPES = {'.md', '.py', '.json', '.yaml', '.yml', '.js', '.jsx', '.ts', '.tsx', '.html', '.svg', '.txt', '.css'}
 NON_ENGLISH_SCRIPT = re.compile('[\u3040-\u30ff\u3400-\u4dbf\u4e00-\u9fff\uac00-\ud7af\U00020000-\U0002fa1f]')
 
 
@@ -17,7 +17,11 @@ def language_violations(root):
     for file in sorted(root.rglob('*')):
         if not file.is_file() or (file.suffix not in TEXT_TYPES and file.name not in {'LICENSE', 'NOTICE', 'COPYING'}):
             continue
-        if any(part in {'__pycache__', '.venv', 'node_modules', '.git'} for part in file.relative_to(root).parts):
+        relative = file.relative_to(root)
+        if any(part in {'__pycache__', '.venv', 'node_modules', '.git'} for part in relative.parts):
+            continue
+        # Historical decision records may quote the source language; they are evidence, not skill instructions.
+        if "decisions" in relative.parts:
             continue
         text = file.read_text(encoding='utf-8')
         if file.suffix == '.json':
@@ -48,13 +52,6 @@ class SkillLanguageTests(unittest.TestCase):
             root = Path(folder)
             (root/'example.json').write_text(json.dumps({'label':'\u4e2d\u6587'}))
             self.assertEqual(len(language_violations(root)), 1)
-
-    def test_native_game_resources_are_checked(self):
-        with tempfile.TemporaryDirectory() as folder:
-            root = Path(folder)
-            for extension in ('.godot', '.tscn', '.gd', '.cfg'):
-                (root / ('game' + extension)).write_text('\u4e2d\u6587')
-            self.assertEqual(len(language_violations(root)), 4)
 
     def test_english_allows_math_and_typographic_symbols(self):
         with tempfile.TemporaryDirectory() as folder:

@@ -1,6 +1,6 @@
 # Practice Review: Progressive Creative Exploration
 
-Reviewed: 2026-10-04. This comparison informs the workflow in [Art Creation](../SKILL.md). Repository links pin the inspected revisions; the [source inventory](upstream-sources.md) records adopted material, modifications, licenses, and runtime dependencies.
+Reviewed: 2026-10-04. This comparison informs the iterative workflow. Repository links pin the inspected revisions; the [source inventory](upstream-sources.md) records adopted material, modifications, licenses, and runtime dependencies.
 
 ## Existing skills and production tools
 

@@ -20,6 +20,10 @@ When editing or packaging the bundle, run the [static checker](../scripts/check_
 | capabilities | Select or configure an application backend | [Capabilities](tool-capabilities.md) | reference |
 | visual-methods | Inspect or display available visual material | [Visual methods](visual-methods.md) | reference |
 | practice | Inspect workflow research background | [Practice](practice-review.md) | reference |
+| product-demo | Choose a product-demo format and workflow | [Product demo workflows](product-demo-workflows.md) | reference |
+| onetake | Study the one-take motion method and its evidence boundary | [Onetake method](onetake-method.md) | reference |
+| demo-overlay | Inject a chapter rail and action focus into a live capture | [Product demo overlay](../scripts/product_demo_overlay.js) | script |
+| demo-gif | Encode a palette-optimized GIF from video or frames | [GIF encoder](../scripts/encode_demo_gif.py) | script |
 | upstream | Inspect attribution and adoption details | [Upstream](upstream-sources.md) | reference |
 | index-check | Validate this bundle while editing or packaging | [Index check](../scripts/check_index.py) | script |
 | runtime-probe | Locate a selected executable and query its version | [Runtime probe](../scripts/probe_runtime.py) | script |

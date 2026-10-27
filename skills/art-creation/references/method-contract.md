@@ -1,6 +1,6 @@
 # Method Contract
 
-This connects a construction method to [Iterative creation](iterative-creation.md) and [Art Creation](../SKILL.md).
+This connects a construction method to the [iterative workflow](iterative-creation.md).
 
 ## Input to a method
 
@@ -12,7 +12,7 @@ This connects a construction method to [Iterative creation](iterative-creation.m
 
 Resolve linked resources relative to their containing file. The [resource index](resource-index.md) locates detailed guidance; [Intent and evidence](intent-and-evidence.md) helps clarify aesthetic language.
 
-## Output to the parent
+## Output to the workflow
 
 Return a small, concrete result containing:
 
