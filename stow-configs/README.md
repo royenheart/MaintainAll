@@ -1,33 +1,31 @@
 # configs
 
-## stow 链接管理
+## Stow link management
 
-部分通过 stow 管理配置，如何使用：
+Some configurations are managed with stow. To use them:
 
-1. 首先安装 stow：
+1. Install stow:
 
 ```bash
 sudo apt install stow
 ```
 
-2. 将 stow-configs 克隆到本地：
+2. Clone stow-configs locally:
 
 ```bash
 git clone https://github.com/royenheart/MaintainAll.git
 cd MaintainAll
-# 安装 bash 配置至生效位置，其余 package 类似
+# Link the bash configuration into its active location; other packages work the same way.
 stow bash -t $HOME
 ```
 
-## dsh 插件
+## dsh plugins
 
-dsh 插件已从 `apps/` 移出，独立放在 `~/projects/dsh-plugins/` 下维护。安装/卸载
-统一走 `MaintainAll/deploys/ds-harness/deploy.py`（读 `plugins.yaml` 插件列表，
-先 `dsh plugin add <git-url>` 直装，失败再 clone 到本地 `file:` 安装），不再使用
-`stow-configs/dsh`、`maintainall.yml`、`cordis:include`，也不再依赖
-`install_dsh_plugins` / `uninstall_dsh_plugins` 两个 bash 函数。
+dsh plugins have moved out of `apps/` and are maintained under `~/projects/dsh-plugins/`. Install and update them through `MaintainAll/deploy/ds-harness/deploy.py`, which reads the plugin list from `plugins.yml`. It first tries a remote `dsh plugin add <spec>` and falls back to a temporary checkout for a `file:` install.
 
-单个插件可独立安装/卸载：
+This no longer uses `stow-configs/dsh`, `maintainall.yml`, `cordis:include`, or the `install_dsh_plugins` / `uninstall_dsh_plugins` bash functions.
+
+A single plugin can be installed or removed independently:
 
 ```bash
 cd ~/projects/dsh-plugins/dsh-plugin-skills-manager
@@ -35,5 +33,4 @@ python3 install.py install
 python3 install.py uninstall
 ```
 
-注意：`dsh-plugin-skills-manager` 使用前必须先给 deepseek-harness 应用该插件
-`patches/` 目录下的两个补丁（详见插件 README）。
+Note: before using `dsh-plugin-skills-manager`, apply both patches under its `patches/` directory to deepseek-harness. See the plugin README for details.
