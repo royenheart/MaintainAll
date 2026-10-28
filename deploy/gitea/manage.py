@@ -84,17 +84,9 @@ def detect_lan() -> str:
     # Route lookup asks the kernel; no packet is sent to this destination.
     routes = json.loads(subprocess.check_output(["ip", "-j", "route", "get", "1.1.1.1"], text=True))
     address = routes[0].get("prefsrc", "")
-    if not address or routes[0].get("dev") in ("tailscale0", "lo"):
-        raise ValueError("Cannot detect a LAN address; pass --lan-ip explicitly.")
+    if not address or routes[0].get("dev") == "lo":
+        raise ValueError("Cannot detect a local address; pass --lan-ip explicitly.")
     return address
-
-
-def detect_tailscale() -> str:
-    try:
-        result = subprocess.run(["tailscale", "ip", "-4"], capture_output=True, text=True, timeout=10)
-        return result.stdout.strip().splitlines()[0] if result.returncode == 0 and result.stdout.strip() else ""
-    except (OSError, subprocess.TimeoutExpired):
-        return ""
 
 
 def ipv4(value: str) -> str:
@@ -124,23 +116,15 @@ def build_settings(existing: dict[str, str], args) -> dict[str, str]:
             old_lan = str(ipaddress.IPv4Address(old_domain))
         except ipaddress.AddressValueError:
             pass
-    old_tailscale = existing.get("GITEA_TAILSCALE_IP", "")
+    mode = args.bind or ("lan" if args.lan_ip is not None else existing.get("GITEA_BIND_MODE", "lan"))
+    if mode not in ("lan", "loopback", "all"):
+        raise ValueError("Unsupported saved binding mode; run configure with repeated --lan-ip options for every desired address.")
     requested_lans = args.lan_ip or old_lans or ["auto"]
     lans = list(dict.fromkeys(ipv4(detect_lan() if value == "auto" else value) for value in requested_lans))
     lan = lans[0]
-    mode = args.bind or ("lan" if args.lan_ip is not None else existing.get("GITEA_BIND_MODE"))
-    tailscale = args.tailscale_ip if args.tailscale_ip is not None else existing.get("GITEA_TAILSCALE_IP", "auto")
-    if tailscale == "auto":
-        tailscale = detect_tailscale() if args.tailscale_ip is not None or mode in (None, "both", "tailscale") else ""
-    elif tailscale == "none":
-        tailscale = ""
-    tailscale = ipv4(tailscale) if tailscale else ""
-    mode = mode or ("both" if tailscale else "lan")
-    if mode in ("both", "tailscale") and not tailscale:
-        raise ValueError("Tailscale address is required for this binding mode; start Tailscale or pass --tailscale-ip.")
-    primary = tailscale if mode == "tailscale" else ("127.0.0.1" if mode == "loopback" else lan)
+    primary = "127.0.0.1" if mode == "loopback" else lan
     domain = args.domain or old_domain
-    if not domain or (not args.domain and domain in (*old_lans, old_lan, old_tailscale, "127.0.0.1")):
+    if not domain or (not args.domain and domain in (*old_lans, old_lan, "127.0.0.1")):
         domain = primary
     domain = hostname(domain)
     root_url = args.root_url or existing.get("GITEA_ROOT_URL", "")
@@ -158,7 +142,7 @@ def build_settings(existing: dict[str, str], args) -> dict[str, str]:
     ssh_domain = args.ssh_domain or existing.get("GITEA_SSH_DOMAIN", "")
     if not ssh_domain or (not args.ssh_domain and ssh_domain == old_domain):
         ssh_domain = domain
-    settings = {"GITEA_LAN_IP": lan, "GITEA_LAN_IPS": ",".join(lans), "GITEA_TAILSCALE_IP": tailscale,
+    settings = {"GITEA_LAN_IP": lan, "GITEA_LAN_IPS": ",".join(lans),
                 "GITEA_BIND_MODE": mode, "GITEA_DOMAIN": domain,
                 "GITEA_ROOT_URL": root_url, "GITEA_SSH_DOMAIN": hostname(ssh_domain)}
     if args.image:
@@ -178,11 +162,9 @@ def bind_addresses(settings: dict[str, str]) -> list[str]:
         return [""]
     if mode == "loopback":
         return ["127.0.0.1"]
-    addresses = []
-    if mode in ("lan", "both"):
-        addresses.extend(saved_lan_ips(settings))
-    if mode in ("tailscale", "both"):
-        addresses.append(settings["GITEA_TAILSCALE_IP"])
+    if mode != "lan":
+        raise ValueError("Unsupported binding mode; configure an explicit --lan-ip address list.")
+    addresses = saved_lan_ips(settings)
     if not addresses or any(not address for address in addresses):
         raise ValueError("No valid addresses for the selected binding mode.")
     return list(dict.fromkeys(addresses))
@@ -360,10 +342,9 @@ def parser():
         help_text = "Initialize a new deployment; skip existing Gitea volumes" if name == "init" else "Prepare configuration without upgrading images"
         command = commands.add_parser(name, help=help_text)
         command.add_argument("--lan-ip", action="append", metavar="IP",
-                             help="Repeat for multiple local IPv4 addresses (including Tailscale); auto selects the route source. Replaces the saved list and selects address binding unless --bind is supplied.")
-        command.add_argument("--tailscale-ip", help="Assigned IPv4 address, auto, or none")
-        command.add_argument("--bind", choices=("lan", "tailscale", "both", "loopback", "all"),
-                             help="lan uses the address list; both adds the Tailscale helper address; all and loopback override the list")
+                             help="Repeat for multiple local IPv4 addresses; auto selects the route source. Replaces the saved list and selects address binding unless --bind is supplied.")
+        command.add_argument("--bind", choices=("lan", "loopback", "all"),
+                             help="lan uses the explicit address list; all and loopback override the list")
         command.add_argument("--domain", help="Canonical host without scheme or port")
         command.add_argument("--root-url", help="Canonical external http(s) URL")
         command.add_argument("--ssh-domain", help="Host shown in SSH clone URLs")
