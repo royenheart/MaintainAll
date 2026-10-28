@@ -227,6 +227,7 @@ start-codex.sh
 .omo
 .superpowers
 
+# Local development worktrees.
 temp.worktrees/
 
 .agents/reports/
@@ -235,6 +236,7 @@ temp.worktrees/
 .maintainall/
 .superpowers/
 .venv/
-.worktrees/
+# Local git worktrees; create them here, not beside the checkout.
+/.worktrees/
 docs/superpowers/
 tmp

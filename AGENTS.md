@@ -29,7 +29,8 @@ npm run lint      # oxlint
 ## Conventions
 
 - Language: all code, comments, prompts, user-facing messages, and documentation are written in English; only replies and reports to the user use the user's own language.
-- Skill prose has no per-line word, character, or column limit. Keep paragraphs and list-item text on natural lines without manual wrapping to a fixed width; use newlines for Markdown structure and meaningful paragraph boundaries.
+- Do not impose a per-line word, character, or column limit. Do not hard-wrap prose to a fixed width; keep paragraphs and list-item text on natural lines, and use newlines only for Markdown structure and meaningful paragraph boundaries.
+- Create development worktrees only under `.worktrees/<name>`; do not place them beside the repository checkout. The `.worktrees/` directory is ignored by Git.
 - Package is scoped `@royenheart/dsh-plugin-maintainall`; `@deepseek-ai/*` packages are peerDependencies only.
 - ESM everywhere (`"type": "module"`). Host entry default-exports a Cordis service or `apply(ctx)`; client entry exports `inject` + `apply(ctx)` and renders with `React.createElement` (no JSX).
 - `src/core/` imports no dsh packages and is unit-tested directly with `node --test`.
