@@ -22,7 +22,7 @@ These are the decisions that belong to a product demo rather than to the generic
 | Length | How long can the viewer stay? | 10 s, 20 s, 30 s | Forces cuts and pacing decisions |
 | Motion | How much movement is needed? | Static hold, guided UI, one-take film | Determines capture vs composition |
 | Visual system | Light or dark, and what accent? | Product theme, brand theme | Affects rail contrast and overlay legibility |
-| Language | Which locale is on screen? | English, Chinese, bilingual captions | Changes label widths and rail geometry |
+| Language | Which locale is on screen? | One explicit locale or bilingual captions | Changes label widths and rail geometry |
 | Accessibility | What if motion is reduced or sound is off? | Poster, captions, alt text | The demo must still explain itself |
 | Constraints | What cannot appear or cannot be changed? | No names, no secrets, fixed commit, no banner | Narrows the production path immediately |
 

@@ -11,7 +11,7 @@ Connect the user's phrase to an object and context, possible interpretations, ob
 | Baseline, proposed change, control, and invariant | Make the experiment interpretable |
 | Preview and comparison conditions | Make the result inspectable |
 
-Measurements may be numeric, categorical, relational, temporal, or anchored human comparisons. Include units and the measured region or state where relevant. Use user feedback to refine aesthetic targets.
+Measurements may be numeric, categorical, relational, temporal, or anchored human comparisons. Include units and the measured region or state where relevant. Label measured, estimated, and proposed values; inferred intent remains a hypothesis. Use user feedback to refine aesthetic targets.
 
 Choose previews that reveal the property being discussed: composition, material, attachment, or motion. If feedback keeps rejecting the same property, reconsider the interpretation or mechanism.
 

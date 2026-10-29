@@ -61,7 +61,7 @@ Provide the visible result, a medium-appropriate implementation prompt, observab
 
 ## Reusable starting prompt
 
-Execute this instruction in Chinese unless the user chooses another language:
+Use this instruction in the language of the user's current input:
 
     Help me discover and express a creative result from my rough words, sketch, reference, or clip. Begin with a useful interpretation of my purpose, medium, and preferences.
     Establish a working way for me to inspect or experience the next result and give a version-linked response, reusing available tools and expanding setup as needed.

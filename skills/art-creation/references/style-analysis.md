@@ -4,7 +4,7 @@ Use this as the complete instruction for a teaching-oriented reference analysis.
 
 ## Report contract
 
-Write in accessible Chinese. Translate the chapter, section, and feature names below into Chinese; write the chapter numbers as Chinese words. The report consists of the following two top-level chapters, in order. Chapter One summarizes the conclusions; Chapter Two contains evidence, explanations, sources, and practical suggestions.
+Write in the language of the user's input, using accessible language. Use the chapter, section, and feature names below; write chapter numbers as words. The report consists of the following two top-level chapters, in order. Chapter One summarizes the conclusions; Chapter Two contains evidence, explanations, sources, and practical suggestions.
 
 Explain professional terms in plain language on first use. Identify observations, style interpretations, and implementation suggestions. Cite sources for authorship and historical context in the relevant Chapter Two section.
 
@@ -47,6 +47,7 @@ Annotate and display the supplied material using an image overlay, rendered webp
 
 Annotation requirements:
 
+- Annotate the supplied material. If the input is unavailable, say so instead of substituting a reconstruction.
 - Overlay markings while retaining source content, aspect ratio, and layout.
 - Use clear red boundaries and numbers. If red disappears against the background, use an equivalent high-contrast treatment.
 - Make each number correspond to the explanation, and avoid hiding important content.
@@ -70,7 +71,7 @@ Identify the principal style and relevant blends using these categories:
 - Visual techniques.
 - Mood keywords.
 
-Provide Chinese and English keywords. For each, explain its meaning, which details in this reference support it, and confidence in the interpretation. Include useful keyword combinations for finding similar references and continuing to learn.
+Provide keywords useful for this reference and for finding similar material. For each, explain its meaning, which details in this reference support it, and confidence in the interpretation. Include useful keyword combinations for finding similar references and continuing to learn.
 
 #### 4. Visual Language and How It Works
 

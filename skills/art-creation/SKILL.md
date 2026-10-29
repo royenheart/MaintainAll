@@ -27,7 +27,7 @@ Then continue the creative loop: [decompose the next intent](references/intent-a
 
 ## Working approach
 
-- Write reports and creative guidance in accessible Chinese unless the user requests another language. Explain a technical term on first use.
+- Write reports and creative guidance in the language of the user's current input unless the user requests another language. Explain a technical term on first use.
 - Turn observations and user preferences into concrete design choices.
 - Prefer natural language and inspectable programs: text, source, geometry, pixel statistics, timelines, SVG, HTML/CSS, canvas, procedural models, native game scenes, or frame-based rendering. Use multimodal assistance for perceptual questions these representations leave unresolved.
 - Display annotations on the supplied material and render alternatives for comparison.

@@ -26,4 +26,6 @@ Return a small, concrete result containing:
 | Feedback | Selected, retained, and rejected features |
 | Next question | One understandable choice or reaction that resolves the uncertainty |
 
+A preview is the rendered artifact the reader can see; a path or source listing alone is not a preview.
+
 Store current control values in a JSON recipe when replay helps. Capture selections through the comparison viewer's Choose button or conversation feedback. Independent construction, research, or review can use [optional delegation](delegation.md).

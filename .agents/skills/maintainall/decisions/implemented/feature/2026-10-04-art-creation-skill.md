@@ -16,8 +16,8 @@ alternatives without first mastering professional terminology.
   and [iterative creation](../../../../../../skills/art-creation/references/iterative-creation.md).
 - The analysis instructions preserve the requested two-chapter teaching report,
   twelve one-sentence overview items, seven detailed sections, and direct annotation
-  of the actual input. Instructions are maintained in English; reports use accessible
-  Chinese unless the user requests otherwise.
+  of the actual input. Instructions are maintained in English; reports follow the
+  language of the user's current input unless the user requests otherwise.
 - Exploration uses language and inspectable programs first, visible contrasting
   directions, user feedback, and controlled refinement. Preference hypotheses stay
   separate from observations and user-confirmed choices. Multimodal assistance is
