@@ -10,7 +10,7 @@ Read [`.agents/skills/maintainall/SKILL.md`](.agents/skills/maintainall/SKILL.md
 src/            host and client plugin entries; core/ is pure logic with no dsh imports
 tests/          node --test unit tests (pure core and trigger engine)
 preset/         ops agent preset bundle patch (ops.patch.yml)
-docs/           architecture, testing, development
+docs/           MaintainAll plugin documentation only
 skills/         personal general skill library (not project API knowledge)
 .agents/skills/ project development skills and decision records
 deploy/daed/    daed deployment config + one-shot daed-init.py
@@ -25,6 +25,12 @@ npm test          # node --test tests/core/*.test.ts tests/triggers/*.test.ts te
 npm run typecheck # tsc --noEmit
 npm run lint      # oxlint
 ```
+
+## Documentation placement
+
+- `docs/` is only for MaintainAll plugin documentation: architecture, development, testing, and plugin assets. Do not put service or personal-skill research there.
+- Put service, deployment, or infrastructure research beside its service under `deploy/<service>/` (for example, `deploy/cloud-agent/docs/DESIGN.md`). Put skill-specific research under `skills/<skill>/docs/` (for example, `skills/art-creation/docs/game-creation-design.md`).
+- Do not create `docs/superpowers/` or similar plan trees. Durable decisions belong in `.agents/skills/maintainall/decisions/`; historical research already under `docs/research/` is not a precedent for new content and should be relocated when touched.
 
 ## Conventions
 

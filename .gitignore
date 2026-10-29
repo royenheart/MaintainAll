@@ -235,8 +235,15 @@ temp.worktrees/
 .agents/history/
 .maintainall/
 .superpowers/
+docs/superpowers/
 .venv/
 # Local git worktrees; create them here, not beside the checkout.
 /.worktrees/
-docs/superpowers/
 tmp
+
+# Node / TypeScript build output
+node_modules/
+lib/
+*.tsbuildinfo
+.npm-cache/
+.tmp/
