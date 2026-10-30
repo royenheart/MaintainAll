@@ -98,13 +98,15 @@ function duh1() {
 # === my skill list ===
 
 function sync_skills() {
-    # npx skills add https://github.com/obra/superpowers
-    npx skills add https://github.com/googleworkspace/cli
-    npx skills add https://github.com/royenheart/MaintainAll
+    # Always install with -g (global): running `skills add` from $HOME without it makes
+    # the CLI treat $HOME as a project root and drop a skills-lock.json there.
+    # npx skills add -g https://github.com/obra/superpowers
+    npx skills add -g https://github.com/googleworkspace/cli
+    npx skills add -g https://github.com/royenheart/MaintainAll
     # humanize-academic-writing
-    npx skills add https://github.com/momo2young/humanize-academic-writing
+    npx skills add -g https://github.com/momo2young/humanize-academic-writing
     # figure-generation for generate much better figs for research purpose
-    npx skills add https://github.com/lingzhi227/agent-research-skills --skill figure-generation
+    npx skills add -g https://github.com/lingzhi227/agent-research-skills --skill figure-generation
 }
 
 # 移除通过 npx skills 安装的技能
