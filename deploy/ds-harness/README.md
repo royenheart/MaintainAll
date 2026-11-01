@@ -340,9 +340,16 @@ https://<代理IP>:<代理端口>/manage/      # --tls 模式
 1. **压缩**：`encode zstd gzip` 作用于除 `/api/events.host`、`/api/events.mux`
    以外的所有响应。dsh 自身不压缩，session 列表这类大 JSON 和前端 bundle
    在代理层会被压缩后再发出，实测 760KB 的 JSON 可压到约 94KB（gzip）。
-2. **静态资源长缓存**：`/plugins/*`、`/assets/*`、`/favicon.svg` 响应头加
-   `Cache-Control: public, max-age=31536000, immutable`。dsh 的前端资源都带
-   `?rev=<hash>`，内容变了 URL 就变，长缓存安全，二次进入不用重新下载。
+2. **静态资源长缓存**：只对真正的静态文件加
+   `Cache-Control: public, max-age=31536000, immutable`，匹配
+   `/plugins/`（combo bundle 端点，其内容都在查询串里）、`/plugins/*.js`、
+   `/plugins/*.js.map`、`/plugins/*/assets/*`、`/assets/*`、`/favicon.svg`。
+   dsh 的前端资源都带 `?rev=<hash>`，内容变了 URL 就变，长缓存安全，二次进入
+   不用重新下载；dsh 自身也会给真实 bundle/包资源响应发同样的 immutable 头，
+   代理层规则只是兜底。注意插件 HTTP API 也挂在 `/plugins/<package>/` 下（例如
+   `/plugins/@royenheart/dsh-plugin-maintainall/tasks`），它们不是静态资源：
+   若整个 `/plugins/*` 都命中长缓存，浏览器一年内不会重新发 GET，插件的
+   任务/状态变化就永远看不到。
 3. **HTML/API 强制新鲜**：`/` 和 `/api/*` 响应头加 `Cache-Control: no-cache`，
    保证每次进入拿到最新会话状态，同时仍可被压缩（事件流除外）。
 

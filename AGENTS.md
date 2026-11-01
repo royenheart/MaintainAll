@@ -42,6 +42,7 @@ npm run lint      # oxlint
 - `src/core/` imports no dsh packages and is unit-tested directly with `node --test`.
 - Registrations return disposers and must be released on unload and failed init; client contributions use `ctx.effect`/`ctx.on`, while host route/tool disposers are tracked explicitly.
 - Runtime updates go through dsh extension points (tools registry, client slots, RPC), never by patching dsh.
+- Plugin HTTP responses are non-cacheable (`cache-control: no-store`) and client GETs use `cache: 'no-store'`: plugin API routes share the `/plugins/<package>/` prefix with dsh's immutable client bundles, so a deployment proxy must not cache that prefix as static assets.
 - Client text is i18n-only: register a locale namespace with symmetric `zh`/`en` dictionaries and bind it; hard-coded UI strings are not allowed.
 
 ## Storage

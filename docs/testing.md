@@ -21,12 +21,13 @@ Tests are `node --test` under `tests/`. `src/core/` has no dsh imports and is te
 | `triggers/condition` | CEL allow/deny, type errors, non-whitelisted function rejection |
 | `triggers/rate` | min interval, max per hour (zero = no cap), persisted state |
 | `dispatch` | run cwd materialization, existing-id refusal, trigger validation, `agents.create` arguments, producer-owned first `UserMessage`, permission preset, title, rollback, failed-preflight cleanup |
-| `client` | pure schedule form params/legacy preservation/at shape, source-field/filter mapping, i18n key symmetry; slot, dialog, Ops panel, and host-error rendering have no runtime test |
+| `core/http` | JSON response headers pin `cache-control: no-store` for both success and error bodies |
+| `client` | pure schedule form params/legacy preservation/at shape, source-field/filter mapping, i18n key symmetry, API GET cache bypass, POST helper method/body/error contract; slot, dialog, Ops panel, and host-error rendering have no runtime test |
 
 ## Rules
 
 - Trigger tests never call real clocks, sockets, or filesystem watchers unless the test is marked e2e and self-skips.
 - `tests/engine/ops-preset.test.ts` parses `preset/ops.patch.yml` and pins the declaration, persona prompt-variable allowlist, required todo/plan-mode config fields, watcher fields, and reminder tool. It does not prove that a real profile activates the preset or that `package.json` ships the patch. Run-cwd tests pin the empty-skills omission and the non-empty copy.
 - A behavior change updates or adds targeted tests in the same change. Verify the files covering the touched module; the full suite is a release gate, not the edit loop.
-- Client i18n tests enforce that `zh` and `en` have identical key sets and matching placeholders. The Ops panel and Save dialog have no React/runtime test; the management-route trust fence, exec subprocess, and live profile preset activation have no end-to-end test.
+- Client i18n tests enforce that `zh` and `en` have identical key sets and matching placeholders. `tests/client/api.test.ts` stubs `fetch` and pins that every GET goes out with `cache: 'no-store'` (a deployment proxy may cache the `/plugins/<package>/` prefix as immutable assets) and that the POST helpers keep their method, body, and error contract. The Ops panel and Save dialog have no React/runtime test; the management-route trust fence, exec subprocess, live profile preset activation, and the proxy cache headers themselves have no end-to-end test.
 - Seed tests cover executable tool-call argument remapping, JSON/Windows escaping, path-field containment, unchanged history/meta/streams, regenerated-context filtering, and cwd bounds; normalize tests cover path-only legacy webhook filters and `params: null`; save validation covers webhook token typing.

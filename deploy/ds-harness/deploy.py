@@ -883,12 +883,24 @@ def render_caddyfile(
         # Proxy-side loading optimizations (dsh is left untouched):
         # - compress everything except the event streams (large session lists
         #   and static bundles shrink substantially over the wire)
-        # - cache hashed static assets in the browser
+        # - cache genuine static files in the browser
         # - force revalidation for the shell document and API responses
         lines.append('\t@stream path /api/events.host /api/events.mux /plugins/events')
         lines.append('\t@not-stream not path /api/events.host /api/events.mux /plugins/events')
+        # Long-cache only genuine static files, never every /plugins/ path:
+        # plugin HTTP APIs share that prefix with dsh client bundles (MaintainAll
+        # serves /plugins/@royenheart/dsh-plugin-maintainall/tasks), so a blanket
+        # /plugins/* makes the browser reuse those JSON responses for a year and
+        # they stop refreshing. Caddy path patterns are exact by default; a `*`
+        # matches only within one path segment unless the whole pattern is a
+        # trailing-`*` prefix. List the concrete shapes dsh serves: the
+        # combo-bundle endpoint /plugins/ (its payload is the query string),
+        # per-plugin JS bundles and maps, package asset directories, and the web
+        # shell's own /assets/* and /favicon.svg. Scoped package assets under
+        # /plugins/@scope/name/assets/ keep the same long cache from dsh itself,
+        # which marks every real bundle/asset response immutable.
         lines.append('\t@static {')
-        lines.append('\t\tpath /plugins/* /assets/* /favicon.svg')
+        lines.append('\t\tpath /plugins/ /plugins/*.js /plugins/*.js.map /plugins/*/assets/* /assets/* /favicon.svg')
         lines.append('\t\tnot path /plugins/events')
         lines.append('\t}')
         lines.append('\t@dynamic path / /api/*')

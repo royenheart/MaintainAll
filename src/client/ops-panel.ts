@@ -8,7 +8,7 @@ import {
   IconFolderCloseRegular,
 } from '@deepseek-ai/dsh-client-ui-primitives'
 
-import { ROUTE_BASE, postJson } from './api.ts'
+import { ROUTE_BASE, getJson, postJson } from './api.ts'
 import { SaveOpsAction } from './save-dialog.ts'
 import type { EditInitial, TaskRecord, Translate } from './shared.ts'
 
@@ -30,7 +30,7 @@ export function OpsPanel(props: { t: Translate; onOpen?: (sessionId: string) => 
   const runsRequest = React.useRef(0)
 
   const reload = React.useCallback(() => {
-    void fetch(`${ROUTE_BASE}/tasks`)
+    void getJson(`${ROUTE_BASE}/tasks`)
       .then(async (response) => {
         const body = (await response.json()) as { ok?: unknown; tasks?: unknown }
         if (body.ok === true && Array.isArray(body.tasks)) {
@@ -62,7 +62,7 @@ export function OpsPanel(props: { t: Translate; onOpen?: (sessionId: string) => 
 
   const fetchRuns = React.useCallback((task: TaskRecord, offset: number) => {
     const request = ++runsRequest.current
-    void fetch(`${ROUTE_BASE}/tasks/${encodeURIComponent(task.id)}/runs?limit=10&offset=${offset}`)
+    void getJson(`${ROUTE_BASE}/tasks/${encodeURIComponent(task.id)}/runs?limit=10&offset=${offset}`)
       .then(async (response) => {
         const body = (await response.json()) as { ok?: unknown; runs?: unknown; hasMore?: unknown }
         if (request !== runsRequest.current || expandedRef.current !== task.id) return
@@ -128,7 +128,7 @@ export function OpsPanel(props: { t: Translate; onOpen?: (sessionId: string) => 
 
   const editTask = (task: TaskRecord) => {
     setError('')
-    void fetch(`${ROUTE_BASE}/tasks/${encodeURIComponent(task.id)}`)
+    void getJson(`${ROUTE_BASE}/tasks/${encodeURIComponent(task.id)}`)
       .then(async (response) => {
         const body = (await response.json()) as { ok?: unknown; task?: unknown }
         if (!response.ok || body.ok !== true || body.task === undefined || typeof body.task !== 'object') {

@@ -51,6 +51,7 @@ Run the targeted test files for the module you touched rather than the full suit
 - All trigger shapes, filters, schedule targets, ids, and uniqueness constraints validate before any save or edit.
 - Storage writes are atomic. Do not write under `$DSH_HOME/sessions/`, `$DSH_HOME/profiles/`, or the plugin package directory.
 - Client text is i18n-only with symmetric `zh`/`en` dictionaries.
+- Plugin HTTP responses are non-cacheable (`cache-control: no-store`) and client GETs bypass the browser cache; a deployment proxy must not cache the `/plugins/<package>/` prefix as immutable static assets, or a successful task toggle never reaches the panel.
 - Registrations return disposers and release on unload and failed init.
 - `src/core/` stays free of dsh imports.
 - Use dsh extension points, never patch dsh internals.

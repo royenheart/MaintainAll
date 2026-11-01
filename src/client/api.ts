@@ -6,6 +6,19 @@
 /** Base pathname of the host routes this client talks to. */
 export const ROUTE_BASE = '/plugins/@royenheart/dsh-plugin-maintainall'
 
+/**
+ * GET one plugin JSON route.
+ *
+ * The plugin's HTTP API shares the `/plugins/<package>` prefix with dsh's
+ * immutable client bundles, and a deployment proxy that caches that prefix as
+ * static assets makes a plain `fetch` return a year-old task list. Bypassing
+ * the browser cache keeps the panel in sync with the host even when the
+ * deployment caches plugin asset paths aggressively.
+ */
+export async function getJson(path: string): Promise<Response> {
+  return fetch(path, { cache: 'no-store' })
+}
+
 export async function postJson(path: string, body: unknown): Promise<boolean> {
   const controller = new AbortController()
   const timer = setTimeout(() => controller.abort(), 30_000)

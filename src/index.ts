@@ -26,6 +26,7 @@ import {
 } from './core/storage.ts'
 import { readTaskAsset, writeTaskAsset, writeTaskMeta } from './core/task-writer.ts'
 import { PluginLogger } from './core/logger.ts'
+import { sendJson } from './core/http.ts'
 import { normalizeEvent } from './core/triggers/event.ts'
 import { normalizeTriggerFilter } from './core/triggers/normalize.ts'
 import type { EngineTask } from './engine/trigger-engine.ts'
@@ -45,6 +46,7 @@ import { TriggerRuntime } from './host/trigger-runtime.ts'
 export { createRunCwd, runTimestamp } from './dispatch/run-cwd.ts'
 export { buildSeedForRun, firstUserMessage } from './dispatch/session.ts'
 export { dispatchReplay, type DispatchResult } from './dispatch/replay.ts'
+export { sendJson }
 export type { DispatchableTask } from './dispatch/session.ts'
 
 /** Cordis service name. */
@@ -74,12 +76,6 @@ interface WebServerFace {
 /** Minimal logger face; `console.warn` is the fallback. */
 interface LoggerFace {
   warn(message: string, ...args: unknown[]): void
-}
-
-/** Write a JSON response. */
-export function sendJson(res: ServerResponse, status: number, body: unknown): void {
-  res.writeHead(status, { 'content-type': 'application/json; charset=utf-8' })
-  res.end(JSON.stringify(body))
 }
 
 /** Read and parse a JSON request body, bounded to 1 MiB. */

@@ -3,7 +3,7 @@
 import * as React from 'react'
 import type { ReactElement } from 'react'
 
-import { ROUTE_BASE } from './api.ts'
+import { ROUTE_BASE, getJson } from './api.ts'
 import type { Translate } from './shared.ts'
 
 interface LogEntry {
@@ -20,7 +20,7 @@ export function OpsSettings(props: { t: Translate }): ReactElement {
   const [offset, setOffset] = React.useState(0)
 
   const load = React.useCallback((nextOffset: number) => {
-    void fetch(`${ROUTE_BASE}/logs?limit=200&offset=${nextOffset}`)
+    void getJson(`${ROUTE_BASE}/logs?limit=200&offset=${nextOffset}`)
       .then(async (response) => {
         const body = (await response.json()) as { ok?: unknown; entries?: unknown; hasMore?: unknown }
         if (body.ok === true && Array.isArray(body.entries)) {
