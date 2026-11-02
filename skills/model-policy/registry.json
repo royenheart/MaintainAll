@@ -176,8 +176,16 @@
       "task": "tool_use",
       "minimum_tier": "T2"
     },
-    "dsh-plugin-development": {
+    "dsh-runtime-guide": {
       "task": "tool_use",
+      "minimum_tier": "T2"
+    },
+    "dsh-observability": {
+      "task": "debugging",
+      "minimum_tier": "T2"
+    },
+    "dsh-plugin-validation": {
+      "task": "review",
       "minimum_tier": "T2"
     }
   },

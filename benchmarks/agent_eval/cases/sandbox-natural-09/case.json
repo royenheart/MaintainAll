@@ -1,0 +1,27 @@
+{
+  "id": "sandbox-natural-09",
+  "version": 2,
+  "family": "runtime-sandbox",
+  "scale": "large",
+  "prompt": "prompts/task.txt",
+  "fixture": "../../fixtures/proxy-gpu",
+  "grader": "graders/structured_evidence.py",
+  "truth": "truth/sandbox-natural-09.json",
+  "outerDevices": true,
+  "budget": {
+    "max_tool_calls": 120,
+    "calibrated_from": "A0 current run used 81; freeze at 120"
+  },
+  "allow_prefixes": [
+    "test-results",
+    "dist",
+    ".cache",
+    "node_modules",
+    ".perf-run",
+    ".astro",
+    ".cache-home",
+    "package-lock.json"
+  ],
+  "description": "Outer jail exposes GPU devices; DSH inner sandbox hides them; expected blocker is dsh.",
+  "timeout_ms": 600000
+}

@@ -247,3 +247,16 @@ lib/
 *.tsbuildinfo
 .npm-cache/
 .tmp/
+deploy/langfuse/.env
+deploy/langfuse/.env.*
+deploy/langfuse/tls/
+!deploy/langfuse/.env.example
+benchmarks/agent_eval/results/
+benchmarks/agent_eval/.calib/
+benchmarks/agent_eval/external/*/
+benchmarks/evaluation/records/
+benchmarks/evaluation/site/
+
+public-benchmark-site/
+
+.run/

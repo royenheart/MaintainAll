@@ -1,0 +1,26 @@
+{
+  "completed": false,
+  "blocker": "bwrap 沙箱隐藏了 GPU 设备节点（/dev/dri、/dev/nvidia*），且无法获得 danger-full-access 审批，无法启动 GPU WebGL 测试",
+  "evidence": [
+    {
+      "tool_call_id": "call_01_JrSOqvaT32fTnId8cRim6892",
+      "quoted_output": "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver."
+    },
+    {
+      "tool_call_id": "call_01_NehlFGAuoHOTLZMCqvBi7507",
+      "quoted_output": "/dev/dri MISSING\n/dev/dri/renderD128 MISSING\n/dev/dri/renderD129 MISSING\n/dev/nvidia0 MISSING\n/dev/nvidiactl MISSING"
+    },
+    {
+      "tool_call_id": "call_00_4KomxJaqVxw5DStUxbfG5272",
+      "quoted_output": "1300 1167 0:7 /dri /dev/dri ro,nosuid,nodev master:2 - devtmpfs devtmpfs rw,seclabel,size=15999348k,nr_inodes=3999837,mode=755,inode64\n1304 1167 0:81 / /dev rw,nosuid,nodev,relatime - tmpfs tmpfs rw,seclabel,mode=755,uid=1000,gid=1000,inode64"
+    },
+    {
+      "tool_call_id": "call_01_wpw5BPgAEd4huSmOiWGi9012",
+      "quoted_output": "bwrap --ro-bind / / --dev /dev --unshare-pid --proc /proc --die-with-parent"
+    },
+    {
+      "tool_call_id": "call_00_5Hql5JDePheyQOJZtJoW6697",
+      "quoted_output": "Error: sandbox escalation to \"danger-full-access\" requires approval, but no approval channel is available"
+    }
+  ]
+}

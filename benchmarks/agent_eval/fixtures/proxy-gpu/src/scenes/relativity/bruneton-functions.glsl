@@ -1,0 +1,174 @@
+/**
+ * Copyright (c) 2020 Eric Bruneton
+ * All rights reserved.
+ *
+ * Redistribution and use in source and binary forms, with or without
+ * modification, are permitted provided that the following conditions
+ * are met:
+ * 1. Redistributions of source code must retain the above copyright
+ *    notice, this list of conditions and the following disclaimer.
+ * 2. Redistributions in binary form must reproduce the above copyright
+ *    notice, this list of conditions and the following disclaimer in the
+ *    documentation and/or other materials provided with the distribution.
+ * 3. Neither the name of the copyright holders nor the names of its
+ *    contributors may be used to endorse or promote products derived from
+ *    this software without specific prior written permission.
+ *
+ * THIS SOFTWARE IS PROVIDED BY THE COPYRIGHT HOLDERS AND CONTRIBUTORS "AS IS"
+ * AND ANY EXPRESS OR IMPLIED WARRANTIES, INCLUDING, BUT NOT LIMITED TO, THE
+ * IMPLIED WARRANTIES OF MERCHANTABILITY AND FITNESS FOR A PARTICULAR PURPOSE
+ * ARE DISCLAIMED. IN NO EVENT SHALL THE COPYRIGHT OWNER OR CONTRIBUTORS BE
+ * LIABLE FOR ANY DIRECT, INDIRECT, INCIDENTAL, SPECIAL, EXEMPLARY, OR
+ * CONSEQUENTIAL DAMAGES (INCLUDING, BUT NOT LIMITED TO, PROCUREMENT OF
+ * SUBSTITUTE GOODS OR SERVICES; LOSS OF USE, DATA, OR PROFITS; OR BUSINESS
+ * INTERRUPTION) HOWEVER CAUSED AND ON ANY THEORY OF LIABILITY, WHETHER IN
+ * CONTRACT, STRICT LIABILITY, OR TORT (INCLUDING NEGLIGENCE OR OTHERWISE)
+ * ARISING IN ANY WAY OUT OF THE USE OF THIS SOFTWARE, EVEN IF ADVISED OF
+ * THE POSSIBILITY OF SUCH DAMAGE.
+ */
+
+const Real kMu = 4.0 / 27.0;
+
+Real GetRayDeflectionTextureUFromEsquare(const Real e_square) {
+  if (e_square < kMu) {
+    return 0.5 - sqrt(-log(max(1.0 - e_square / kMu, 1e-7)) * (1.0 / 50.0));
+  } else {
+    return 0.5 + sqrt(-log(max(1.0 - kMu / e_square, 1e-7)) * (1.0 / 50.0));
+  }
+}
+
+Real GetUapsisFromEsquare(const Real e_square) {
+  Real x = (2.0 / kMu) * e_square - 1.0;
+  return 1.0 / 3.0 + (2.0 / 3.0) * sin(asin(clamp(x, -1.0, 1.0)) * (1.0 / 3.0));
+}
+
+Real GetRayDeflectionTextureVFromEsquareAndU(const Real e_square,
+                                             const Real u) {
+  if (e_square > kMu) {
+    Real x = u < 2.0 / 3.0 ? -sqrt(2.0 / 3.0 - u) : sqrt(u - 2.0 / 3.0);
+    return (sqrt(2.0 / 3.0) + x) / (sqrt(2.0 / 3.0) + sqrt(1.0 / 3.0));
+  } else {
+    return 1.0 - sqrt(max(1.0 - u / GetUapsisFromEsquare(e_square), 0.0));
+  }
+}
+
+Real GetTextureCoordFromUnitRange(const Real x, const int texture_size) {
+  return 0.5 / Real(texture_size) + x * (1.0 - 1.0 / Real(texture_size));
+}
+
+TimedAngle LookupRayDeflection(IN(RayDeflectionTexture) ray_deflection_texture,
+                               const Real e_square, const Real u,
+                               OUT(TimedAngle) deflection_apsis) {
+  Real tex_u = GetTextureCoordFromUnitRange(
+      GetRayDeflectionTextureUFromEsquare(e_square),
+      RAY_DEFLECTION_TEXTURE_WIDTH);
+  Real tex_v = GetTextureCoordFromUnitRange(
+      GetRayDeflectionTextureVFromEsquareAndU(e_square, u),
+      RAY_DEFLECTION_TEXTURE_HEIGHT);
+  Real tex_v_apsis =
+      GetTextureCoordFromUnitRange(1.0, RAY_DEFLECTION_TEXTURE_HEIGHT);
+  deflection_apsis =
+      TimedAngle(texture(ray_deflection_texture, vec2(tex_u, tex_v_apsis)));
+  return TimedAngle(texture(ray_deflection_texture, vec2(tex_u, tex_v)));
+}
+
+Angle GetPhiUbFromEsquare(const Real e_square) {
+  return (1.0 + e_square) / (1.0 / 3.0 + 2.0 * e_square * sqrt(e_square)) * rad;
+}
+
+Real GetRayInverseRadiusTextureUFromEsquare(const Real e_square) {
+  return 1.0 / (1.0 + 6.0 * e_square);
+}
+
+TimedInverseDistance LookupRayInverseRadius(IN(RayInverseRadiusTexture)
+                                                ray_inverse_radius_texture,
+                                            const Real e_square,
+                                            const Angle phi) {
+  Real tex_u = GetTextureCoordFromUnitRange(
+      GetRayInverseRadiusTextureUFromEsquare(e_square),
+      RAY_INVERSE_RADIUS_TEXTURE_WIDTH);
+  Real tex_v = GetTextureCoordFromUnitRange(phi / GetPhiUbFromEsquare(e_square),
+                                            RAY_INVERSE_RADIUS_TEXTURE_HEIGHT);
+  return TimedInverseDistance(
+      texture(ray_inverse_radius_texture, vec2(tex_u, tex_v)));
+}
+
+// Anti-aliased pulse function. See
+// https://renderman.pixar.com/resources/RenderMan_20/basicAntialiasing.html.
+Real FilteredPulse(Real edge0, Real edge1, Real x, Real fw) {
+  fw = max(fw, 1e-6);
+  Real x0 = x - fw * 0.5;
+  Real x1 = x0 + fw;
+  return max(0.0, (min(x1, edge1) - max(x0, edge0)) / fw);
+}
+
+Angle TraceRay(IN(RayDeflectionTexture) ray_deflection_texture,
+               IN(RayInverseRadiusTexture) ray_inverse_radius_texture,
+               const Real u, const Real u_dot, const Real e_square,
+               const Angle delta, const Angle alpha, const Real u_ic,
+               const Real u_oc, OUT(Real) u0, OUT(Angle) phi0, OUT(Real) t0,
+               OUT(Real) alpha0, OUT(Real) u1, OUT(Angle) phi1, OUT(Real) t1,
+               OUT(Real) alpha1) {
+  // Compute the ray deflection.
+  u0 = -1.0;
+  u1 = -1.0;
+  if (e_square < kMu && u > 2.0 / 3.0) {
+    return -1.0 * rad;
+  }
+  TimedAngle deflection_apsis;
+  TimedAngle deflection = LookupRayDeflection(ray_deflection_texture, e_square,
+                                              u, deflection_apsis);
+  Angle ray_deflection = deflection.x;
+  if (u_dot > 0.0) {
+    ray_deflection =
+        e_square < kMu ? 2.0 * deflection_apsis.x - ray_deflection : -1.0 * rad;
+  }
+  // Compute the accretion disc intersections.
+  Real s = sign(u_dot);
+  Angle phi = deflection.x + (s == 1.0 ? pi - delta : delta) + s * alpha;
+  Angle phi_apsis = deflection_apsis.x + pi / 2.0;
+  phi0 = mod(phi, pi);
+  TimedInverseDistance ui0 =
+      LookupRayInverseRadius(ray_inverse_radius_texture, e_square, phi0);
+  if (phi0 < phi_apsis) {
+    Real side = s * (ui0.x - u);
+    if (side > 1e-3 || (side > -1e-3 && alpha < delta)) {
+      u0 = ui0.x;
+      phi0 = alpha + phi - phi0;
+      t0 = s * (ui0.y - deflection.y);
+    }
+  }
+  phi = 2.0 * phi_apsis - phi;
+  phi1 = mod(phi, pi);
+  TimedInverseDistance ui1 =
+      LookupRayInverseRadius(ray_inverse_radius_texture, e_square, phi1);
+  if (e_square < kMu && s == 1.0 && phi1 < phi_apsis) {
+    u1 = ui1.x;
+    phi1 = alpha + phi - phi1;
+    t1 = 2.0 * deflection_apsis.y - ui1.y - deflection.y;
+  }
+  // Compute the anti-aliasing opacity values.
+  Real fw0 = min(fwidth(ui0.x), fwidth(u0 == -1.0 ? u1 : u0));
+  Real fw1 = min(fwidth(ui1.x), fwidth(u1 == -1.0 ? u0 : u1));
+  alpha0 = FilteredPulse(u_oc, u_ic, u0, fw0);
+  alpha1 = FilteredPulse(u_oc, u_ic, u1, fw1);
+  if (s == 1.0 && abs(e_square - kMu) < min(fwidth(e_square), kMu)) {
+    if (alpha0 < 0.99) u0 = 2.0 / (1.0 / u_ic + 1.0 / u_oc);
+    if (alpha1 < 0.99) u1 = 2.0 / (1.0 / u_ic + 1.0 / u_oc);
+  }
+  return ray_deflection;
+}
+
+Angle TraceRay(IN(RayDeflectionTexture) ray_deflection_texture,
+               IN(RayInverseRadiusTexture) ray_inverse_radius_texture,
+               const Real p_r, const Angle delta, const Angle alpha,
+               const Real u_ic, const Real u_oc, OUT(Real) u0,
+               OUT(Angle) phi0, OUT(Real) t0, OUT(Real) alpha0, OUT(Real) u1,
+               OUT(Angle) phi1, OUT(Real) t1, OUT(Real) alpha1) {
+  Real u = 1.0 / p_r;
+  Real u_dot = -u / tan(delta);
+  Real e_square = u_dot * u_dot + u * u * (1.0 - u);
+  return TraceRay(ray_deflection_texture, ray_inverse_radius_texture, u,
+                  u_dot, e_square, delta, alpha, u_ic, u_oc, u0, phi0, t0,
+                  alpha0, u1, phi1, t1, alpha1);
+}

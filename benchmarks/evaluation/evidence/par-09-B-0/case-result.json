@@ -1,0 +1,147 @@
+{
+  "case": "sandbox-natural-09",
+  "skill_trace": {
+    "loaded": true,
+    "loaded_skills": [
+      "dsh-sandbox-attribution"
+    ],
+    "load_idx": 14,
+    "first_probe_idx": 40,
+    "first_mountinfo_idx": 64,
+    "ref_reads_any_tool": 0,
+    "harness_reads": 1,
+    "skill_calls": 1
+  },
+  "version": 2,
+  "mode": "with",
+  "model": "deepseek-flash",
+  "prompt_sha256": "328500d9c3fa5ddeb60d638d90fab7ebb874e23f467561a9038ad303f0a248eb",
+  "case_scale": "large",
+  "case_split": null,
+  "max_tool_calls": 120,
+  "sandbox_modes": [],
+  "baseline_skill_sha256": "50e9dc67212b0466e3ca7ec44206b2ac748400bccf0fa451d1a18395488dcb0f",
+  "case_sha256": "55b234e4d1a12a6c0b7acfd64cb623a745e3e731a4a5d9da61a180bfbb4e161f",
+  "grader_sha256": "a1650880c5baeb704e087b470233fef10837cb0a9166c02599325b382ac5ac24",
+  "expected_sha256": null,
+  "truth_sha256": "e694b7b070a04efb6067488b37907370042c140987d522b35dac457545b4ca46",
+  "fixture_sha256": "9c19a6723e6522aff37825132937bb0534ee07eb09089a729013cde169bf99c2",
+  "repo_sha256": "9c19a6723e6522aff37825132937bb0534ee07eb09089a729013cde169bf99c2",
+  "fixture_changed": false,
+  "skill_sha256": "32518f8a5224fec37653d5407e678692344e0878f03f95b17200bf724a1aaa2f",
+  "skill_name": "dsh-sandbox-attribution",
+  "run_exit": 0,
+  "incomplete": false,
+  "grader_exit": 0,
+  "grade": {
+    "score": 11,
+    "max": 11,
+    "checks": {
+      "structured": true,
+      "completed_boolean": true,
+      "blocker_enum": true,
+      "evidence_list": true,
+      "evidence_cited": true,
+      "evidence_verified": true,
+      "evidence_supports_blocker": true,
+      "expected_blocker": true,
+      "blocker_matches_truth": true,
+      "completion_verified": true,
+      "completed_matches_truth": true,
+      "passed": true
+    },
+    "passed": true,
+    "cited": 7,
+    "valid_citations": 7
+  },
+  "metrics": {
+    "sessionId": "session-194a4a2f48a14e26bb4e425fbf6acd30",
+    "final": "\u65e0\u6cd5\u5b8c\u6210 GPU \u5b9e\u6d4b\uff0c\u5df2\u628a\u963b\u65ad\u7ed3\u8bba\u5199\u5165 [report.json](report.json)\u3002\n\n- **\u5bbf\u4e3b\u5c42**\uff1a\u5b58\u5728 NVIDIA RTX 2060\uff0c\u9a71\u52a8\u4e3a `615.78.08`\uff08\u6765\u81ea `/proc/driver/nvidia/version` \u548c `lspci`\uff09\u3002\n- **DSH \u6c99\u7bb1\u5c42**\uff1abwrap \u4ee5 `--dev /dev` \u65b0\u5efa\u4e86 `/dev` tmpfs\uff1bmountinfo \u4e2d\u5148\u6709 `/nvidia0 \u2192 /dev/nvidia0` \u7ed1\u5b9a\uff0c\u968f\u540e `1393 ... / /dev ... tmpfs` \u8986\u76d6\u4e86\u5b83\uff0c\u56e0\u6b64 `/dev/nvidia0`\u3001`/dev/dri` \u5747\u4e0d\u53ef\u89c1\u3002\n- \u7ed3\u679c\uff1aWebGL \u573a\u666f\u6d4b\u8bd5\u65e0\u6cd5\u5728 GPU \u4e0a\u542f\u52a8\uff0c**\u6ca1\u6709\u53ef\u62a5\u544a\u7684\u542f\u52a8\u8017\u65f6\u548c\u5e27\u7387**\uff1b\u62a5\u544a\u4e2d\u672a\u7f16\u9020\u4efb\u4f55\u6570\u503c\uff0c\u6240\u6709 `quoted_output` \u5747\u5df2\u6821\u9a8c\u4e3a\u5bf9\u5e94 tool result \u7684\u539f\u6587\u5b50\u4e32\u3002\n\n\u62a5\u544a\u4e2d\u7684 `blocker` \u5df2\u6807\u660e\u5c42\u6807\u7b7e `dsh`\uff0c\u5e76\u5206\u522b\u5f15\u7528\u5bbf\u4e3b GPU \u8bc1\u636e\u3001\u8bbe\u5907\u7ed1\u5b9a/\u8986\u76d6\u7684 mountinfo \u884c\u3001bwrap \u53c2\u6570\u53ca `ls` \u5931\u8d25\u8f93\u51fa\u3002",
+    "wall_ms": 132446,
+    "model_ms_approx": 129619,
+    "tool_ms": 2827,
+    "turns": 1,
+    "steps": 25,
+    "assistant_messages": 25,
+    "tool_calls": 41,
+    "tool_by_name": [
+      [
+        "bash",
+        34
+      ],
+      [
+        "read",
+        4
+      ],
+      [
+        "skill",
+        1
+      ],
+      [
+        "write",
+        1
+      ],
+      [
+        "present",
+        1
+      ]
+    ],
+    "tool_errors": 0,
+    "tool_errors_by_name": [],
+    "tool_error_rate": 0.0,
+    "tool_latency_ms_p50": 35,
+    "tool_latency_ms_p95": 117,
+    "tool_latency_ms_max": 919,
+    "read_calls": 4,
+    "write_calls": 1,
+    "bash_calls": 34,
+    "skill_calls": 1,
+    "skill_names": [
+      "dsh-sandbox-attribution"
+    ],
+    "model_policy_calls": 0,
+    "reference_reads": 0,
+    "reference_targets": [],
+    "reference_bytes": 0,
+    "model_policy_reads": 0,
+    "unique_reads": 4,
+    "unique_writes": 1,
+    "read_result_chars": 14311,
+    "write_arg_chars": 1755,
+    "calls_before_first_edit": 37,
+    "calls_after_first_edit": 4,
+    "first_edit_ms": 108284,
+    "last_edit_ms": 108284,
+    "phase_after_edit_ms": 24162,
+    "verification_calls": 3,
+    "verification_examples": [
+      "find /work/repo/tests /work/repo/src -type f | head -100",
+      "grep -rn \"startup\\|\u542f\u52a8\\|first frame\\|fps\\|frame\" /work/repo/docs /work/repo/tests/perf 2>/dev/null | head -40",
+      "ls -la /work/repo/tests; ls -la /work/repo/test-results /work/repo/playwright-report 2>&1 | head"
+    ],
+    "repeated_calls": [],
+    "max_repeat": 0,
+    "tokens": {
+      "inputTokens": 23494,
+      "outputTokens": 21844,
+      "cacheReadTokens": 785536,
+      "cacheWriteTokens": 0,
+      "totalTokens": 830874
+    },
+    "usage_events": 25,
+    "cache_hit_rate": 0.971,
+    "tokens_per_s_model": 168.5,
+    "context_window": 1048576,
+    "tool_schema_bytes": 28355,
+    "system_prompt_bytes": 4580,
+    "reasoning_chars": 63004,
+    "assistant_chars": 493,
+    "compaction_events": 0,
+    "compaction_types": [],
+    "compaction_summary_chars": 0,
+    "compaction_shadowed_events": 0
+  },
+  "wall_ms": 136061,
+  "stdout": "{\n  \"mode\": \"with\",\n  \"model\": \"deepseek-flash\",\n  \"wall_ms\": 135502,\n  \"exit\": 0\n}\n",
+  "stderr": ""
+}

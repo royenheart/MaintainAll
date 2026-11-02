@@ -1,0 +1,4 @@
+- insert:
+    - id: guarded
+      name: '@example/guarded-plugin'
+      config: {}

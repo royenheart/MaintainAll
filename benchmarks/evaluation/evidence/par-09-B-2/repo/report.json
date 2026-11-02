@@ -1,0 +1,62 @@
+{
+  "completed": false,
+  "blocker": "dsh sandbox hides the GPU: a second /dev tmpfs (mount 39) covers the outer /dev (mount 26) where /dev/nvidia0 and /dev/dri are bound; escalation is unavailable",
+  "evidence": [
+    {
+      "tool_call_id": "call_01_9R1vSrZyQcBbFIKlb8bG2381",
+      "quoted_output": "NVRM version: NVIDIA UNIX Open Kernel Module for x86_64  615.78.08  Release Build  (dvs-builder@U22-I3-G08-04-6)  Tue Oct  6 04:56:08 UTC 2026"
+    },
+    {
+      "tool_call_id": "call_01_9R1vSrZyQcBbFIKlb8bG2381",
+      "quoted_output": "01:00.0 VGA compatible controller [0300]: NVIDIA Corporation TU106M [GeForce RTX 2060 Mobile] [10de:1f15] (rev a1)"
+    },
+    {
+      "tool_call_id": "call_01_9R1vSrZyQcBbFIKlb8bG2381",
+      "quoted_output": "ls: 无法访问 '/dev/nvidia*': 没有那个文件或目录"
+    },
+    {
+      "tool_call_id": "call_01_9R1vSrZyQcBbFIKlb8bG2381",
+      "quoted_output": "ls: 无法访问 '/dev/dri': 没有那个文件或目录"
+    },
+    {
+      "tool_call_id": "call_00_1ZwkCbk22PjuJxs4twdJ5606",
+      "quoted_output": "26:1347 990 0:151 / /dev ro,nosuid,nodev,relatime - tmpfs tmpfs rw,seclabel,mode=755,uid=1000,gid=1000,inode64"
+    },
+    {
+      "tool_call_id": "call_00_1ZwkCbk22PjuJxs4twdJ5606",
+      "quoted_output": "34:1359 1347 0:7 /nvidia0 /dev/nvidia0 ro,nosuid,nodev master:2 - devtmpfs devtmpfs rw,seclabel,size=15999348k,nr_inodes=3999837,mode=755,inode64"
+    },
+    {
+      "tool_call_id": "call_00_1ZwkCbk22PjuJxs4twdJ5606",
+      "quoted_output": "35:1362 1347 0:7 /dri /dev/dri ro,nosuid,nodev master:2 - devtmpfs devtmpfs rw,seclabel,size=15999348k,nr_inodes=3999837,mode=755,inode64"
+    },
+    {
+      "tool_call_id": "call_00_1ZwkCbk22PjuJxs4twdJ5606",
+      "quoted_output": "39:1393 1347 0:177 / /dev rw,nosuid,nodev,relatime - tmpfs tmpfs rw,seclabel,mode=755,uid=1000,gid=1000,inode64"
+    },
+    {
+      "tool_call_id": "call_00_1ZwkCbk22PjuJxs4twdJ5606",
+      "quoted_output": "bwrap --ro-bind / / --dev /dev --unshare-pid --proc /proc --die-with-parent --tmpfs /tmp --bind /work/repo /work/repo -- bash -c"
+    },
+    {
+      "tool_call_id": "call_00_LfPagsMReygNSjP3Mkiz2175",
+      "quoted_output": "Error: sandbox escalation to \"danger-full-access\" requires approval, but no approval channel is available"
+    },
+    {
+      "tool_call_id": "call_00_XVXzWmRosN0ceF1WBD6R3625",
+      "quoted_output": "ls: 无法访问 'node_modules': 没有那个文件或目录"
+    },
+    {
+      "tool_call_id": "call_00_XVXzWmRosN0ceF1WBD6R3625",
+      "quoted_output": "ls: 无法访问 '/work/home/.cache/ms-playwright': 没有那个文件或目录"
+    },
+    {
+      "tool_call_id": "call_01_oa8a0aQYZImU02eQcF7h4392",
+      "quoted_output": "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver."
+    },
+    {
+      "tool_call_id": "call_00_8a2XAcgqi7dBLdxYWmMG9607",
+      "quoted_output": "environment: 'Headless Chromium; not a real-device GPU benchmark',"
+    }
+  ]
+}

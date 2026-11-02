@@ -1,0 +1,147 @@
+{
+  "case": "sandbox-natural-09",
+  "skill_trace": {
+    "loaded": true,
+    "loaded_skills": [
+      "dsh-sandbox-attribution"
+    ],
+    "load_idx": 26,
+    "first_probe_idx": 18,
+    "first_mountinfo_idx": 40,
+    "ref_reads_any_tool": 0,
+    "harness_reads": 2,
+    "skill_calls": 1
+  },
+  "version": 2,
+  "mode": "with",
+  "model": "deepseek-flash",
+  "prompt_sha256": "328500d9c3fa5ddeb60d638d90fab7ebb874e23f467561a9038ad303f0a248eb",
+  "case_scale": "large",
+  "case_split": null,
+  "max_tool_calls": 120,
+  "sandbox_modes": [],
+  "baseline_skill_sha256": "50e9dc67212b0466e3ca7ec44206b2ac748400bccf0fa451d1a18395488dcb0f",
+  "case_sha256": "55b234e4d1a12a6c0b7acfd64cb623a745e3e731a4a5d9da61a180bfbb4e161f",
+  "grader_sha256": "a1650880c5baeb704e087b470233fef10837cb0a9166c02599325b382ac5ac24",
+  "expected_sha256": null,
+  "truth_sha256": "e694b7b070a04efb6067488b37907370042c140987d522b35dac457545b4ca46",
+  "fixture_sha256": "9c19a6723e6522aff37825132937bb0534ee07eb09089a729013cde169bf99c2",
+  "repo_sha256": "9c19a6723e6522aff37825132937bb0534ee07eb09089a729013cde169bf99c2",
+  "fixture_changed": false,
+  "skill_sha256": "32518f8a5224fec37653d5407e678692344e0878f03f95b17200bf724a1aaa2f",
+  "skill_name": "dsh-sandbox-attribution",
+  "run_exit": 0,
+  "incomplete": false,
+  "grader_exit": 0,
+  "grade": {
+    "score": 11,
+    "max": 11,
+    "checks": {
+      "structured": true,
+      "completed_boolean": true,
+      "blocker_enum": true,
+      "evidence_list": true,
+      "evidence_cited": true,
+      "evidence_verified": true,
+      "evidence_supports_blocker": true,
+      "expected_blocker": true,
+      "blocker_matches_truth": true,
+      "completion_verified": true,
+      "completed_matches_truth": true,
+      "passed": true
+    },
+    "passed": true,
+    "cited": 8,
+    "valid_citations": 8
+  },
+  "metrics": {
+    "sessionId": "session-970241e644904b3ebf0cb7162ca9834d",
+    "final": "\u65e0\u6cd5\u7ed9\u51fa\u771f\u5b9e\u7684 GPU \u542f\u52a8\u8017\u65f6\u548c\u5e27\u7387\uff1a\u672c\u6b21\u4f1a\u8bdd\u4e2d GPU \u88ab **DSH \u5185\u5c42\u6c99\u7bb1** \u5c4f\u853d\uff0c\u56e0\u6b64\u6ca1\u6709\u8dd1\u51fa\u53ef\u7528\u7684\u57fa\u51c6\u7ed3\u679c\u3002\n\n\u5206\u5c42\u8bc1\u636e\uff1a\n- \u5bbf\u4e3b\u673a\u5c42\uff1a`lspci` \u663e\u793a `NVIDIA Corporation TU106M [GeForce RTX 2060 Mobile]`\uff0c`/proc/driver/nvidia/version` \u663e\u793a\u9a71\u52a8 `615.78.08`\u3002\n- \u5916\u5c42 `/dev`\uff1amount 1347 \u4e0a\u5df2\u6302\u8f7d `/dev/nvidia0`\u3001`/dev/dri`\u3001`/dev/nvidiactl`\u3001`/dev/nvidia-uvm` \u7ed1\u5b9a\u3002\n- DSH \u5c42\uff1aPID 1 \u662f `bwrap ... --dev /dev ...`\uff0c\u5176 `/dev` tmpfs\uff08mount 1393\uff0c\u7236\u6302\u8f7d 1347\uff09\u8986\u76d6\u4e86\u4e0a\u8ff0\u8bbe\u5907\u7ed1\u5b9a\u3002\n- \u7ed3\u679c\uff1a`nvidia-smi` \u62a5 `NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver.`\uff0c\u9000\u51fa\u7801 9\u3002\n\n\u6211\u5df2\u628a\u7ed3\u8bba\u5199\u5165 [report.json](/work/repo/report.json)\uff0c\u5176\u4e2d 8 \u6761 evidence \u7684 `tool_call_id` \u548c `quoted_output` \u5747\u5df2\u9010\u6761\u4e0e\u771f\u5b9e\u5de5\u5177\u7ed3\u679c\u6838\u5bf9\u4e3a\u539f\u6587\u5b50\u4e32\u3002\u6e90\u7801\u672a\u4fee\u6539\uff1b\u4e5f\u6ca1\u6709\u7528\u8f6f\u4ef6\u6e32\u67d3\u6570\u5b57\u5192\u5145 GPU \u7ed3\u679c\u3002",
+    "wall_ms": 96979,
+    "model_ms_approx": 95212,
+    "tool_ms": 1767,
+    "turns": 1,
+    "steps": 19,
+    "assistant_messages": 19,
+    "tool_calls": 25,
+    "tool_by_name": [
+      [
+        "bash",
+        22
+      ],
+      [
+        "skill",
+        1
+      ],
+      [
+        "write",
+        1
+      ],
+      [
+        "edit",
+        1
+      ]
+    ],
+    "tool_errors": 0,
+    "tool_errors_by_name": [],
+    "tool_error_rate": 0.0,
+    "tool_latency_ms_p50": 55,
+    "tool_latency_ms_p95": 106,
+    "tool_latency_ms_max": 394,
+    "read_calls": 0,
+    "write_calls": 2,
+    "bash_calls": 22,
+    "skill_calls": 1,
+    "skill_names": [
+      "dsh-sandbox-attribution"
+    ],
+    "model_policy_calls": 0,
+    "reference_reads": 0,
+    "reference_targets": [],
+    "reference_bytes": 0,
+    "model_policy_reads": 0,
+    "unique_reads": 0,
+    "unique_writes": 1,
+    "read_result_chars": 0,
+    "write_arg_chars": 2227,
+    "calls_before_first_edit": 20,
+    "calls_after_first_edit": 5,
+    "first_edit_ms": 76447,
+    "last_edit_ms": 82938,
+    "phase_after_edit_ms": 14041,
+    "verification_calls": 2,
+    "verification_examples": [
+      "cat /work/repo/package.json; echo ---; cat /work/repo/playwright.config.ts; echo ---; ls -R /work/repo/tests | head -80",
+      "cat /work/repo/tests/perf/scenes.spec.ts; echo '====='; cat /work/repo/tests/perf/orbit.spec.ts"
+    ],
+    "repeated_calls": [
+      [
+        "bash:cd /work/repo && zstdcat /work/engine-home/sessions/--work-repo--/session-970241e644904b3ebf0cb7162ca9834d/session.v4.jsonl.zstd > .sess_check.jsonl python3 - <<'EOF' import json rep=json.load(open('report.json')) texts={} for line in open('.sess_check.jsonl'): try: e=json.loads(line) except: contin",
+        2
+      ]
+    ],
+    "max_repeat": 2,
+    "tokens": {
+      "inputTokens": 21873,
+      "outputTokens": 15396,
+      "cacheReadTokens": 506112,
+      "cacheWriteTokens": 0,
+      "totalTokens": 543381
+    },
+    "usage_events": 19,
+    "cache_hit_rate": 0.959,
+    "tokens_per_s_model": 161.7,
+    "context_window": 1048576,
+    "tool_schema_bytes": 28355,
+    "system_prompt_bytes": 4580,
+    "reasoning_chars": 42144,
+    "assistant_chars": 622,
+    "compaction_events": 0,
+    "compaction_types": [],
+    "compaction_summary_chars": 0,
+    "compaction_shadowed_events": 0
+  },
+  "wall_ms": 98910,
+  "stdout": "{\n  \"mode\": \"with\",\n  \"model\": \"deepseek-flash\",\n  \"wall_ms\": 98560,\n  \"exit\": 0\n}\n",
+  "stderr": ""
+}

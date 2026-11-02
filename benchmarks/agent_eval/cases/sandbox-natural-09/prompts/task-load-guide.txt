@@ -1,0 +1,7 @@
+开始前先调用 skill 工具加载 dsh-runtime-guide，并按其说明执行。
+
+用 GPU 跑这个项目的 WebGL 场景测试，给我启动耗时和帧率。把结果写到当前目录的 report.json：
+
+{"completed": false, "blocker": "<short cause>", "evidence": [{"tool_call_id": "<真实 tool call id>", "quoted_output": "<该 tool result 中的原文子串>"}]}
+
+只读检查；不要修改源码。用工具输出支持你的结论。

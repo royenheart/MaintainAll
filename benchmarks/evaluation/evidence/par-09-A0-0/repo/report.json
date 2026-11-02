@@ -1,0 +1,26 @@
+{
+  "completed": false,
+  "blocker": "运行环境未暴露可用 GPU（/dev/nvidia*、/dev/dri 缺失，nvidia-smi 无法与驱动通信），无法在 GPU 上运行 WebGL 测试，未产生启动耗时/帧率数据。",
+  "evidence": [
+    {
+      "tool_call_id": "call_01_KJD3tkmfezWJqNE6G7qU5971",
+      "quoted_output": "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running."
+    },
+    {
+      "tool_call_id": "call_00_4c0lglx92rurG5ixzahY4726",
+      "quoted_output": "---/dev/nvidia*---\nls: 无法访问 '/dev/nvidia*': 没有那个文件或目录\n---/dev/dri---\nls: 无法访问 '/dev/dri': 没有那个文件或目录"
+    },
+    {
+      "tool_call_id": "call_00_IVsPHrNUPTm4doRXW9d38492",
+      "quoted_output": "dr-xr-xr-x. 2 nobody nobody 0 11月 2日 22:49 0000:01:00.0\n---capeff---\nCapEff:\t0000000000000000"
+    },
+    {
+      "tool_call_id": "call_00_wd80cgnXD0auWjdYqL0R5342",
+      "quoted_output": "sh: 行 1: playwright: 未找到命令"
+    },
+    {
+      "tool_call_id": "call_01_CWXwiCY7W0k436ogiMrc9516",
+      "quoted_output": "Error: Cannot find module '/work/repo/scripts/scene-audio.mjs'"
+    }
+  ]
+}

@@ -1,0 +1,47 @@
+{
+  "report": "report.json",
+  "verdicts": [
+    "block",
+    "review"
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "file": "lib/route.js",
+      "line": 1,
+      "severity": "high",
+      "must_mention": [
+        "webServer.register",
+        "/small/collect"
+      ],
+      "evidence_terms": [
+        "webServer.register"
+      ]
+    },
+    {
+      "id": "F2",
+      "file": "client/render.js",
+      "line": 1,
+      "severity": "high",
+      "must_mention": [
+        "innerHTML"
+      ],
+      "evidence_terms": [
+        "innerHTML"
+      ]
+    },
+    {
+      "id": "F3",
+      "file": "lib/install.js",
+      "line": 1,
+      "severity": "high",
+      "must_mention": [
+        "postinstall"
+      ],
+      "evidence_terms": [
+        "postinstall"
+      ]
+    }
+  ],
+  "evidence_patterns": []
+}

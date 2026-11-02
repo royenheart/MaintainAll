@@ -1,0 +1,123 @@
+---
+name: dsh-plugin-validation
+description: Use before installing, merging, or trusting a third-party DeepSeek Harness plugin, or when reviewing plugin code for malicious injection, credential access, unsafe routes, install scripts, filesystem/network exfiltration, or capability escalation. Static, read-only audit; never run install scripts.
+---
+
+# DSH plugin validation
+
+Load `model-policy` once from its host catalog location and apply its guidance.
+
+A plugin is executable code with access to the host, the session, the user's home, and
+sometimes the browser. Treat it as a supply-chain and capability review, not a style
+review.
+
+## Positioning
+
+This skill is a **read-only audit toolkit and policy checklist**, not a proven capability
+enhancer. The evaluation dataset (39 cases, structured truth, fresh holdouts) did not
+show a reproducible accuracy lift over the no-skill arm; the no-skill model already
+found obvious findings. Use it for the scanners, the never-run-install policy, and a
+consistent report shape. Do not cite it as evidence that the model reviews better.
+Subagent fan-out is optional: use it only when it reduces context pressure.
+
+## First pass
+
+Run the read-only scanner:
+
+```sh
+node scripts/plugin-audit.mjs <plugin-dir>
+```
+
+It reports findings without executing the plugin. Treat its output as **evidence and
+questions**, not a malware verdict; only a dynamic run in a throwaway container can
+confirm runtime behavior.
+
+
+## Large audit: optional fan-out
+
+When the plugin is large enough that reading the whole tree would crowd the parent
+context, **consider** spawning 2-4 read-only subagents in parallel, one per surface.
+This is a context-management option, not a scoring requirement:
+
+1. install scripts, dependencies, lockfile and supply chain;
+2. host routes, auth, child processes, filesystem and credentials;
+3. client injection, network, postMessage and packaging;
+4. capability/patch/reputation and issue-history checks, when requested.
+
+For multi-entrypoint host reviews, run `node scripts/route-matrix.mjs <repo>` and use the
+[route auth](references/routes-auth.md) matrix. Trace the handler before calling a route
+exposed; a nearby guard on another route is not evidence. If a hop cannot be shown from
+repo code, downgrade to review and put it in not-verified.
+
+Run `node scripts/audit-plan.mjs <repo>` to enumerate surfaces and produce the exact
+briefs; use [subagent orchestration](references/subagent-orchestration.md) for the
+report schema and merge rules. Each child returns only findings plus file:line evidence; the parent reads the
+reports, deduplicates, and writes the final report. Cap the children and their output;
+do not let them edit files or run install scripts. If the host has no subagents, run
+the same surfaces serially with a file cap.
+
+
+## Supply chain and reported issues
+
+When the plugin ships a lockfile, check resolved dependencies rather than only
+`package.json`. If the repository provides `fixtures/advisories` or
+`fixtures/issues`, run:
+
+```sh
+node scripts/supply-chain-audit.mjs <plugin-dir>
+```
+
+It reports advisory IDs, aliases (CVE), fixed versions, and frozen issue hits without
+executing install scripts. When no fixture database exists and the network is allowed,
+add `--online` to query the public OSV feed; record the fetch time and OSV `modified`
+values. Data sources and their limits are in
+[supply-chain data](references/supply-chain-data.md). Treat absence as `not verified`: the fixture database is a
+snapshot, not the live OSV feed. For a real audit, use an offline OSV npm dump or query
+OSV.dev; do not claim registry/GitHub coverage from this fixture mode.
+
+## Risk triage
+
+| Signal | Why it matters | Where to look |
+|---|---|---|
+| `preinstall`/`install`/`postinstall`/`prepare` | runs arbitrary code before review | `package.json` scripts |
+| git/HTTP/file dependencies | supply-chain or local-path execution | dependencies/lockfile |
+| raw `webServer.register` / `registerUpgrade` / `listen` | may bypass host auth | host source |
+| `child_process`, `exec`, `spawn`, shell | code execution; argument injection | host source |
+| `process.env`, `.credentials`, `auth.json`, `.npmrc` | credential exposure | source and logs |
+| `eval`, `new Function`, remote `import` | client/host code injection | client source |
+| `innerHTML`, `dangerouslySetInnerHTML`, `document.write` | XSS/markup injection | client source |
+| reads/writes outside `$DSH_HOME`/workspace | data exfiltration or corruption | fs calls |
+| arbitrary `fetch`/WebSocket endpoints | data exfiltration or remote control | host/client source |
+| broad `inject`, global hooks, monkeypatch, `node_modules` edits | capability escalation | manifest/patch/source |
+| patch rows with relative/absolute names | composition hijack | `cordis.patch.yml` |
+
+## Jail vs host
+
+Plugin-audit and runtime checks may run in a file-effect sandbox with a private `/dev`,
+PID namespace, ephemeral `/tmp`, and read-only home. "No GPU", "no network", "no host
+process" and a nested agent's read-only state failure are **sandbox artifacts**, not
+properties of the plugin. Report them as unverified and use a host runner or an approved
+wider mode when hardware/runtime evidence is required.
+
+## Rules
+
+- Do not execute plugin lifecycle scripts or a linked install to "see what happens";
+  use a throwaway container and an isolated profile only after static review.
+- Loopback is not authentication. A raw route needs the host's connection/token gate,
+  or the route is exposed to any local process (and possibly a proxied browser).
+- Report the exact file/line and the observed code; state what you did **not** verify.
+- Do not call a regex hit "malware". Severity is `high` only for a concrete dangerous
+  pattern with no visible guard; otherwise `review`.
+- A clean scan is not proof of safety; it is absence of the scanner's known patterns.
+
+## Report
+
+List `critical`, `high`, `review`, and `not-verified` separately. For each finding:
+source location, why it matters, the smallest safe verification, and whether the plugin
+is safe to install, safe with a guard, or blocked pending review. Keep the report
+read-only; do not edit the plugin.
+
+Read [threat model](references/threat-model.md), [route auth](references/routes-auth.md),
+[client injection](references/client-injection.md), [supply chain](references/supply-chain.md),
+[capability review](references/capability-review.md), and
+[reporting](references/reporting.md) only when the finding needs them.

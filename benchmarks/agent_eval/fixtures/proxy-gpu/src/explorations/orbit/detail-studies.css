@@ -1,0 +1,174 @@
+/* Review studies share the chosen material, type and hit areas. Only their
+   response mechanism changes. All timelines end within the 680ms deck turn. */
+.orbit-study:is(
+  [data-details='etch'],
+  [data-details='flow'],
+  [data-details='orbit']
+) {
+  --detail-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --detail-focus-icon: translateY(-1px);
+}
+.orbit-study[data-details='orbit'] {
+  --detail-focus-icon: translateY(-1px) rotate(-3deg);
+}
+.orbit-study:not([data-details='none']) .rotary-card :is(a, button) {
+  --detail-icon-transform: none;
+  position: relative;
+  isolation: isolate;
+}
+.orbit-study:not([data-details='none']) .rotary-card :is(a, button) > svg {
+  transform: var(--detail-icon-transform, none);
+}
+.orbit-study:not([data-details='none'])[data-detail-motion='on']
+  .rotary-card
+  :is(a, button)
+  > svg {
+  transition: transform 220ms var(--detail-ease);
+}
+.orbit-study:not([data-details='none'])[data-detail-motion='on']
+  .rotary-card
+  :is(a, button):focus-visible {
+  --detail-icon-transform: var(--detail-focus-icon);
+}
+@media (hover: hover) and (pointer: fine) {
+  .orbit-study:not([data-details='none'])[data-detail-motion='on']
+    .rotary-card
+    :is(a, button):not(:disabled):hover {
+    --detail-icon-transform: var(--detail-focus-icon);
+  }
+}
+.orbit-study:not([data-details='none'])[data-detail-motion='on']
+  .rotary-card
+  :is(a, button):not(:disabled):active {
+  --detail-icon-transform: scale(0.94);
+}
+
+/* A: inscribe the small icon; text is readable throughout the turn. */
+.orbit-study[data-details='etch'][data-detail-motion='on']
+  .rotary-card-active
+  :is(.orbit-dock-icon, .orbit-source-icon)
+  > * {
+  stroke-dasharray: 1;
+  animation: detail-inscribe 260ms var(--detail-ease) 180ms backwards;
+}
+.orbit-study[data-details='etch'] .orbit-profile-link span {
+  text-decoration: underline;
+  text-decoration-color: color-mix(
+    in srgb,
+    var(--orbit-accent) 22%,
+    transparent
+  );
+  text-underline-offset: 4px;
+  text-decoration-thickness: 0.65px;
+}
+@keyframes detail-inscribe {
+  from {
+    stroke-dashoffset: 0.65;
+    opacity: 0.55;
+  }
+  to {
+    stroke-dashoffset: 0;
+    opacity: 1;
+  }
+}
+
+/* B: a bounded material reflection passes through the existing control. */
+.orbit-study[data-details='flow']
+  .rotary-card
+  :is(
+    .orbit-profile-link,
+    .orbit-source-links a,
+    .orbit-transport button
+  )::after {
+  content: '';
+  position: absolute;
+  inset: 10px 2px;
+  border-radius: 50%;
+  background: linear-gradient(
+    110deg,
+    transparent,
+    color-mix(in srgb, var(--orbit-accent) 12%, transparent),
+    transparent
+  );
+  opacity: 0;
+  transform: scaleX(0.15);
+  pointer-events: none;
+  z-index: -1;
+}
+.orbit-study[data-details='flow'][data-detail-motion='on']
+  .rotary-card-active
+  :is(
+    .orbit-profile-link,
+    .orbit-source-links a,
+    .orbit-transport button
+  )::after {
+  animation: detail-reflection 400ms var(--detail-ease) 180ms;
+}
+.orbit-study[data-details='flow'][data-detail-motion='on']
+  .rotary-card
+  :is(a, button):focus-visible::after {
+  animation: detail-reflection-focus 400ms var(--detail-ease);
+}
+@media (hover: hover) and (pointer: fine) {
+  .orbit-study[data-details='flow'][data-detail-motion='on']
+    .rotary-card
+    :is(a, button):not(:disabled):hover::after {
+    animation: detail-reflection-focus 400ms var(--detail-ease);
+  }
+}
+@keyframes detail-reflection {
+  0% {
+    opacity: 0;
+    transform: translateX(-8px) scaleX(0.15);
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(8px) scaleX(0.75);
+  }
+}
+@keyframes detail-reflection-focus {
+  0% {
+    opacity: 0;
+    transform: translateX(-8px) scaleX(0.15);
+  }
+  40% {
+    opacity: 1;
+  }
+  100% {
+    opacity: 0;
+    transform: translateX(8px) scaleX(0.75);
+  }
+}
+
+/* C: settle along the card's curvature, without adding another orbit motif. */
+.orbit-study[data-details='orbit'][data-detail-motion='on']
+  .rotary-card-active
+  :is(.orbit-dock-icon, .orbit-source-icon) {
+  transform-origin: 50% 80%;
+  animation: detail-arc 360ms var(--detail-ease) 180ms backwards;
+}
+@keyframes detail-arc {
+  0% {
+    opacity: 0.6;
+    rotate: -3deg;
+    translate: 0 1px;
+  }
+  100% {
+    opacity: 1;
+    rotate: 0deg;
+    translate: 0 0;
+  }
+}
+
+/* Focus and color feedback survive; reduced motion has no spatial effect. */
+@media (prefers-reduced-motion: reduce) {
+  .orbit-study .rotary-card *,
+  .orbit-study .rotary-card *::before,
+  .orbit-study .rotary-card *::after {
+    animation: none !important;
+    transition: none !important;
+  }
+}

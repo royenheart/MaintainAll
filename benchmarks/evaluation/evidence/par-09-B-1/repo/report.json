@@ -1,0 +1,38 @@
+{
+  "completed": false,
+  "blocker": "dsh sandbox blocks the GPU: the inner bwrap `--dev /dev` tmpfs (mount 1393) covers the lower /dev/dri and /dev/nvidia* bind mounts (1359-1366), so nvidia-smi exits 9 and no GPU WebGL benchmark can run; the host RTX 2060 and driver 615.78.08 are present.",
+  "evidence": [
+    {
+      "tool_call_id": "call_01_Xdos5bNvzMVvCI2onVq82345",
+      "quoted_output": "01:00.0 VGA compatible controller [0300]: NVIDIA Corporation TU106M [GeForce RTX 2060 Mobile] [10de:1f15] (rev a1)"
+    },
+    {
+      "tool_call_id": "call_01_Xdos5bNvzMVvCI2onVq82345",
+      "quoted_output": "NVRM version: NVIDIA UNIX Open Kernel Module for x86_64  615.78.08"
+    },
+    {
+      "tool_call_id": "call_01_QhbF8IxcbiUQbi9nymtq2687",
+      "quoted_output": "26:1347 990 0:151 / /dev ro,nosuid,nodev,relatime - tmpfs tmpfs"
+    },
+    {
+      "tool_call_id": "call_01_QhbF8IxcbiUQbi9nymtq2687",
+      "quoted_output": "34:1359 1347 0:7 /nvidia0 /dev/nvidia0 ro,nosuid,nodev master:2 - devtmpfs devtmpfs"
+    },
+    {
+      "tool_call_id": "call_01_QhbF8IxcbiUQbi9nymtq2687",
+      "quoted_output": "35:1362 1347 0:7 /dri /dev/dri ro,nosuid,nodev master:2 - devtmpfs devtmpfs"
+    },
+    {
+      "tool_call_id": "call_01_QhbF8IxcbiUQbi9nymtq2687",
+      "quoted_output": "39:1393 1347 0:177 / /dev rw,nosuid,nodev,relatime - tmpfs tmpfs"
+    },
+    {
+      "tool_call_id": "call_01_Xdos5bNvzMVvCI2onVq82345",
+      "quoted_output": "bwrap --ro-bind / / --dev /dev --unshare-pid --proc /proc"
+    },
+    {
+      "tool_call_id": "call_01_QhbF8IxcbiUQbi9nymtq2687",
+      "quoted_output": "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver."
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "id": "sandbox-natural-11",
+  "version": 1,
+  "family": "runtime-sandbox",
+  "scale": "large",
+  "prompt": "prompts/task.txt",
+  "fixture": "../../fixtures/proxy-gpu",
+  "grader": "graders/structured_evidence.py",
+  "truth": "truth/sandbox-natural-11.json",
+  "timeout_ms": 300000,
+  "budget": {"max_tool_calls": 60, "calibrated_from": "WebGL variant of case02; fixed 60"},
+  "allow_prefixes": ["test-results","dist",".cache","node_modules",".perf-run",".astro",".cache-home","package-lock.json"],
+  "description": "WebGL variant: no model input; outer and inner /dev hide GPU; expected both."
+}

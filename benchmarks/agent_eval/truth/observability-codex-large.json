@@ -1,0 +1,61 @@
+{
+  "event_types": [
+    [
+      "turn.completed",
+      2469
+    ],
+    [
+      "item.completed",
+      1241
+    ],
+    [
+      "turn.started",
+      750
+    ],
+    [
+      "session.compacted",
+      540
+    ]
+  ],
+  "items": [
+    [
+      "command_execution",
+      261
+    ],
+    [
+      "error",
+      257
+    ],
+    [
+      "agent_message",
+      255
+    ],
+    [
+      "file_change",
+      237
+    ],
+    [
+      "mcp_tool_call",
+      231
+    ]
+  ],
+  "usage": {
+    "input_tokens": 4987016,
+    "cached_input_tokens": 3750583,
+    "cache_write_input_tokens": 121481,
+    "output_tokens": 639959,
+    "reasoning_output_tokens": 242588
+  },
+  "cache_hit_rate": 0.752,
+  "uncached_tokens": 1876392,
+  "total_tokens": 5626975,
+  "compaction_events": 540,
+  "compaction_types": [
+    [
+      "session.compacted",
+      540
+    ]
+  ],
+  "event_count": 5000,
+  "evidence_patterns": []
+}

@@ -1,0 +1,152 @@
+{
+  "case": "sandbox-natural-11",
+  "skill_trace": {
+    "loaded": true,
+    "loaded_skills": [
+      "dsh-sandbox-attribution"
+    ],
+    "load_idx": 14,
+    "first_probe_idx": 24,
+    "first_mountinfo_idx": 24,
+    "ref_reads_any_tool": 0,
+    "harness_reads": 2,
+    "skill_calls": 1
+  },
+  "version": 1,
+  "mode": "with",
+  "model": "deepseek-flash",
+  "prompt_sha256": "16e4bb982e17cdac5bdcdf4d8769ef68e026de393fbd4ff79f3648b2e946f160",
+  "case_scale": "large",
+  "case_split": null,
+  "max_tool_calls": 60,
+  "sandbox_modes": [],
+  "baseline_skill_sha256": "50e9dc67212b0466e3ca7ec44206b2ac748400bccf0fa451d1a18395488dcb0f",
+  "case_sha256": "25d96385a6dea43b026c886d4de81ee9f06f58fdd3898ee666a7f8d07c44d196",
+  "grader_sha256": "a1650880c5baeb704e087b470233fef10837cb0a9166c02599325b382ac5ac24",
+  "expected_sha256": null,
+  "truth_sha256": "06716885c27c8dfb45b99056e7beabaa0643a50d9d89216f32918007b71254b2",
+  "fixture_sha256": "9c19a6723e6522aff37825132937bb0534ee07eb09089a729013cde169bf99c2",
+  "repo_sha256": "9c19a6723e6522aff37825132937bb0534ee07eb09089a729013cde169bf99c2",
+  "fixture_changed": false,
+  "skill_sha256": "32518f8a5224fec37653d5407e678692344e0878f03f95b17200bf724a1aaa2f",
+  "skill_name": "dsh-sandbox-attribution",
+  "run_exit": 0,
+  "incomplete": false,
+  "grader_exit": 0,
+  "grade": {
+    "score": 11,
+    "max": 11,
+    "checks": {
+      "structured": true,
+      "completed_boolean": true,
+      "blocker_enum": true,
+      "evidence_list": true,
+      "evidence_cited": true,
+      "evidence_verified": true,
+      "evidence_supports_blocker": true,
+      "expected_blocker": true,
+      "blocker_matches_truth": true,
+      "completion_verified": true,
+      "completed_matches_truth": true,
+      "passed": true
+    },
+    "passed": true,
+    "cited": 7,
+    "valid_citations": 7
+  },
+  "metrics": {
+    "sessionId": "session-c6c7ae3b0d16464e990b04b6e80a1f24",
+    "final": "\u672a\u80fd\u5b8c\u6210\uff1aGPU \u5728\u5f53\u524d\u4f1a\u8bdd\u4e2d\u4e0d\u53ef\u7528\uff0c\u56e0\u6b64\u65e0\u6cd5\u7ed9\u51fa\u771f\u5b9e\u7684\u542f\u52a8\u8017\u65f6\u548c\u5e27\u7387\u3002\u6211\u6ca1\u6709\u7528\u8f6f\u4ef6\u6e32\u67d3\u6570\u636e\u5192\u5145 GPU \u7ed3\u679c\u3002\n\n- \u5bbf\u4e3b\u673a\u786e\u5b9e\u6709 GPU\uff1a`lspci` \u663e\u793a RTX 2060\uff0c`/proc/driver/nvidia/version` \u663e\u793a\u9a71\u52a8 615.78.08\u3002\n- \u4f46 `/dev` \u88ab\u4e24\u5c42\u79c1\u6709 tmpfs \u8986\u76d6\uff1a\u5916\u5c42 mount `1325` \u548c DSH bwrap \u7684 mount `1334`\uff0c\u4e14 bwrap \u53c2\u6570\u542b `--dev /dev`\uff1b\u4e24\u5c42\u90fd\u6ca1\u6709\u7ed1\u5b9a NVIDIA/DRI \u8bbe\u5907\u3002\n- \u7ed3\u679c\uff1a`/dev/nvidia*` \u4e3a\u7a7a\u3001`/dev/dri` \u4e0d\u5b58\u5728\uff0c`nvidia-smi` \u62a5 \u201ccouldn't communicate with the NVIDIA driver\u201d\uff0cWebGL \u6d4b\u8bd5\u65e0\u6cd5\u5728 GPU \u4e0a\u6267\u884c\u3002\n\n\u62a5\u544a\u5df2\u5199\u5165 [report.json](report.json)\uff1a`completed: false`\uff0c\u5f52\u56e0\u6807\u7b7e\u4e3a `both`\uff1b7 \u6761 evidence \u7684 `tool_call_id` \u548c `quoted_output` \u5df2\u9010\u6761\u6821\u9a8c\u4e3a\u771f\u5b9e\u5de5\u5177\u8f93\u51fa\u4e2d\u7684\u539f\u6587\u5b50\u4e32\u3002\u4ec5\u65b0\u589e\u62a5\u544a\u6587\u4ef6\uff0c\u672a\u4fee\u6539\u6e90\u7801\u3002",
+    "wall_ms": 108678,
+    "model_ms_approx": 104201,
+    "tool_ms": 4477,
+    "turns": 1,
+    "steps": 19,
+    "assistant_messages": 19,
+    "tool_calls": 27,
+    "tool_by_name": [
+      [
+        "bash",
+        23
+      ],
+      [
+        "skill",
+        1
+      ],
+      [
+        "write",
+        1
+      ],
+      [
+        "edit",
+        1
+      ],
+      [
+        "present",
+        1
+      ]
+    ],
+    "tool_errors": 0,
+    "tool_errors_by_name": [],
+    "tool_error_rate": 0.0,
+    "tool_latency_ms_p50": 50,
+    "tool_latency_ms_p95": 1118,
+    "tool_latency_ms_max": 1456,
+    "read_calls": 0,
+    "write_calls": 2,
+    "bash_calls": 23,
+    "skill_calls": 1,
+    "skill_names": [
+      "dsh-sandbox-attribution"
+    ],
+    "model_policy_calls": 0,
+    "reference_reads": 0,
+    "reference_targets": [],
+    "reference_bytes": 0,
+    "model_policy_reads": 0,
+    "unique_reads": 0,
+    "unique_writes": 1,
+    "read_result_chars": 0,
+    "write_arg_chars": 2218,
+    "calls_before_first_edit": 22,
+    "calls_after_first_edit": 5,
+    "first_edit_ms": 78033,
+    "last_edit_ms": 86886,
+    "phase_after_edit_ms": 21792,
+    "verification_calls": 3,
+    "verification_examples": [
+      "cat package.json; echo '=== playwright ==='; cat playwright.config.ts; echo '=== tests tree ==='; find tests -maxdepth 3 -type f | head -80",
+      "sed -n 1,240p tests/perf/scenes.spec.ts; echo '=== orbit ==='; sed -n 1,200p tests/perf/orbit.spec.ts",
+      "ls -la /work 2>&1; echo '=== bin ==='; ls -la /work/bin 2>&1; echo '=== network test ==='; timeout 8 curl -sS -o /dev/null -w '%{http_code}\\n' https://registry.npmjs.org/ 2>&1"
+    ],
+    "repeated_calls": [
+      [
+        "bash:python3 - <<'PY' import json, subprocess sess='/work/engine-home/sessions/--work-repo--/session-c6c7ae3b0d16464e990b04b6e80a1f24/session.v4.jsonl.zstd' raw=subprocess.run(['zstdcat',sess],capture_output=True,text=True,check=True).stdout results={} for line in raw.splitlines(): try: e=json.loads(line",
+        2
+      ]
+    ],
+    "max_repeat": 2,
+    "tokens": {
+      "inputTokens": 24013,
+      "outputTokens": 18911,
+      "cacheReadTokens": 524800,
+      "cacheWriteTokens": 0,
+      "totalTokens": 567724
+    },
+    "usage_events": 19,
+    "cache_hit_rate": 0.956,
+    "tokens_per_s_model": 181.5,
+    "context_window": 1048576,
+    "tool_schema_bytes": 28355,
+    "system_prompt_bytes": 4580,
+    "reasoning_chars": 54082,
+    "assistant_chars": 521,
+    "compaction_events": 0,
+    "compaction_types": [],
+    "compaction_summary_chars": 0,
+    "compaction_shadowed_events": 0
+  },
+  "wall_ms": 110982,
+  "stdout": "{\n  \"mode\": \"with\",\n  \"model\": \"deepseek-flash\",\n  \"wall_ms\": 110603,\n  \"exit\": 0\n}\n",
+  "stderr": ""
+}

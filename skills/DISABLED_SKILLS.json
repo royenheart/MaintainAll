@@ -1,0 +1,7 @@
+{
+  "schema_version": 1,
+  "disabled": [
+    {"id": "dsh-runtime-guide", "skill": "skills/dsh-runtime-guide/SKILL.md.disabled", "reason": "legacy evidence is null/unstable; no discriminating sealed rerun"},
+    {"id": "dsh-plugin-validation", "skill": "skills/dsh-plugin-validation/SKILL.md.disabled", "reason": "legacy evidence is controls-only; no correctness lift"}
+  ]
+}

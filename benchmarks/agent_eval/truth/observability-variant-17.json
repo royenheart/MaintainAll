@@ -1,0 +1,133 @@
+{
+  "sessionId": "session-observability-variant-17",
+  "final_chars": 4,
+  "wall_ms": 191919,
+  "model_ms_approx": 435,
+  "tool_ms": 191484,
+  "turns": 7,
+  "steps": 140,
+  "assistant_messages": 140,
+  "tool_calls": 420,
+  "tool_by_name": [
+    [
+      "tool-1",
+      164
+    ],
+    [
+      "tool-0",
+      124
+    ],
+    [
+      "tool-3",
+      85
+    ],
+    [
+      "tool-2",
+      47
+    ]
+  ],
+  "tool_errors": 8,
+  "tool_errors_by_name": [
+    [
+      "tool-1",
+      3
+    ],
+    [
+      "tool-3",
+      2
+    ],
+    [
+      "tool-2",
+      2
+    ],
+    [
+      "tool-0",
+      1
+    ]
+  ],
+  "tool_error_rate": 0.019,
+  "tool_latency_ms_p50": 447,
+  "tool_latency_ms_p95": 861,
+  "tool_latency_ms_max": 900,
+  "read_calls": 0,
+  "write_calls": 0,
+  "bash_calls": 0,
+  "skill_calls": 0,
+  "skill_names": [],
+  "model_policy_calls": 0,
+  "reference_reads": 0,
+  "reference_files": [],
+  "reference_bytes": 0,
+  "model_policy_reads": 0,
+  "unique_reads": 0,
+  "unique_writes": 0,
+  "read_result_chars": 0,
+  "write_arg_chars": 0,
+  "calls_before_first_edit": null,
+  "calls_after_first_edit": null,
+  "first_edit_ms": null,
+  "last_edit_ms": null,
+  "phase_after_edit_ms": null,
+  "verification_calls": 0,
+  "verification_examples": [],
+  "repeated_calls": [
+    [
+      "tool-1:src/f-5.ts",
+      12
+    ],
+    [
+      "tool-1:src/f-6.ts",
+      11
+    ],
+    [
+      "tool-1:src/f-14.ts",
+      11
+    ],
+    [
+      "tool-1:src/f-19.ts",
+      11
+    ],
+    [
+      "tool-1:src/f-2.ts",
+      10
+    ],
+    [
+      "tool-0:src/f-8.ts",
+      10
+    ],
+    [
+      "tool-1:src/f-17.ts",
+      10
+    ],
+    [
+      "tool-1:src/f-1.ts",
+      9
+    ]
+  ],
+  "max_repeat": 12,
+  "tokens": {
+    "inputTokens": 360522,
+    "outputTokens": 41449,
+    "cacheReadTokens": 887726,
+    "cacheWriteTokens": 21054,
+    "totalTokens": 0
+  },
+  "uncached_tokens": 401971,
+  "usage_events": 140,
+  "cache_hit_rate": 0.699,
+  "tokens_per_s_model": 95285.1,
+  "context_window": 1048576,
+  "tool_schema_bytes": 18,
+  "system_prompt_bytes": 0,
+  "reasoning_chars": 0,
+  "assistant_chars": 560,
+  "compaction_events": 0,
+  "compaction_starts": 0,
+  "compaction_summaries": 0,
+  "compaction_prunes": 0,
+  "compaction_ends": 0,
+  "compaction_types": [],
+  "compaction_summary_chars": 0,
+  "compaction_shadowed_events": 0,
+  "evidence_patterns": []
+}

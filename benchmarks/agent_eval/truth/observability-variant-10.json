@@ -1,0 +1,117 @@
+{
+  "sessionId": "session-observability-variant-10",
+  "final_chars": 4,
+  "wall_ms": 217544,
+  "model_ms_approx": 497,
+  "tool_ms": 217047,
+  "turns": 8,
+  "steps": 160,
+  "assistant_messages": 160,
+  "tool_calls": 480,
+  "tool_by_name": [
+    [
+      "tool-1",
+      290
+    ],
+    [
+      "tool-0",
+      190
+    ]
+  ],
+  "tool_errors": 11,
+  "tool_errors_by_name": [
+    [
+      "tool-0",
+      6
+    ],
+    [
+      "tool-1",
+      5
+    ]
+  ],
+  "tool_error_rate": 0.023,
+  "tool_latency_ms_p50": 458,
+  "tool_latency_ms_p95": 866,
+  "tool_latency_ms_max": 900,
+  "read_calls": 0,
+  "write_calls": 0,
+  "bash_calls": 0,
+  "skill_calls": 0,
+  "skill_names": [],
+  "model_policy_calls": 0,
+  "reference_reads": 0,
+  "reference_files": [],
+  "reference_bytes": 0,
+  "model_policy_reads": 0,
+  "unique_reads": 0,
+  "unique_writes": 0,
+  "read_result_chars": 0,
+  "write_arg_chars": 0,
+  "calls_before_first_edit": null,
+  "calls_after_first_edit": null,
+  "first_edit_ms": null,
+  "last_edit_ms": null,
+  "phase_after_edit_ms": null,
+  "verification_calls": 0,
+  "verification_examples": [],
+  "repeated_calls": [
+    [
+      "tool-1:src/f-9.ts",
+      17
+    ],
+    [
+      "tool-1:src/f-2.ts",
+      16
+    ],
+    [
+      "tool-1:src/f-3.ts",
+      16
+    ],
+    [
+      "tool-1:src/f-7.ts",
+      16
+    ],
+    [
+      "tool-1:src/f-18.ts",
+      16
+    ],
+    [
+      "tool-1:src/f-4.ts",
+      15
+    ],
+    [
+      "tool-1:src/f-8.ts",
+      15
+    ],
+    [
+      "tool-1:src/f-10.ts",
+      15
+    ]
+  ],
+  "max_repeat": 17,
+  "tokens": {
+    "inputTokens": 419566,
+    "outputTokens": 50231,
+    "cacheReadTokens": 945277,
+    "cacheWriteTokens": 26449,
+    "totalTokens": 0
+  },
+  "uncached_tokens": 469797,
+  "usage_events": 160,
+  "cache_hit_rate": 0.679,
+  "tokens_per_s_model": 101068.4,
+  "context_window": 1048576,
+  "tool_schema_bytes": 18,
+  "system_prompt_bytes": 0,
+  "reasoning_chars": 0,
+  "assistant_chars": 640,
+  "compaction_events": 0,
+  "compaction_starts": 0,
+  "compaction_summaries": 0,
+  "compaction_prunes": 0,
+  "compaction_ends": 0,
+  "compaction_types": [],
+  "compaction_summary_chars": 0,
+  "compaction_shadowed_events": 0,
+  "evidence_patterns": []
+}

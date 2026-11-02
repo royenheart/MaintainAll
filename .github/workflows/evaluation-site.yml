@@ -1,0 +1,49 @@
+name: Evaluation site
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - 'benchmarks/evaluation/**'
+      - 'benchmarks/agent_eval/**'
+      - 'benchmarks/skill_bench/**'
+      - 'benchmarks/results/catalog.json'
+      - '.github/workflows/evaluation-site.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: evaluation-pages
+  cancel-in-progress: false
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@11bd71901bbe5b1630ceea73d27597364c9af683 # v4.2.2
+        with:
+          persist-credentials: false
+          lfs: true
+      - name: Ingest sealed records and build unified page
+        run: |
+          PYTHONPATH=benchmarks/evaluation/src python3 -m eval_framework.cli ingest-agent-eval
+          python3 benchmarks/evaluation/build_public_site.py
+      - uses: actions/configure-pages@v5
+      - uses: actions/upload-pages-artifact@v3
+        with:
+          path: public-benchmark-site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        uses: actions/deploy-pages@v4

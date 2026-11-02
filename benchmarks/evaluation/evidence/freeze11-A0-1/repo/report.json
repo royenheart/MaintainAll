@@ -1,0 +1,34 @@
+{
+  "completed": false,
+  "blocker": "GPU 不可访问（/dev/nvidia* 缺失，nvidia-smi 无法与驱动通信）；测试依赖/浏览器未安装，且现有 perf 测试自述非真实 GPU 基准",
+  "evidence": [
+    {
+      "tool_call_id": "call_01_dfpXNkNysfVb16Rafcov9600",
+      "quoted_output": "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver."
+    },
+    {
+      "tool_call_id": "call_00_nwg7VfTbF3G4X2xzPkzS7614",
+      "quoted_output": "ls: 无法访问 '/dev/nvidia*': 没有那个文件或目录"
+    },
+    {
+      "tool_call_id": "call_00_b76qNRy5j32pPuouqFnW4561",
+      "quoted_output": "tmpfs /dev tmpfs ro,seclabel,nosuid,nodev,relatime,mode=755,uid=1000,gid=1000,inode64 0 0"
+    },
+    {
+      "tool_call_id": "call_00_XY6PRWtg5SHG82i5ypq18153",
+      "quoted_output": "ls: 无法访问 'node_modules': 没有那个文件或目录"
+    },
+    {
+      "tool_call_id": "call_01_O9upZw75rAJCBwEW3iI73105",
+      "quoted_output": "ls: 无法访问 '/work/home/.cache/ms-playwright': 没有那个文件或目录"
+    },
+    {
+      "tool_call_id": "call_00_8qo2HS3qIlLCdIncSVAr8545",
+      "quoted_output": "sh: 行 1: playwright: 未找到命令"
+    },
+    {
+      "tool_call_id": "call_00_D6L5xFyMya1xnvYgNs1K5774",
+      "quoted_output": "environment: 'Headless Chromium; not a real-device GPU benchmark'"
+    }
+  ]
+}

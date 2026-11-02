@@ -1,0 +1,41 @@
+---
+import { HomeFrame } from '../components/HomeFrame';
+import { MusicPanel } from '../components/music/MusicPanel';
+import { SceneExperience } from '../components/scene/SceneExperience';
+import { site, playlist, scenes } from '../lib/content/load';
+import avatar from '../assets/avatar.webp';
+import cubes from '../assets/cubes.webp';
+import horizon from '../assets/horizon.webp';
+import '../styles/global.css';
+
+const posters = { cubes: cubes.src, horizon: horizon.src };
+---
+
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta
+      name="viewport"
+      content="width=device-width, initial-scale=1, viewport-fit=cover"
+    />
+    <meta
+      name="description"
+      content="RoyenHeart's personal space. A window into blue cube clouds and golden event horizons, with a little music for the journey."
+    />
+    <meta name="theme-color" content="#edfbfd" />
+    <link rel="icon" href="/favicon.ico" sizes="any" />
+    <title>{site.title} · Original</title>
+  </head>
+  <body>
+    <HomeFrame site={site} avatar={avatar.src}>
+      <SceneExperience
+        slot="scene"
+        client:load
+        settings={scenes}
+        posters={posters}
+      />
+      <MusicPanel slot="music" client:load playlist={playlist} />
+    </HomeFrame>
+  </body>
+</html>

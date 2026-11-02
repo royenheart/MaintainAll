@@ -1,0 +1,152 @@
+{
+  "case": "sandbox-natural-09",
+  "skill_trace": {
+    "loaded": false,
+    "loaded_skills": [],
+    "load_idx": null,
+    "first_probe_idx": 18,
+    "first_mountinfo_idx": 160,
+    "ref_reads_any_tool": 0,
+    "harness_reads": 1,
+    "skill_calls": 0
+  },
+  "version": 2,
+  "mode": "without",
+  "model": "deepseek-flash",
+  "prompt_sha256": "328500d9c3fa5ddeb60d638d90fab7ebb874e23f467561a9038ad303f0a248eb",
+  "case_scale": "large",
+  "case_split": null,
+  "max_tool_calls": 120,
+  "sandbox_modes": [],
+  "baseline_skill_sha256": "50e9dc67212b0466e3ca7ec44206b2ac748400bccf0fa451d1a18395488dcb0f",
+  "case_sha256": "55b234e4d1a12a6c0b7acfd64cb623a745e3e731a4a5d9da61a180bfbb4e161f",
+  "grader_sha256": "a1650880c5baeb704e087b470233fef10837cb0a9166c02599325b382ac5ac24",
+  "expected_sha256": null,
+  "truth_sha256": "e694b7b070a04efb6067488b37907370042c140987d522b35dac457545b4ca46",
+  "fixture_sha256": "9c19a6723e6522aff37825132937bb0534ee07eb09089a729013cde169bf99c2",
+  "repo_sha256": "9c19a6723e6522aff37825132937bb0534ee07eb09089a729013cde169bf99c2",
+  "fixture_changed": false,
+  "skill_sha256": null,
+  "skill_name": null,
+  "run_exit": 0,
+  "incomplete": false,
+  "grader_exit": 0,
+  "grade": {
+    "score": 10,
+    "max": 11,
+    "checks": {
+      "structured": true,
+      "completed_boolean": true,
+      "blocker_enum": true,
+      "evidence_list": true,
+      "evidence_cited": true,
+      "evidence_verified": true,
+      "evidence_supports_blocker": true,
+      "expected_blocker": true,
+      "blocker_matches_truth": false,
+      "completion_verified": true,
+      "completed_matches_truth": true,
+      "passed": false
+    },
+    "passed": false,
+    "cited": 5,
+    "valid_citations": 5
+  },
+  "metrics": {
+    "sessionId": "session-add22def5a0d4f4398ed551afb339439",
+    "final": "\u5df2\u5199\u5165 [report.json](report.json)\uff0c\u5176\u4e2d `completed` \u4e3a `false`\u3002\n\n\u672a\u80fd\u53d6\u5f97\u542f\u52a8\u8017\u65f6\u548c\u5e27\u7387\uff1a\u5f53\u524d\u4f1a\u8bdd\u8fd0\u884c\u5728 bwrap \u6c99\u7bb1\u5185\uff0c\u5916\u5c42 `/dev` \u867d\u7136\u6302\u8f7d\u4e86 `/dev/nvidia0`\u3001`/dev/dri` \u7b49\u8bbe\u5907\uff0c\u4f46\u8fd9\u4e9b\u8bbe\u5907\u8282\u70b9\u88ab\u5185\u5c42 tmpfs \u8986\u76d6\u9690\u85cf\uff1b`nvidia-smi` \u62a5\u9519\uff1a\n\n> NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver.\n\n\u540c\u65f6 Vulkan \u53ea\u66b4\u9732 CPU \u8bbe\u5907 `llvmpipe`\uff0c\u6240\u4ee5\u5728\u5f53\u524d\u73af\u5883\u4e2d\u65e0\u6cd5\u7528\u786c\u4ef6 GPU \u8fd0\u884c WebGL \u6d4b\u8bd5\uff1b\u6211\u4e5f\u6ca1\u6709\u7528\u8f6f\u4ef6\u6e32\u67d3\u7ed3\u679c\u5192\u5145 GPU \u6570\u636e\u3002\n\n\u62a5\u544a\u4e2d\u7684\u8bc1\u636e\u5206\u522b\u5f15\u7528\u4e86 GPU \u786c\u4ef6\u3001`nvidia-smi`\u3001mountinfo\u3001`vulkaninfo` \u53ca\u9879\u76ee perf \u6d4b\u8bd5\u58f0\u660e\u7684\u771f\u5b9e\u5de5\u5177\u8f93\u51fa\uff0c\u4e14\u5747\u53ef\u5728\u5bf9\u5e94 `tool_call_id` \u7684\u8f93\u51fa\u4e2d\u6838\u5bf9\u3002\u672a\u4fee\u6539\u6e90\u7801\u3002",
+    "wall_ms": 167594,
+    "model_ms_approx": 164326,
+    "tool_ms": 3268,
+    "turns": 1,
+    "steps": 26,
+    "assistant_messages": 26,
+    "tool_calls": 39,
+    "tool_by_name": [
+      [
+        "bash",
+        32
+      ],
+      [
+        "read",
+        4
+      ],
+      [
+        "grep",
+        1
+      ],
+      [
+        "write",
+        1
+      ],
+      [
+        "present",
+        1
+      ]
+    ],
+    "tool_errors": 0,
+    "tool_errors_by_name": [],
+    "tool_error_rate": 0.0,
+    "tool_latency_ms_p50": 48,
+    "tool_latency_ms_p95": 262,
+    "tool_latency_ms_max": 935,
+    "read_calls": 4,
+    "write_calls": 1,
+    "bash_calls": 32,
+    "skill_calls": 0,
+    "skill_names": [],
+    "model_policy_calls": 0,
+    "reference_reads": 0,
+    "reference_targets": [],
+    "reference_bytes": 0,
+    "model_policy_reads": 0,
+    "unique_reads": 4,
+    "unique_writes": 1,
+    "read_result_chars": 14311,
+    "write_arg_chars": 1880,
+    "calls_before_first_edit": 36,
+    "calls_after_first_edit": 3,
+    "first_edit_ms": 142967,
+    "last_edit_ms": 142967,
+    "phase_after_edit_ms": 24627,
+    "verification_calls": 3,
+    "verification_examples": [
+      "ls -la tests; echo ---; ls -la tests/perf 2>/dev/null; echo ---; ls -la tests/e2e 2>/dev/null",
+      "set +e vulkaninfo --summary 2>/dev/null | sed -n '/^Devices:/,$p' echo \"== nvidia devices in sysfs ==\"; ls -la /sys/class/drm/renderD129/device 2>&1 | head echo \"== try mknod in /t",
+      "grep -rnE \"sceneMetrics|orbitScene|startup|timeTo|firstFrame|frames\" /work/repo/src /work/repo/tests/support /work/repo/docs 2>/dev/null | head -50"
+    ],
+    "repeated_calls": [
+      [
+        "bash:python3 - <<'PY' import json, subprocess p='/work/engine-home/sessions/--work-repo--/session-add22def5a0d4f4398ed551afb339439/session.v4.jsonl.zstd' raw=subprocess.run(['zstd','-dc',p],capture_output=True,text=True).stdout for line in raw.splitlines(): try: e=json.loads(line) except: continue if e.g",
+        2
+      ],
+      [
+        "bash:python3 - <<'PY' import json, subprocess p='/work/engine-home/sessions/--work-repo--/session-add22def5a0d4f4398ed551afb339439/session.v4.jsonl.zstd' raw=subprocess.run(['zstd','-dc',p],capture_output=True,text=True).stdout outs={} for line in raw.splitlines(): try: e=json.loads(line) except: continu",
+        2
+      ]
+    ],
+    "max_repeat": 2,
+    "tokens": {
+      "inputTokens": 50966,
+      "outputTokens": 27862,
+      "cacheReadTokens": 1122176,
+      "cacheWriteTokens": 0,
+      "totalTokens": 1201004
+    },
+    "usage_events": 26,
+    "cache_hit_rate": 0.957,
+    "tokens_per_s_model": 169.6,
+    "context_window": 1048576,
+    "tool_schema_bytes": 28355,
+    "system_prompt_bytes": 4580,
+    "reasoning_chars": 77896,
+    "assistant_chars": 451,
+    "compaction_events": 0,
+    "compaction_types": [],
+    "compaction_summary_chars": 0,
+    "compaction_shadowed_events": 0
+  },
+  "wall_ms": 169910,
+  "stdout": "{\n  \"mode\": \"without\",\n  \"model\": \"deepseek-flash\",\n  \"wall_ms\": 169427,\n  \"exit\": 0\n}\n",
+  "stderr": ""
+}

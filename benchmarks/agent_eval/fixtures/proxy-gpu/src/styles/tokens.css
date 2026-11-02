@@ -1,0 +1,13 @@
+:root {
+  --color-ink: #182d49;
+  --color-chrome: #edfbfd;
+  --color-border: #53677b;
+  --color-accent: #b81951;
+  --color-focus: #0058a3;
+  --color-muted: #465d71;
+  --sidebar-width: clamp(92px, 8vw, 124px);
+  --footer-height: clamp(88px, 10dvh, 104px);
+  --duration-fast: 160ms;
+  --duration-panel: 240ms;
+  --font-ui: Inter, 'Noto Sans SC', 'Microsoft YaHei', Arial, sans-serif;
+}

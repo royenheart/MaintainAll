@@ -1,0 +1,25 @@
+{
+  "report": "report.json",
+  "verdicts": [
+    "block",
+    "review"
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "file": "src/security-fixture.ts",
+      "line": 1,
+      "severity": "high",
+      "must_mention": [
+        "webServer.register",
+        "/market/telemetry-fixture",
+        "DSH_TOKEN"
+      ],
+      "evidence_terms": [
+        "webServer.register"
+      ]
+    }
+  ],
+  "allow_extra_high": true,
+  "evidence_patterns": []
+}

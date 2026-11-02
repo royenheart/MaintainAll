@@ -1,0 +1,141 @@
+{
+  "sessionId": "session-observability-variant-14",
+  "final_chars": 4,
+  "wall_ms": 159526,
+  "model_ms_approx": 373,
+  "tool_ms": 159153,
+  "turns": 6,
+  "steps": 120,
+  "assistant_messages": 120,
+  "tool_calls": 360,
+  "tool_by_name": [
+    [
+      "tool-2",
+      105
+    ],
+    [
+      "tool-1",
+      79
+    ],
+    [
+      "tool-0",
+      55
+    ],
+    [
+      "tool-3",
+      51
+    ],
+    [
+      "tool-4",
+      39
+    ],
+    [
+      "tool-5",
+      31
+    ]
+  ],
+  "tool_errors": 11,
+  "tool_errors_by_name": [
+    [
+      "tool-2",
+      6
+    ],
+    [
+      "tool-1",
+      2
+    ],
+    [
+      "tool-3",
+      2
+    ],
+    [
+      "tool-4",
+      1
+    ]
+  ],
+  "tool_error_rate": 0.031,
+  "tool_latency_ms_p50": 436,
+  "tool_latency_ms_p95": 832,
+  "tool_latency_ms_max": 899,
+  "read_calls": 0,
+  "write_calls": 0,
+  "bash_calls": 0,
+  "skill_calls": 0,
+  "skill_names": [],
+  "model_policy_calls": 0,
+  "reference_reads": 0,
+  "reference_files": [],
+  "reference_bytes": 0,
+  "model_policy_reads": 0,
+  "unique_reads": 0,
+  "unique_writes": 0,
+  "read_result_chars": 0,
+  "write_arg_chars": 0,
+  "calls_before_first_edit": null,
+  "calls_after_first_edit": null,
+  "first_edit_ms": null,
+  "last_edit_ms": null,
+  "phase_after_edit_ms": null,
+  "verification_calls": 0,
+  "verification_examples": [],
+  "repeated_calls": [
+    [
+      "tool-2:src/f-20.ts",
+      9
+    ],
+    [
+      "tool-2:src/f-3.ts",
+      8
+    ],
+    [
+      "tool-2:src/f-10.ts",
+      8
+    ],
+    [
+      "tool-1:src/f-17.ts",
+      8
+    ],
+    [
+      "tool-1:src/f-5.ts",
+      7
+    ],
+    [
+      "tool-2:src/f-6.ts",
+      7
+    ],
+    [
+      "tool-2:src/f-11.ts",
+      7
+    ],
+    [
+      "tool-2:src/f-19.ts",
+      7
+    ]
+  ],
+  "max_repeat": 9,
+  "tokens": {
+    "inputTokens": 279923,
+    "outputTokens": 31092,
+    "cacheReadTokens": 776555,
+    "cacheWriteTokens": 16969,
+    "totalTokens": 0
+  },
+  "uncached_tokens": 311015,
+  "usage_events": 120,
+  "cache_hit_rate": 0.723,
+  "tokens_per_s_model": 83356.6,
+  "context_window": 1048576,
+  "tool_schema_bytes": 18,
+  "system_prompt_bytes": 0,
+  "reasoning_chars": 0,
+  "assistant_chars": 480,
+  "compaction_events": 0,
+  "compaction_starts": 0,
+  "compaction_summaries": 0,
+  "compaction_prunes": 0,
+  "compaction_ends": 0,
+  "compaction_types": [],
+  "compaction_summary_chars": 0,
+  "compaction_shadowed_events": 0,
+  "evidence_patterns": []
+}

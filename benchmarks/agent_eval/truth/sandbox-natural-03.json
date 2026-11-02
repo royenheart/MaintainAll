@@ -1,0 +1,14 @@
+{
+  "expected_blocker": "missing-input",
+  "expected_completed": false,
+  "host_has": "unknown",
+  "outer_jail_exposes": false,
+  "note": "host probe 2026-11-02: requested input is absent; missing-input is correct",
+  "evidence_patterns": [
+    "mp4",
+    "video"
+  ],
+  "host_inputs": {
+    "video.mp4": false
+  }
+}

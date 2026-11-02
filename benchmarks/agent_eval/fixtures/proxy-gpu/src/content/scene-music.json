@@ -1,0 +1,31 @@
+{
+  "cubes": {
+    "id": "clair-de-lune",
+    "title": "Clair de Lune",
+    "artist": "Claude Debussy",
+    "duration": 306.573,
+    "artwork": "https://p2.music.126.net/WhJuE6DPEZk6dWGEVzkXyQ==/7846114976212097.jpg",
+    "sourceUrl": "https://music.163.com/song?id=30953026",
+    "links": [
+      {
+        "label": "NetEase",
+        "href": "https://music.163.com/song?id=30953026"
+      }
+    ]
+  },
+  "horizon": {
+    "id": "alexei-zakharov-sanctuary",
+    "title": "Sanctuary",
+    "artist": "Alexei Zakharov",
+    "duration": 168.045,
+    "artwork": "https://p2.music.126.net/9xUrtBaorkUdSUGQozuldA==/1243547651061611.jpg",
+    "sourceUrl": "https://music.163.com/song?id=27755434",
+    "links": [
+      { "label": "NetEase", "href": "https://music.163.com/song?id=27755434" },
+      {
+        "label": "Spotify",
+        "href": "https://open.spotify.com/track/2afhQXoPbDCimkgue7zUfZ"
+      }
+    ]
+  }
+}

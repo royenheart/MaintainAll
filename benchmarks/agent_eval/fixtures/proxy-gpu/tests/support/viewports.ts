@@ -1,0 +1,15 @@
+export const viewports = [
+  { name: 'compact-phone', width: 320, height: 568 },
+  { name: 'phone', width: 390, height: 844 },
+  { name: 'tall-phone', width: 430, height: 932 },
+  { name: 'short-phone', width: 390, height: 400 },
+  { name: 'phone-landscape', width: 844, height: 390 },
+  { name: 'before-breakpoint', width: 719, height: 600 },
+  { name: 'at-breakpoint', width: 720, height: 600 },
+  { name: 'after-breakpoint', width: 721, height: 600 },
+  { name: 'tablet', width: 768, height: 1024 },
+  { name: 'tablet-landscape', width: 1024, height: 768 },
+  { name: 'short-desktop', width: 1280, height: 400 },
+  { name: 'desktop', width: 1440, height: 900 },
+  { name: 'wide-desktop', width: 1920, height: 1080 },
+] as const;

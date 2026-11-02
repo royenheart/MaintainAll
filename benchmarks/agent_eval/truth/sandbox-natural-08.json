@@ -1,0 +1,21 @@
+{
+  "expected_blocker": "none",
+  "expected_completed": true,
+  "host_has": "unknown",
+  "outer_jail_exposes": true,
+  "evidence_patterns": [
+    "Traceback",
+    "ZeroDivisionError",
+    "TRAIN_OK_2026"
+  ],
+  "requires_clean_run": true,
+  "clean_patterns": [
+    "TRAIN_OK_2026"
+  ],
+  "min_quote_length": 8,
+  "accepted_blockers": [
+    "app",
+    "none"
+  ],
+  "min_verified": 1
+}

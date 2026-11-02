@@ -1,0 +1,152 @@
+{
+  "case": "sandbox-natural-09",
+  "skill_trace": {
+    "loaded": true,
+    "loaded_skills": [
+      "dsh-sandbox-attribution"
+    ],
+    "load_idx": 18,
+    "first_probe_idx": 40,
+    "first_mountinfo_idx": 48,
+    "ref_reads_any_tool": 0,
+    "harness_reads": 3,
+    "skill_calls": 1
+  },
+  "version": 2,
+  "mode": "with",
+  "model": "deepseek-flash",
+  "prompt_sha256": "328500d9c3fa5ddeb60d638d90fab7ebb874e23f467561a9038ad303f0a248eb",
+  "case_scale": "large",
+  "case_split": null,
+  "max_tool_calls": 120,
+  "sandbox_modes": [],
+  "baseline_skill_sha256": "50e9dc67212b0466e3ca7ec44206b2ac748400bccf0fa451d1a18395488dcb0f",
+  "case_sha256": "55b234e4d1a12a6c0b7acfd64cb623a745e3e731a4a5d9da61a180bfbb4e161f",
+  "grader_sha256": "a1650880c5baeb704e087b470233fef10837cb0a9166c02599325b382ac5ac24",
+  "expected_sha256": null,
+  "truth_sha256": "e694b7b070a04efb6067488b37907370042c140987d522b35dac457545b4ca46",
+  "fixture_sha256": "9c19a6723e6522aff37825132937bb0534ee07eb09089a729013cde169bf99c2",
+  "repo_sha256": "9c19a6723e6522aff37825132937bb0534ee07eb09089a729013cde169bf99c2",
+  "fixture_changed": false,
+  "skill_sha256": "32518f8a5224fec37653d5407e678692344e0878f03f95b17200bf724a1aaa2f",
+  "skill_name": "dsh-sandbox-attribution",
+  "run_exit": 0,
+  "incomplete": false,
+  "grader_exit": 0,
+  "grade": {
+    "score": 11,
+    "max": 11,
+    "checks": {
+      "structured": true,
+      "completed_boolean": true,
+      "blocker_enum": true,
+      "evidence_list": true,
+      "evidence_cited": true,
+      "evidence_verified": true,
+      "evidence_supports_blocker": true,
+      "expected_blocker": true,
+      "blocker_matches_truth": true,
+      "completion_verified": true,
+      "completed_matches_truth": true,
+      "passed": true
+    },
+    "passed": true,
+    "cited": 14,
+    "valid_citations": 14
+  },
+  "metrics": {
+    "sessionId": "session-773aa7007d0841ad91d8d413a1672c0d",
+    "final": "\u5df2\u5b8c\u6210\u68c0\u67e5\u5e76\u5199\u5165 [report.json](</work/repo/report.json>)\u3002\n\n**\u7ed3\u8bba\uff1a\u65e0\u6cd5\u7ed9\u51fa\u542f\u52a8\u8017\u65f6\u548c\u5e27\u7387\uff0c\u963b\u585e\u5c42\u662f `dsh`\u3002**\n\n- **\u5bbf\u4e3b\u5c42\u6b63\u5e38**\uff1a\u673a\u5668\u6709 NVIDIA RTX 2060 Mobile\uff0c\u9a71\u52a8 `NVRM 615.78.08`\u3002\n- **\u5916\u5c42\u5df2\u66b4\u9732 GPU**\uff1a\u5916\u5c42 `/dev`\uff08mount 26\uff09\u628a\u5bbf\u4e3b\u8bbe\u5907\u7ed1\u5b9a\u4e3a `/dev/nvidia0`\uff08mount 34\uff09\u548c `/dev/dri`\uff08mount 35\uff09\u3002\n- **DSH \u5185\u5c42\u5c06\u5176\u9690\u85cf**\uff1a\u5f53\u524d bwrap \u4ee5 `--dev /dev` \u65b0\u5efa\u4e86\u4e00\u4e2a `/dev` tmpfs\uff08mount 39\uff09\uff0c\u6302\u8f7d\u5728 mount 26 \u4e4b\u4e0a\uff0c\u8986\u76d6\u4e86\u8fd9\u4e9b\u8bbe\u5907\u7ed1\u5b9a\uff1b\u56e0\u6b64 `ls /dev/nvidia*`\u3001`ls /dev/dri` \u5747\u62a5\u201c\u6ca1\u6709\u90a3\u4e2a\u6587\u4ef6\u6216\u76ee\u5f55\u201d\uff0c`nvidia-smi` \u4e5f\u65e0\u6cd5\u901a\u4fe1\u3002\n- **\u65e0\u6cd5\u63d0\u6743**\uff1a`danger-full-access` \u9700\u8981\u5ba1\u6279\uff0c\u4f46\u5f53\u524d\u4f1a\u8bdd\u6ca1\u6709\u5ba1\u6279\u901a\u9053\u3002\n- **\u6d4b\u8bd5\u65e0\u6cd5\u6267\u884c**\uff1a\u6b64\u5916 `node_modules` \u548c Playwright \u6d4f\u89c8\u5668\u5747\u4e0d\u5b58\u5728\uff1b\u4ed3\u5e93\u7684\u6027\u80fd\u7528\u4f8b\u672c\u8eab\u4e5f\u6807\u6ce8\u4e3a `Headless Chromium; not a real-device GPU benchmark`\u3002\n\n`report.json` \u4e2d 14 \u6761 evidence \u7684 `quoted_output` \u5747\u5df2\u9010\u6761\u6821\u9a8c\u4e3a\u5bf9\u5e94 tool result \u7684\u539f\u6587\u5b50\u4e32\uff1b\u672a\u4fee\u6539\u4efb\u4f55\u6e90\u7801\u3002",
+    "wall_ms": 109674,
+    "model_ms_approx": 107092,
+    "tool_ms": 2582,
+    "turns": 1,
+    "steps": 19,
+    "assistant_messages": 19,
+    "tool_calls": 26,
+    "tool_by_name": [
+      [
+        "bash",
+        23
+      ],
+      [
+        "skill",
+        1
+      ],
+      [
+        "read",
+        1
+      ],
+      [
+        "present",
+        1
+      ]
+    ],
+    "tool_errors": 1,
+    "tool_errors_by_name": [
+      [
+        "bash",
+        1
+      ]
+    ],
+    "tool_error_rate": 0.038,
+    "tool_latency_ms_p50": 49,
+    "tool_latency_ms_p95": 276,
+    "tool_latency_ms_max": 1035,
+    "read_calls": 1,
+    "write_calls": 0,
+    "bash_calls": 23,
+    "skill_calls": 1,
+    "skill_names": [
+      "dsh-sandbox-attribution"
+    ],
+    "model_policy_calls": 0,
+    "reference_reads": 0,
+    "reference_targets": [],
+    "reference_bytes": 0,
+    "model_policy_reads": 0,
+    "unique_reads": 1,
+    "unique_writes": 0,
+    "read_result_chars": 3212,
+    "write_arg_chars": 0,
+    "calls_before_first_edit": null,
+    "calls_after_first_edit": null,
+    "first_edit_ms": null,
+    "last_edit_ms": null,
+    "phase_after_edit_ms": null,
+    "verification_calls": 2,
+    "verification_examples": [
+      "ls -R /work/repo/tests | head -80",
+      "cat /work/repo/tests/perf/scenes.spec.ts; echo '=== orbit ==='; cat /work/repo/tests/perf/orbit.spec.ts"
+    ],
+    "repeated_calls": [
+      [
+        "bash:cd /work/repo && zstd -dc /work/engine-home/sessions/--work-repo--/session-773aa7007d0841ad91d8d413a1672c0d/session.v4.jsonl.zstd > /tmp/s.jsonl && python3 - <<'PY' import json texts = {} for line in open('/tmp/s.jsonl'): try: e = json.loads(line) except Exception: continue if e.get('type') == 'tool",
+        2
+      ]
+    ],
+    "max_repeat": 2,
+    "tokens": {
+      "inputTokens": 25978,
+      "outputTokens": 18770,
+      "cacheReadTokens": 519680,
+      "cacheWriteTokens": 0,
+      "totalTokens": 564428
+    },
+    "usage_events": 19,
+    "cache_hit_rate": 0.952,
+    "tokens_per_s_model": 175.3,
+    "context_window": 1048576,
+    "tool_schema_bytes": 28355,
+    "system_prompt_bytes": 4580,
+    "reasoning_chars": 49797,
+    "assistant_chars": 655,
+    "compaction_events": 0,
+    "compaction_types": [],
+    "compaction_summary_chars": 0,
+    "compaction_shadowed_events": 0
+  },
+  "wall_ms": 111963,
+  "stdout": "{\n  \"mode\": \"with\",\n  \"model\": \"deepseek-flash\",\n  \"wall_ms\": 111588,\n  \"exit\": 0\n}\n",
+  "stderr": ""
+}

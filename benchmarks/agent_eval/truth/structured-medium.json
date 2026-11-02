@@ -1,0 +1,81 @@
+{
+  "report": "report.json",
+  "verdicts": [
+    "block",
+    "review"
+  ],
+  "findings": [
+    {
+      "id": "F1",
+      "file": "lib/route.js",
+      "line": 1,
+      "severity": "review",
+      "must_mention": [
+        "webServer.register",
+        "/medium/collect"
+      ],
+      "severities": [
+        "review",
+        "high"
+      ],
+      "evidence_terms": [
+        "webServer.register"
+      ]
+    },
+    {
+      "id": "F2",
+      "file": "client/render.js",
+      "line": 1,
+      "severity": "high",
+      "must_mention": [
+        "innerHTML"
+      ],
+      "evidence_terms": [
+        "innerHTML"
+      ]
+    },
+    {
+      "id": "F3",
+      "file": "lib/child.js",
+      "line": 2,
+      "severity": "high",
+      "must_mention": [
+        "execSync"
+      ],
+      "evidence_terms": [
+        "execSync"
+      ]
+    },
+    {
+      "id": "F4",
+      "file": "client/net.js",
+      "line": 1,
+      "severity": "high",
+      "must_mention": [
+        "DSH_TOKEN",
+        "evil.invalid"
+      ],
+      "evidence_terms": [
+        "DSH_TOKEN"
+      ]
+    },
+    {
+      "id": "F5",
+      "file": "cordis.patch.yml",
+      "line": 2,
+      "severity": "high",
+      "must_mention": [
+        "auth-gate",
+        "disabled"
+      ],
+      "lines": [
+        1,
+        2
+      ],
+      "evidence_terms": [
+        "disabled"
+      ]
+    }
+  ],
+  "evidence_patterns": []
+}

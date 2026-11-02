@@ -1,0 +1,34 @@
+{
+  "completed": false,
+  "blocker": "GPU unavailable: /dev/nvidia* is hidden by two stacked /dev tmpfs mounts (both: outer jail + dsh bwrap), so nvidia-smi cannot reach the driver and no GPU WebGL run is possible.",
+  "evidence": [
+    {
+      "tool_call_id": "call_00_CHo3Uy6C072ZKQR5cop19024",
+      "quoted_output": "1319 1162 0:148 / /dev ro,nosuid,nodev,relatime - tmpfs tmpfs rw,seclabel,mode=755,uid=1000,gid=1000,inode64"
+    },
+    {
+      "tool_call_id": "call_00_CHo3Uy6C072ZKQR5cop19024",
+      "quoted_output": "1328 1319 0:166 / /dev rw,nosuid,nodev,relatime - tmpfs tmpfs rw,seclabel,mode=755,uid=1000,gid=1000,inode64"
+    },
+    {
+      "tool_call_id": "call_01_KYaZI1hA1tbgK7O4alzM1366",
+      "quoted_output": "ls: 无法访问 '/dev/nvidia0': 没有那个文件或目录"
+    },
+    {
+      "tool_call_id": "call_00_CHo3Uy6C072ZKQR5cop19024",
+      "quoted_output": "NVRM version: NVIDIA UNIX Open Kernel Module for x86_64  615.78.08"
+    },
+    {
+      "tool_call_id": "call_00_CHo3Uy6C072ZKQR5cop19024",
+      "quoted_output": "01:00.0 VGA compatible controller [0300]: NVIDIA Corporation TU106M [GeForce RTX 2060 Mobile] [10de:1f15] (rev a1)"
+    },
+    {
+      "tool_call_id": "call_00_CHo3Uy6C072ZKQR5cop19024",
+      "quoted_output": "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver."
+    },
+    {
+      "tool_call_id": "call_00_CHo3Uy6C072ZKQR5cop19024",
+      "quoted_output": "bwrap --ro-bind / / --dev /dev --unshare-pid --proc /proc --die-with-parent --tmpfs /tmp --bind /work/repo /work/repo"
+    }
+  ]
+}

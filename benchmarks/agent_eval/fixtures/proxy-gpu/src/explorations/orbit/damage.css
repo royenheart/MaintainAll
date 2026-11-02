@@ -1,0 +1,494 @@
+/* Degradation is an authored state, not a blur or a static poster. Hard-edged
+   fragments and scan tears keep the scene moving at the lowest render budget. */
+.orbit-damage {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  overflow: hidden;
+  pointer-events: none;
+  opacity: 0.42;
+  box-shadow: inset 0 0 160px #001018aa;
+}
+.orbit-damage[data-severity='high'] {
+  opacity: 0.78;
+}
+.orbit-damage[data-severity='fault'] {
+  opacity: 0.94;
+}
+.orbit-damage-scanlines {
+  position: absolute;
+  inset: -30% 0;
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(174, 247, 255, 0.16) 0 1px,
+    transparent 1px 5px
+  );
+  animation: orbit-damage-scan 4.2s linear infinite;
+  opacity: 0.5;
+}
+.orbit-damage-wash {
+  position: absolute;
+  inset: 0;
+  background:
+    radial-gradient(circle at 24% 38%, #45efff33, transparent 28%),
+    radial-gradient(circle at 76% 64%, #ff4b6e22, transparent 24%),
+    linear-gradient(90deg, transparent 44%, #b6ffff18 46%, transparent 49%);
+  animation: orbit-damage-wash 3.4s steps(1, end) infinite;
+}
+.orbit-damage-pane {
+  position: absolute;
+  display: block;
+  width: 42%;
+  height: 130%;
+  top: -15%;
+  opacity: 0.42;
+  border-right: 1px solid #aef7ffe0;
+  background:
+    linear-gradient(
+      115deg,
+      #00111fcc 0 38%,
+      transparent 39% 62%,
+      #2bd9ff3d 63% 66%,
+      transparent 67%
+    ),
+    repeating-linear-gradient(0deg, #aef7ff12 0 1px, transparent 1px 6px);
+  clip-path: polygon(
+    0 0,
+    100% 2%,
+    92% 17%,
+    100% 31%,
+    89% 49%,
+    100% 66%,
+    93% 82%,
+    100% 100%,
+    0 100%
+  );
+  mix-blend-mode: normal;
+  animation: orbit-damage-pane 5.4s steps(1, end) infinite;
+}
+.orbit-damage-pane-a {
+  left: -8%;
+}
+.orbit-damage-pane-b {
+  left: 34%;
+  width: 25%;
+  animation-delay: -1.8s;
+  opacity: 0.2;
+}
+.orbit-damage-pane-c {
+  left: 72%;
+  width: 31%;
+  animation-delay: -3.2s;
+  opacity: 0.24;
+}
+.orbit-damage-horizon .orbit-damage-pane {
+  border-right-color: #ffd27ac4;
+  background:
+    linear-gradient(
+      115deg,
+      #160b02cc 0 38%,
+      transparent 39% 62%,
+      #ffb02a30 63% 66%,
+      transparent 67%
+    ),
+    repeating-linear-gradient(0deg, #ffd27a10 0 1px, transparent 1px 7px);
+}
+.orbit-damage[data-severity='high'] .orbit-damage-pane {
+  opacity: 0.56;
+}
+.orbit-damage[data-severity='fault'] .orbit-damage-pane {
+  opacity: 0.72;
+}
+.orbit-damage-shard {
+  position: absolute;
+  display: block;
+  opacity: 0;
+  transform: translate3d(0, 0, 0) rotate(var(--damage-rotate));
+  clip-path: polygon(0 0, 100% 8%, 88% 100%, 4% 84%);
+  animation: orbit-damage-shard var(--damage-duration) steps(1, end) infinite;
+  animation-delay: var(--damage-delay);
+  mix-blend-mode: screen;
+}
+.orbit-damage-cracks {
+  position: absolute;
+  inset: 0;
+  width: 100%;
+  height: 100%;
+  overflow: visible;
+}
+.orbit-damage-cracks path {
+  fill: none;
+  stroke: #9ef8ff;
+  stroke-width: 1.7;
+  vector-effect: non-scaling-stroke;
+  filter: drop-shadow(0 0 2px #9ef8ffcc);
+  stroke-dasharray: 1.2 4.6;
+  stroke-dashoffset: 0;
+  animation: orbit-damage-crack 3.8s steps(1, end) infinite;
+}
+.orbit-damage-cracks path:nth-child(2) {
+  stroke: #ff4b6e;
+  filter: drop-shadow(0 0 2px #ff4b6ecc);
+  animation-delay: -1.3s;
+}
+.orbit-damage-cracks path:nth-child(3) {
+  animation-delay: -2.4s;
+  opacity: 0.6;
+}
+.orbit-damage-horizon .orbit-damage-cracks path {
+  stroke: #ffd27a;
+  filter: drop-shadow(0 0 2px #ffb02acc);
+}
+.orbit-damage-horizon .orbit-damage-cracks path:nth-child(2) {
+  stroke: #ff6a1f;
+  filter: drop-shadow(0 0 2px #ff6a1fcc);
+}
+.orbit-damage-block {
+  position: absolute;
+  display: block;
+  background: #00131fd9;
+  border: 1px solid #9ef8ff70;
+  clip-path: polygon(0 6%, 100% 0, 94% 100%, 5% 92%);
+  opacity: 0;
+  mix-blend-mode: normal;
+  animation: orbit-damage-block 3.6s steps(1, end) infinite;
+  animation-delay: var(--damage-delay);
+}
+.orbit-damage-horizon .orbit-damage-block {
+  background: #160b02d9;
+  border-color: #ffd27a80;
+}
+.orbit-damage-tear {
+  position: absolute;
+  left: -5%;
+  width: 110%;
+  height: 1px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    #c9fbff,
+    #ff4b6e 48%,
+    #c9fbff,
+    transparent
+  );
+  box-shadow: 0 0 9px #7ef7ff88;
+  opacity: 0;
+  animation: orbit-damage-tear 3.1s steps(1, end) infinite;
+}
+.orbit-damage-tear-a {
+  top: 23%;
+}
+.orbit-damage-tear-b {
+  top: 61%;
+  animation-delay: -1.2s;
+  height: 2px;
+}
+.orbit-damage-tear-c {
+  top: 84%;
+  animation-delay: -2.1s;
+}
+.orbit-damage-horizon .orbit-damage-wash {
+  background:
+    radial-gradient(circle at 50% 52%, #ffd37a33, transparent 26%),
+    radial-gradient(circle at 62% 38%, #ff5a0030, transparent 20%),
+    linear-gradient(90deg, transparent 36%, #ffe7a322 39%, transparent 43%);
+}
+.orbit-damage-horizon .orbit-damage-pane {
+  position: absolute;
+  display: block;
+  width: 42%;
+  height: 130%;
+  top: -15%;
+  opacity: 0.42;
+  border-right: 1px solid #aef7ffe0;
+  background:
+    linear-gradient(
+      115deg,
+      #00111fcc 0 38%,
+      transparent 39% 62%,
+      #2bd9ff3d 63% 66%,
+      transparent 67%
+    ),
+    repeating-linear-gradient(0deg, #aef7ff12 0 1px, transparent 1px 6px);
+  clip-path: polygon(
+    0 0,
+    100% 2%,
+    92% 17%,
+    100% 31%,
+    89% 49%,
+    100% 66%,
+    93% 82%,
+    100% 100%,
+    0 100%
+  );
+  mix-blend-mode: normal;
+  animation: orbit-damage-pane 5.4s steps(1, end) infinite;
+}
+.orbit-damage-pane-a {
+  left: -8%;
+}
+.orbit-damage-pane-b {
+  left: 34%;
+  width: 25%;
+  animation-delay: -1.8s;
+  opacity: 0.2;
+}
+.orbit-damage-pane-c {
+  left: 72%;
+  width: 31%;
+  animation-delay: -3.2s;
+  opacity: 0.24;
+}
+.orbit-damage-horizon .orbit-damage-pane {
+  border-right-color: #ffd27ac4;
+  background:
+    linear-gradient(
+      115deg,
+      #160b02cc 0 38%,
+      transparent 39% 62%,
+      #ffb02a30 63% 66%,
+      transparent 67%
+    ),
+    repeating-linear-gradient(0deg, #ffd27a10 0 1px, transparent 1px 7px);
+}
+.orbit-damage[data-severity='high'] .orbit-damage-pane {
+  opacity: 0.56;
+}
+.orbit-damage[data-severity='fault'] .orbit-damage-pane {
+  opacity: 0.72;
+}
+.orbit-damage-shard {
+  border-radius: 62% 48% 54% 42% / 40% 60% 38% 60%;
+  clip-path: none;
+}
+.orbit-damage-horizon .orbit-damage-scanlines {
+  background: repeating-linear-gradient(
+    0deg,
+    rgba(255, 207, 126, 0.13) 0 1px,
+    transparent 1px 7px
+  );
+  opacity: 0.4;
+}
+.orbit-damage-core {
+  position: absolute;
+  left: 50%;
+  top: 53%;
+  width: min(58vw, 700px);
+  aspect-ratio: 1;
+  transform: translate(-50%, -50%);
+  border-radius: 50%;
+  background: radial-gradient(
+    circle,
+    transparent 0 33%,
+    #ff9a2833 34%,
+    transparent 35% 39%,
+    #ffd37a22 40%,
+    transparent 41% 47%,
+    #ff5a0018 48%,
+    transparent 50%
+  );
+  animation: orbit-damage-core 5.8s steps(7, end) infinite;
+  mix-blend-mode: screen;
+}
+.orbit-study[data-degraded='true'] .orbit-webgl canvas {
+  image-rendering: pixelated;
+}
+@keyframes orbit-damage-shard {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0) rotate(var(--damage-rotate));
+  }
+  3% {
+    opacity: 0.85;
+    transform: translate3d(var(--damage-dx), var(--damage-dy), 0)
+      rotate(var(--damage-rotate));
+  }
+  6% {
+    opacity: 0;
+  }
+  32% {
+    opacity: 0.55;
+    transform: translate3d(calc(var(--damage-dx) * -0.5), var(--damage-dy), 0)
+      rotate(var(--damage-rotate));
+  }
+  36% {
+    opacity: 0;
+  }
+  68% {
+    opacity: 0.95;
+    transform: translate3d(var(--damage-dx), calc(var(--damage-dy) * -1), 0)
+      rotate(var(--damage-rotate));
+  }
+  72% {
+    opacity: 0;
+  }
+  91% {
+    opacity: 0.45;
+  }
+  95% {
+    opacity: 0;
+  }
+}
+@keyframes orbit-damage-tear {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translateX(0);
+  }
+  2% {
+    opacity: 0.85;
+    transform: translateX(1.5vw);
+  }
+  4% {
+    opacity: 0;
+    transform: translateX(4vw);
+  }
+  19% {
+    opacity: 0.65;
+    transform: translateX(-2vw);
+  }
+  22% {
+    opacity: 0;
+    transform: translateX(-5vw);
+  }
+  57% {
+    opacity: 0.55;
+    transform: translateX(2.5vw);
+  }
+  60% {
+    opacity: 0;
+  }
+}
+@keyframes orbit-damage-block {
+  0%,
+  100% {
+    opacity: 0;
+    transform: translate3d(0, 0, 0);
+  }
+  3% {
+    opacity: 0.72;
+    transform: translate3d(3px, -2px, 0);
+  }
+  7% {
+    opacity: 0;
+  }
+  44% {
+    opacity: 0.58;
+    transform: translate3d(-4px, 1px, 0);
+  }
+  49% {
+    opacity: 0;
+  }
+  73% {
+    opacity: 0.8;
+    transform: translate3d(2px, 2px, 0);
+  }
+  78% {
+    opacity: 0;
+  }
+}
+@keyframes orbit-damage-crack {
+  0%,
+  100% {
+    opacity: 0.25;
+    stroke-dashoffset: 0;
+  }
+  7% {
+    opacity: 0.95;
+    stroke-dashoffset: -1.2;
+  }
+  9% {
+    opacity: 0.2;
+    stroke-dashoffset: -1.6;
+  }
+  42% {
+    opacity: 0.6;
+    stroke-dashoffset: -3.1;
+  }
+  45% {
+    opacity: 0.2;
+  }
+  67% {
+    opacity: 1;
+    stroke-dashoffset: -4.4;
+  }
+  71% {
+    opacity: 0.35;
+  }
+}
+@keyframes orbit-damage-pane {
+  0%,
+  100% {
+    transform: translateX(0);
+  }
+  18% {
+    transform: translateX(1.4vw);
+  }
+  21% {
+    transform: translateX(-0.6vw);
+  }
+  53% {
+    transform: translateX(0.8vw);
+  }
+  56% {
+    transform: translateX(0);
+  }
+  79% {
+    transform: translateX(-1.2vw);
+  }
+  82% {
+    transform: translateX(0);
+  }
+}
+@keyframes orbit-damage-scan {
+  from {
+    transform: translateY(-8%);
+  }
+  to {
+    transform: translateY(8%);
+  }
+}
+@keyframes orbit-damage-wash {
+  0%,
+  100% {
+    transform: translateX(0);
+    opacity: 0.65;
+  }
+  37% {
+    transform: translateX(1.2%);
+    opacity: 0.35;
+  }
+  39% {
+    transform: translateX(-1.7%);
+    opacity: 0.8;
+  }
+  41% {
+    transform: translateX(0);
+    opacity: 0.55;
+  }
+}
+@keyframes orbit-damage-core {
+  0%,
+  100% {
+    transform: translate(-50%, -50%) scale(0.98);
+    opacity: 0.6;
+  }
+  48% {
+    transform: translate(-50.8%, -49.4%) scale(1.02);
+    opacity: 0.9;
+  }
+  52% {
+    transform: translate(-49.2%, -50.5%) scale(1);
+    opacity: 0.5;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .orbit-damage,
+  .orbit-damage * {
+    animation: none !important;
+  }
+  .orbit-damage {
+    opacity: 0.18;
+  }
+}

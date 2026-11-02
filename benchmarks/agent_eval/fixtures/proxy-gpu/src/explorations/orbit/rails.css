@@ -1,0 +1,159 @@
+/* Parallel rails share one local coordinate system for lettering and travel. */
+.orbit-study .orbit-rails {
+  height: 100%;
+}
+.orbit-study .orbit-rails nav {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 2px;
+  height: 100%;
+}
+.orbit-study .orbit-rails nav .orbit-rail-link {
+  --rail-travel: 0px;
+  position: relative;
+  min-width: 44px;
+  height: 100%;
+  padding: 0;
+  border: 0;
+  border-radius: 10px;
+  background: none;
+  color: #e0e7eb;
+}
+.orbit-rail-axis {
+  position: absolute;
+  width: 58px;
+  height: 18px;
+  left: 50%;
+  top: 50%;
+  transform: translate(-50%, -50%) rotate(-43deg);
+  pointer-events: none;
+}
+.orbit-rail-window {
+  display: block;
+  position: relative;
+  width: 100%;
+  height: 14px;
+  overflow: hidden;
+}
+.orbit-rail-label {
+  display: flex;
+  position: absolute;
+  align-items: center;
+  gap: 4px;
+  height: 14px;
+  width: max-content;
+  font-size: 12px;
+  line-height: 14px;
+  white-space: nowrap;
+  transform: translateX(var(--rail-travel));
+}
+.orbit-rail-label .orbit-dock-icon {
+  width: 12px;
+  height: 12px;
+  color: var(--orbit-accent);
+}
+.orbit-rail-line {
+  position: absolute;
+  bottom: 0;
+  left: -2px;
+  width: calc(100% + 4px);
+  height: 0.65px;
+  background: var(--orbit-accent);
+  opacity: 0.45;
+}
+.orbit-rail-line::after {
+  content: '';
+  position: absolute;
+  inset: -1px auto -1px 0;
+  width: 12px;
+  background: linear-gradient(
+    90deg,
+    transparent,
+    var(--orbit-accent),
+    transparent
+  );
+  opacity: 0;
+  transform: translateX(4px);
+}
+.orbit-study[data-detail-motion='on'] .orbit-rail-label {
+  transition: transform 420ms cubic-bezier(0.2, 0.7, 0.2, 1);
+}
+.orbit-study[data-detail-motion='on'] .orbit-rail-link:focus-visible {
+  --rail-travel: 6px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .orbit-study[data-detail-motion='on'] .orbit-rail-link:hover {
+    --rail-travel: 6px;
+  }
+}
+/* B: the icon is an anchor; text and its reflection move along the rail. */
+[data-rail-study='tether'] .orbit-rail-label {
+  transform: none;
+}
+[data-rail-study='tether'] .orbit-rail-label > span {
+  transform: translateX(var(--rail-travel));
+}
+.orbit-study[data-detail-motion='on']
+  [data-rail-study='tether']
+  .orbit-rail-label
+  > span {
+  transition: transform 460ms cubic-bezier(0.2, 0.7, 0.2, 1) 40ms;
+}
+.orbit-study[data-detail-motion='on']
+  [data-rail-study='tether']
+  .orbit-rail-line::after {
+  transition:
+    transform 500ms ease-out,
+    opacity 240ms ease-out;
+}
+[data-rail-study='tether']
+  .orbit-rail-link:focus-visible
+  .orbit-rail-line::after {
+  opacity: 0.7;
+  transform: translateX(40px);
+}
+@media (hover: hover) and (pointer: fine) {
+  [data-rail-study='tether'] .orbit-rail-link:hover .orbit-rail-line::after {
+    opacity: 0.7;
+    transform: translateX(40px);
+  }
+}
+/* C: paired labels trade places inside a clip; reversing hover reverses travel. */
+[data-rail-study='relay'] .orbit-rail-label {
+  --rail-copy-offset: 0px;
+  transform: translateX(calc(var(--rail-relay, 0px) + var(--rail-copy-offset)));
+}
+[data-rail-study='relay'] .orbit-rail-echo {
+  --rail-copy-offset: -64px;
+}
+.orbit-study[data-detail-motion='on']
+  [data-rail-study='relay']
+  .orbit-rail-label {
+  transition-duration: 750ms;
+}
+.orbit-study[data-detail-motion='on']
+  [data-rail-study='relay']
+  .orbit-rail-link:focus-visible {
+  --rail-relay: 64px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .orbit-study[data-detail-motion='on']
+    [data-rail-study='relay']
+    .orbit-rail-link:hover {
+    --rail-relay: 64px;
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .orbit-study .orbit-rail-link {
+    --rail-travel: 0px !important;
+    --rail-relay: 0px !important;
+  }
+  .orbit-study .orbit-rail-label {
+    animation: none !important;
+    transition: none !important;
+  }
+  .orbit-study .orbit-rail-label > span,
+  .orbit-study .orbit-rail-line::after {
+    transition: none !important;
+  }
+}

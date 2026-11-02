@@ -1,0 +1,95 @@
+---
+name: dsh-runtime-guide
+description: Use when an agent will change, restart, hot-reload, upgrade, or debug a running DeepSeek Harness host, or when plugin work could break the current session, profile, or host. Read-only diagnosis first; no global install from inside a session.
+---
+
+# DSH runtime guide
+
+Load `model-policy` once from its host catalog location and apply its guidance.
+
+The agent may be running **inside the host it is about to change**. Treat that as a
+safety boundary, not as a detail.
+
+## Sandbox boundaries
+
+A DSH command runs in a **file-effect** sandbox, not a VM. On Linux bwrap the process gets
+a private `/dev` and PID namespace, an ephemeral `/tmp`, and only the workspace/extra
+roots writable; network, host processes and GPU devices are outside the policy. Therefore
+`nvidia-smi` failing or `/dev/nvidia*` being absent in the command is **not proof the host
+has no GPU**. Check host evidence (`/sys/class/drm`, `/proc/driver/nvidia/version`), state
+the boundary, and request the narrowest wider mode or a host runner for hardware work.
+Never turn a sandbox limitation into a plugin/runtime finding. Details:
+[sandbox boundaries](references/sandbox-boundaries.md).
+
+## First check
+
+1. Identify the running process, its `DSH_HOME`, profile, port, and argv.
+2. Compare the process start with the checkout's last commit and the running entry's
+   mtime; a dirty tree or an entry changed after start weakens or proves a ghost.
+3. Decide whether the change is client-only, host/plugin, profile composition, or
+   the dsh package itself.
+
+Run `node scripts/inspect-host.mjs --pid <dsh-host-pid> --checkout <path>` (read-only)
+when the process is reachable. The PID is required; do not infer it from the shell. If
+the process is the current session, state that explicitly.
+
+
+## Upgrade request protocol
+
+When the request is to upgrade or restart the **current** dsh host, do not attempt it from
+inside the session. Do not run a package-manager global install, do not request
+`danger-full-access`, and do not run `kill`/`systemctl restart`. First answer with the
+external runbook and why the in-session path is unsafe. Only proceed after the user
+confirms they will run the command outside this host. This applies even when the prompt
+says "upgrade now".
+
+## Change impact
+
+| Change | Safe action |
+|---|---|
+| Client asset only | Build, refresh/HMR only while `pnpm run dev:web` is running; otherwise rebuild and hard-refresh. Host restart only if the client registration changed |
+| Host plugin code or row | Build, restart the host under its supervisor, then verify boot and one real path |
+| Profile bundle/dependency/patch | Plan the profile edit, confirm, then restart the host; never rewrite the user's patch |
+| dsh package itself | **Never run a global install from inside a dsh session.** Stop the dsh processes that own this install/prefix (not unrelated hosts), then run a pinned install from an external shell |
+| Running host is the target | Do not explain its behavior with the new disk version; restart it or pin analysis to its actual generation |
+
+## Hard boundaries
+
+- Do not run `npm install -g @deepseek-ai/dsh@...`, `npm update -g`, or a package-manager
+  upgrade of the live host from inside a session that is executing from that package
+  tree. The installation can replace the running files, kill the session, and leave
+  missing shims and a broken `dsh` command.
+- Do not overwrite another agent's or the user's profile patch, lockfile, or working
+  tree to "make it work."
+- Identify processes by their install prefix/profile/port before stopping them; do not kill unrelated hosts.
+
+- Do not run unbounded heavy builds, tests, or subagents in the live host. Use a
+  bounded job, a separate profile/port, or a throwaway checkout; watch memory,
+  process count, and session growth.
+- Do not report success from an exit code alone. Verify the profile composition, boot,
+  the served client, and one real path.
+
+## Recovery
+
+EBUSY is a lock/atomic-replace error, not proof of a native module. dsh's session JSONL
+lease and Windows atomic replace can both produce it; identify the lock owner and stop
+only the host/profile that owns it before replacing files. A missing `dsh` command after an interrupted global install needs an
+external pinned reinstall, not hand-copied package directories. A ghost host needs a
+restart before its behavior can be compared with the disk. See
+[upgrade recovery](references/upgrade-recovery.md) for the exact sequence.
+
+## Verify
+
+Run the host's own version/profile/boot checks, then one message → tool → response
+path for a host change, or a real client fetch/mount for a client change. Record what
+you did not test. Read [host lifecycle](references/host-lifecycle.md),
+[upgrade recovery](references/upgrade-recovery.md), and
+[performance limits](references/performance.md) only when the affected boundary needs
+them.
+
+## Scripts
+
+| Script | Use |
+|---|---|
+| [inspect-host.mjs](scripts/inspect-host.mjs) | Read-only process/checkout/port/profile report; flags a ghost host |
+| [runbook.md](references/runbook.md) | Commands and decision table for the three common failures |

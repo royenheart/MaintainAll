@@ -1,0 +1,355 @@
+/* Selected nameplate and comparison finishes share the same SVG silhouette. */
+.orbit-study:where([data-card-finish]:not([data-card-finish='original'])) {
+  --finish-base: #0c1921fa;
+  --finish-coat: color-mix(in srgb, var(--orbit-accent) 13%, transparent);
+  --finish-edge: color-mix(in srgb, var(--orbit-accent) 38%, transparent);
+  --finish-duration: 240ms;
+  --finish-ease: cubic-bezier(0.2, 0.7, 0.2, 1);
+  --finish-stroke: 1.05;
+}
+.orbit-study:where(
+    [data-card-finish]:not([data-card-finish='original'])
+  )[data-scene='horizon'] {
+  --finish-base: #251d17fa;
+}
+.orbit-study[data-card-finish]:not([data-card-finish='original']) .rotary-deck {
+  --surface-ink: var(--finish-base);
+  --surface-edge: var(--finish-edge);
+}
+.orbit-study[data-card-finish]:not([data-card-finish='original'])
+  :is(
+    .rotary-cube-texture,
+    .rotary-horizon-texture,
+    .rotary-grain,
+    .rotary-surface-sheen
+  ) {
+  opacity: 0.025;
+}
+.orbit-study[data-card-finish]:not([data-card-finish='original'])
+  .rotary-surface-edge {
+  stroke-width: var(--finish-stroke);
+}
+.finish-recess {
+  fill: #0003;
+  stroke: #000a;
+  stroke-width: 1.4;
+  vector-effect: non-scaling-stroke;
+}
+.finish-inner-highlight {
+  fill: none;
+  stroke: var(--orbit-accent);
+  stroke-opacity: 0.24;
+  stroke-width: 0.65;
+  vector-effect: non-scaling-stroke;
+}
+.finish-lining {
+  fill: none;
+  stroke: var(--orbit-accent);
+  stroke-opacity: 0.16;
+  stroke-width: 0.65;
+  vector-effect: non-scaling-stroke;
+}
+.finish-inlay {
+  fill: var(--orbit-accent);
+  fill-opacity: 0.09;
+}
+.finish-smoke {
+  fill: none;
+  stroke: var(--orbit-accent);
+  stroke-width: 22;
+  stroke-opacity: 0.035;
+}
+.finish-reflection {
+  opacity: 0;
+  transform: translateX(0);
+}
+.orbit-study[data-detail-motion='on'] .finish-reflection {
+  transition:
+    transform 680ms var(--finish-ease),
+    opacity 240ms ease;
+}
+.rotary-card-active:has(:focus-visible) .finish-reflection {
+  transform: translateX(710px);
+  opacity: 1;
+}
+@media (hover: hover) and (pointer: fine) {
+  .rotary-card-active:hover .finish-reflection {
+    transform: translateX(710px);
+    opacity: 1;
+  }
+}
+.orbit-study[data-card-finish]:not([data-card-finish='original'])
+  .orbit-profile
+  img {
+  box-shadow:
+    0 0 0 1px #000b,
+    0 0 0 2px var(--finish-edge);
+}
+.orbit-study[data-card-finish='inset'] .orbit-transport button::before {
+  inset: 8px 5px;
+  border-radius: 7px;
+  background: #0003;
+  box-shadow:
+    inset 0 1px 2px #0008,
+    0 1px 0 var(--finish-edge);
+}
+.orbit-study[data-card-finish='nameplate'] {
+  --finish-stroke: 1.3;
+  --finish-base: #202b32;
+  --finish-coat: color-mix(in srgb, var(--orbit-accent) 24%, transparent);
+  --finish-edge: color-mix(in srgb, var(--orbit-accent) 58%, transparent);
+  --finish-duration: 300ms;
+}
+.orbit-study[data-card-finish='nameplate'][data-scene='horizon'] {
+  --finish-base: #352c25;
+}
+.orbit-study[data-card-finish='nameplate'] .orbit-transport button::before {
+  inset: 8px 3px;
+  border-radius: 4px;
+  transform: skewX(-12deg);
+  background: color-mix(in srgb, var(--orbit-accent) 8%, transparent);
+  box-shadow:
+    inset 0 1px 0 var(--finish-edge),
+    0 2px 2px #0007;
+}
+.orbit-study[data-card-finish='nameplate'] .orbit-profile img {
+  border-radius: 9px;
+}
+.orbit-study[data-card-finish='nameplate'] .orbit-source-links a {
+  border-radius: 7px;
+}
+.orbit-study[data-card-finish='seam'] {
+  --finish-stroke: 0.65;
+  --finish-base: #0b1521e6;
+  --finish-coat: color-mix(in srgb, var(--orbit-accent) 10%, transparent);
+  --finish-edge: color-mix(in srgb, var(--orbit-accent) 30%, transparent);
+  --finish-duration: 220ms;
+}
+.orbit-study[data-card-finish='seam'][data-scene='horizon'] {
+  --finish-base: #1e191be6;
+}
+/* The contour hook supplies the bed's left inset, matching its content. */
+.orbit-study .orbit-segments {
+  height: 44px;
+}
+.orbit-study .orbit-segments nav {
+  position: relative;
+  isolation: isolate;
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 0;
+  height: 44px;
+}
+.orbit-segments nav::before {
+  content: '';
+  position: absolute;
+  inset: 5px 0 5px var(--contour-padding, 0px);
+  z-index: -1;
+  border-radius: 9px;
+  background: #0004;
+  box-shadow:
+    inset 0 1px 3px #000a,
+    0 0.65px 0 var(--finish-edge);
+  pointer-events: none;
+}
+.orbit-study .orbit-segments nav .orbit-segment-link {
+  --segment-shift: 0px;
+  --segment-light: 0;
+  --segment-lift: 0px;
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  padding: 0 2px;
+  min-width: 44px;
+  height: 44px;
+  border-radius: 7px;
+  color: #e8ecee;
+  background: none;
+  text-decoration: none;
+}
+.orbit-segment-paint {
+  position: absolute;
+  inset: 6px 1px;
+  border-radius: 4px;
+  overflow: hidden;
+  pointer-events: none;
+  transform: skewX(-14deg) translateY(var(--segment-lift));
+  background: color-mix(in srgb, var(--orbit-accent) 4%, transparent);
+}
+.orbit-segment-link + .orbit-segment-link .orbit-segment-paint {
+  border-left: 1px solid var(--finish-edge);
+}
+.orbit-segment-paint::after {
+  content: '';
+  position: absolute;
+  inset: 0;
+  background: linear-gradient(
+    105deg,
+    transparent,
+    color-mix(in srgb, var(--orbit-accent) 20%, transparent),
+    transparent
+  );
+  transform: translateX(calc(-50% + var(--segment-shift) * 16));
+  opacity: var(--segment-light);
+}
+.orbit-segment-label {
+  display: flex;
+  align-items: center;
+  gap: 5px;
+  position: relative;
+  font-size: 13px;
+  line-height: 18px;
+  font-weight: 500;
+  white-space: nowrap;
+  transform: translate(var(--segment-shift), var(--segment-lift));
+  pointer-events: none;
+}
+.orbit-segment-label .orbit-dock-icon {
+  width: 15px;
+  height: 15px;
+  color: var(--orbit-accent);
+}
+.orbit-study[data-detail-motion='on'] .orbit-segment-label,
+.orbit-study[data-detail-motion='on'] .orbit-segment-paint,
+.orbit-study[data-detail-motion='on'] .orbit-segment-paint::after {
+  transition:
+    transform var(--finish-duration) var(--finish-ease),
+    opacity var(--finish-duration) ease;
+}
+.orbit-study .orbit-segments nav .orbit-segment-link:focus-visible {
+  --segment-shift: 3px;
+  --segment-light: 1;
+  outline: 1px solid var(--orbit-accent);
+  outline-offset: -2px;
+}
+@media (hover: hover) and (pointer: fine) {
+  .orbit-study .orbit-segments nav .orbit-segment-link:hover {
+    --segment-shift: 3px;
+    --segment-light: 1;
+  }
+}
+/* B: short inset nameplates move as one piece, without moving their hit areas. */
+.orbit-study[data-card-finish='nameplate'] .orbit-segments nav {
+  gap: 6px;
+}
+.orbit-study[data-card-finish='nameplate'] .orbit-segments nav::before {
+  background: none;
+  box-shadow: none;
+}
+.orbit-study[data-card-finish='nameplate'] .orbit-segment-paint {
+  inset: 7px 2px;
+  background: color-mix(in srgb, var(--orbit-accent) 10%, transparent);
+  box-shadow:
+    inset 0 0.65px 0 var(--finish-edge),
+    0 3px 2px #0006;
+  border: none;
+}
+.orbit-study[data-card-finish='nameplate']
+  .orbit-segment-link:is(:hover, :focus-visible) {
+  --segment-lift: -2px;
+}
+/* C: one quiet incision; names remain stationary while material lights up. */
+.orbit-study[data-card-finish='seam'] .orbit-segments nav::before {
+  background: none;
+  box-shadow: none;
+}
+.orbit-study[data-card-finish='seam'] .orbit-segment-paint {
+  background: none;
+  border-radius: 0;
+  inset-block: 9px;
+}
+.orbit-study[data-card-finish='seam'] .orbit-segment-label {
+  transform: none;
+}
+.orbit-study[data-detail-motion='off'] .orbit-segment-label,
+.orbit-study[data-detail-motion='off'] .orbit-segment-paint {
+  transform: none;
+}
+.orbit-study[data-detail-motion='off'] .finish-reflection {
+  display: none;
+}
+@media (max-width: 359px) {
+  .orbit-segment-label {
+    font-size: 12px;
+    gap: 4px;
+  }
+  .orbit-segment-label .orbit-dock-icon {
+    width: 14px;
+    height: 14px;
+  }
+}
+
+/* The selected finish keeps one card-wide sweep; controls do not flash. */
+.orbit-study[data-card-finish='nameplate'] .rotary-card :is(a, button) {
+  -webkit-tap-highlight-color: transparent;
+}
+.orbit-study[data-card-finish='nameplate'] .rotary-card :is(a, button)::after,
+.orbit-study[data-card-finish='nameplate'] .orbit-segment-paint::after {
+  display: none;
+  animation: none !important;
+}
+.orbit-study[data-card-finish='nameplate'] .rotary-card .orbit-source-links a {
+  background: none;
+}
+.orbit-study[data-card-finish='nameplate']
+  .rotary-card
+  .orbit-transport
+  :is(button, button:hover, button:focus-visible, button:active)::before {
+  background: color-mix(in srgb, var(--orbit-accent) 8%, transparent);
+}
+
+/* Fixed hit targets; transport and Elsewhere use held outline/ink feedback. */
+.orbit-study[data-card-finish='nameplate']
+  .rotary-card
+  :is(a, button)
+  > svg:not(.orbit-source-icon),
+.orbit-study[data-card-finish='nameplate'] .orbit-segment-label {
+  transform: none !important;
+}
+.orbit-study[data-card-finish='nameplate'] .orbit-segment-paint {
+  transform: skewX(-14deg);
+  transition:
+    box-shadow 140ms ease,
+    border-color 140ms ease;
+}
+.orbit-study[data-card-finish='nameplate']
+  .orbit-segment-link:is(:hover, :focus-visible, [data-preview-open='true'])
+  .orbit-segment-paint {
+  box-shadow:
+    inset 0 0 0 1px var(--finish-edge),
+    0 3px 2px #0006;
+}
+.orbit-study[data-card-finish='nameplate']
+  .orbit-segment-link:active
+  .orbit-segment-paint {
+  box-shadow:
+    inset 0 0 0 1px var(--orbit-accent),
+    0 3px 2px #0006;
+}
+.orbit-study[data-card-finish='nameplate']
+  .rotary-card
+  .orbit-transport
+  button:is(:hover, :focus-visible)::before {
+  box-shadow:
+    inset 0 0 0 0.75px var(--finish-edge),
+    0 2px 2px #0007;
+}
+.orbit-study[data-card-finish='nameplate']
+  .rotary-card
+  .orbit-transport
+  button:active::before {
+  box-shadow:
+    inset 0 0 0 1px var(--orbit-accent),
+    0 2px 2px #0007;
+}
+.orbit-study[data-card-finish='nameplate']
+  .orbit-source-links
+  a:is(:hover, :focus-visible) {
+  box-shadow: none;
+}
+/* Motion owns a complete one-shot turn; leaving never reverses the glyph. */
+.orbit-study[data-card-finish='nameplate'] .orbit-source-icon {
+  transform-origin: center;
+  transition: color 160ms ease;
+}

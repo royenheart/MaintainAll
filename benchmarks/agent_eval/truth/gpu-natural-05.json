@@ -1,0 +1,37 @@
+{
+  "expected_blocker": "both",
+  "expected_completed": false,
+  "host_has": "unknown",
+  "outer_jail_exposes": false,
+  "note": "host probe 2026-11-02: nvidia-smi lists RTX 2060; /dev/nvidia0 and /dev/dri/renderD128 exist on host; outer jail --dev /dev hides them",
+  "evidence_patterns": [
+    "ttyUSB",
+    "usb",
+    "serial"
+  ],
+  "host_has_gpu": true,
+  "host_devices": [
+    "/dev/nvidia0",
+    "/dev/dri/renderD128"
+  ],
+  "accepted_blockers": [
+    "both",
+    "outer"
+  ],
+  "min_quote_length": 8,
+  "evidence_groups": [
+    [
+      "No such file",
+      "cannot access",
+      "\u6ca1\u6709\u90a3\u4e2a\u6587\u4ef6",
+      "MISSING"
+    ],
+    [
+      "NVRM version",
+      "NVIDIA Corporation",
+      "Driver Version",
+      "NVIDIA GeForce",
+      "NVIDIA-SMI has failed"
+    ]
+  ]
+}

@@ -1,0 +1,149 @@
+{
+  "case": "sandbox-natural-08",
+  "skill_trace": {
+    "loaded": false,
+    "loaded_skills": [],
+    "load_idx": null,
+    "first_probe_idx": null,
+    "first_mountinfo_idx": null,
+    "ref_reads_any_tool": 0,
+    "harness_reads": 0,
+    "skill_calls": 0
+  },
+  "version": 2,
+  "mode": "with",
+  "model": "deepseek-flash",
+  "prompt_sha256": "77810cd3eea9002e8fff8b1a24fe644497e2fbec1ccd593f71ba92cfe78f5562",
+  "case_scale": "small",
+  "case_split": null,
+  "max_tool_calls": 40,
+  "sandbox_modes": [],
+  "baseline_skill_sha256": "50e9dc67212b0466e3ca7ec44206b2ac748400bccf0fa451d1a18395488dcb0f",
+  "case_sha256": "379c74e0225e3bfd1ec952cfa5512ab44062ee425a1506751467a0ae41e26243",
+  "grader_sha256": "5446ca3d980952e8c221bdca7763bbf40fc950573bb502312c395cb707cb6d5a",
+  "expected_sha256": null,
+  "truth_sha256": "f6677a108e31cf2d8a158d25baab8d9f5d1e0c7dbb200cd93ae7080d46389b37",
+  "fixture_sha256": "cfb71eaa7f673519331d328293182142740c62620c8b0dd3f5bb25c2ab4b97bf",
+  "repo_sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "fixture_changed": false,
+  "skill_sha256": "8244820d252e0c2cd419f5ecad8c00a31ac60ee6e2e23e1a6aa767a4cb17ef10",
+  "skill_name": "dsh-sandbox-attribution",
+  "run_exit": 0,
+  "incomplete": false,
+  "grader_exit": 0,
+  "grade": {
+    "score": 11,
+    "max": 11,
+    "checks": {
+      "structured": true,
+      "completed_boolean": true,
+      "blocker_enum": true,
+      "evidence_list": true,
+      "evidence_cited": true,
+      "evidence_verified": true,
+      "evidence_supports_blocker": true,
+      "expected_blocker": true,
+      "blocker_matches_truth": true,
+      "completion_verified": true,
+      "completed_matches_truth": true,
+      "passed": true
+    },
+    "passed": true,
+    "cited": 1,
+    "valid_citations": 1
+  },
+  "metrics": {
+    "sessionId": "session-db1d6c2736bc456eb0c933940a2aa1ef",
+    "final": "Task complete. Summary:\n\n**Root cause:** [train.py](train.py) hardcoded `divisor = 0`, so `sum(values) / divisor` raised `ZeroDivisionError: division by zero` at line 4 and the script exited with code 1.\n\n**Fix:** Changed `divisor = 0` to `divisor = len(values)`, which matches the obvious intent (computing the mean of `values`) and makes the divisor non-zero.\n\n**Verification:** The script now runs to completion, prints `2.0` and `TRAIN_OK_2026 loss=2.0`, and exits with code 0.\n\n**Report:** Wrote [report.json](report.json) in the requested schema with `completed: true`, the root cause in `blocker`, and evidence citing the real tool call (`call_00_ET_kHpDuBWtW9izhpM4PBv14068`) with an exact substring from its result. The JSON was validated with `json.tool`, and no temporary files remain in t",
+    "wall_ms": 30182,
+    "model_ms_approx": 28848,
+    "tool_ms": 1334,
+    "turns": 1,
+    "steps": 19,
+    "assistant_messages": 19,
+    "tool_calls": 22,
+    "tool_by_name": [
+      [
+        "bash",
+        18
+      ],
+      [
+        "edit",
+        2
+      ],
+      [
+        "read",
+        1
+      ],
+      [
+        "write",
+        1
+      ]
+    ],
+    "tool_errors": 1,
+    "tool_errors_by_name": [
+      [
+        "edit",
+        1
+      ]
+    ],
+    "tool_error_rate": 0.045,
+    "tool_latency_ms_p50": 56,
+    "tool_latency_ms_p95": 130,
+    "tool_latency_ms_max": 132,
+    "read_calls": 1,
+    "write_calls": 3,
+    "bash_calls": 18,
+    "skill_calls": 0,
+    "skill_names": [],
+    "model_policy_calls": 0,
+    "reference_reads": 0,
+    "reference_targets": [],
+    "reference_bytes": 0,
+    "model_policy_reads": 0,
+    "unique_reads": 1,
+    "unique_writes": 2,
+    "read_result_chars": 285,
+    "write_arg_chars": 806,
+    "calls_before_first_edit": 4,
+    "calls_after_first_edit": 18,
+    "first_edit_ms": 5391,
+    "last_edit_ms": 26551,
+    "phase_after_edit_ms": 3631,
+    "verification_calls": 0,
+    "verification_examples": [],
+    "repeated_calls": [
+      [
+        "bash:cd /work/repo && python train.py; echo \"[exit code: $?]\"",
+        2
+      ],
+      [
+        "edit:/work/repo/train.py",
+        2
+      ]
+    ],
+    "max_repeat": 2,
+    "tokens": {
+      "inputTokens": 12631,
+      "outputTokens": 3654,
+      "cacheReadTokens": 224640,
+      "cacheWriteTokens": 0,
+      "totalTokens": 240925
+    },
+    "usage_events": 19,
+    "cache_hit_rate": 0.947,
+    "tokens_per_s_model": 126.7,
+    "context_window": 1048576,
+    "tool_schema_bytes": 28355,
+    "system_prompt_bytes": 4580,
+    "reasoning_chars": 3850,
+    "assistant_chars": 1224,
+    "compaction_events": 0,
+    "compaction_types": [],
+    "compaction_summary_chars": 0,
+    "compaction_shadowed_events": 0
+  },
+  "wall_ms": 32433,
+  "stdout": "{\n  \"mode\": \"with\",\n  \"model\": \"deepseek-flash\",\n  \"wall_ms\": 32169,\n  \"exit\": 0\n}\n",
+  "stderr": ""
+}

@@ -1,0 +1,38 @@
+{
+  "completed": false,
+  "blocker": "环境未暴露任何 GPU 设备：/dev/nvidia* 与 /dev/dri 均不存在，nvidia-smi 无法连接驱动，WebGL 只能走软件渲染，无法给出 GPU 实测的启动耗时与帧率。",
+  "evidence": [
+    {
+      "tool_call_id": "call_00_v2tcDsvHOlFMd5wVxOcs5250",
+      "quoted_output": "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running.\n\n=== /dev/dri ===\nls: 无法访问 '/dev/dri': 没有那个文件或目录"
+    },
+    {
+      "tool_call_id": "call_00_v2tcDsvHOlFMd5wVxOcs5250",
+      "quoted_output": "01:00.0 VGA compatible controller: NVIDIA Corporation TU106M [GeForce RTX 2060 Mobile] (rev a1)"
+    },
+    {
+      "tool_call_id": "call_01_58mzPkaq97CSeLnu9Fxu5431",
+      "quoted_output": "ls: 无法访问 '/dev/nvidiactl': 没有那个文件或目录\nls: 无法访问 '/dev/nvidia0': 没有那个文件或目录"
+    },
+    {
+      "tool_call_id": "call_01_7tDztvYDyNfMGg7nc56Z0438",
+      "quoted_output": "ERROR: [Loader Message] Code 0 : loader_scanned_icd_add: Could not get 'vkCreateInstance' via 'vk_icdGetInstanceProcAddr' for ICD /usr/lib64/libGLX_nvidia.so.0"
+    },
+    {
+      "tool_call_id": "call_01_tJwCuekq9QAo5GK2Bm294640",
+      "quoted_output": "ls: 无法访问 '/work/repo/node_modules': 没有那个文件或目录"
+    },
+    {
+      "tool_call_id": "call_01_tJwCuekq9QAo5GK2Bm294640",
+      "quoted_output": "ls: 无法访问 '/work/home/.cache/ms-playwright': 没有那个文件或目录"
+    },
+    {
+      "tool_call_id": "call_01_GbiiDINGq4x7LEwme2iN5716",
+      "quoted_output": "ls: 无法访问 '/work/repo/dist': 没有那个文件或目录"
+    },
+    {
+      "tool_call_id": "call_00_Z8nEsHOvnmDXgTjLShJc4683",
+      "quoted_output": "environment: 'Headless Chromium; not a real-device GPU benchmark',"
+    }
+  ]
+}

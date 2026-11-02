@@ -1,0 +1,67 @@
+{
+  "suite": "sandbox-attribution",
+  "title": "Sandbox attribution",
+  "framing": "A natural prompt asks for a GPU/WebGL task or model-inference task. The report must name which layer removed the object and cite verbatim tool output. Cases are frozen before runs.",
+  "metrics": {
+    "semantic_accuracy": "independent blind judge layer label equals the case truth",
+    "evidence_completeness": "frozen grader passed: real tool call, verbatim quote, quote supports layer, completion and blocker match"
+  },
+  "cases": [
+    {
+      "case": "sandbox-natural-11",
+      "title": "WebGL, outer and inner /dev hide GPU",
+      "truth": "both",
+      "arms": [
+        {"arm": "B", "valid_n": 3, "semantic": 3, "evidence": 3},
+        {"arm": "A0", "valid_n": 2, "semantic": 2, "evidence": 0}
+      ],
+      "excluded": [{"arm": "A0", "reason": "tool-call budget exceeded", "count": 1}],
+      "note": "Only active both case. A0 is semantically correct but does not supply verified two-layer evidence."
+    },
+    {
+      "case": "sandbox-natural-09",
+      "title": "Outer binds GPU, DSH inner /dev hides it",
+      "truth": "dsh",
+      "arms": [
+        {"arm": "B", "valid_n": 3, "semantic": 3, "evidence": 3},
+        {"arm": "A0", "valid_n": 3, "semantic": 3, "evidence": 0}
+      ],
+      "excluded": [],
+      "note": "A0 names dsh but fails evidence completeness."
+    },
+    {
+      "case": "sandbox-natural-08",
+      "title": "Application bug control",
+      "truth": "app",
+      "arms": [
+        {"arm": "B", "valid_n": 1, "semantic": null, "evidence": 1},
+        {"arm": "A0", "valid_n": 1, "semantic": null, "evidence": 1}
+      ],
+      "excluded": [],
+      "note": "Negative control: no arm should attribute the traceback to the sandbox."
+    }
+  ],
+  "blind_judges": {
+    "case11": {
+      "judges": 2,
+      "samples": 5,
+      "label": "both",
+      "agreement": "10/10 judge-sample labels matched truth"
+    },
+    "case09": {
+      "judges": 1,
+      "samples": 6,
+      "label": "dsh",
+      "agreement": "6/6 judge-sample labels matched truth"
+    }
+  },
+  "limitations": [
+    "Small n (1-3 per cell), one model, one fixture family, one host.",
+    "Blind judges were same-provider subagents, not a different model family.",
+    "Case11 A0 has one excluded tool-call-budget run.",
+    "Evidence completeness measures citation validity, not correctness of the underlying tool output.",
+    "No claim of a cross-suite or cross-model leaderboard."
+  ],
+  "evidence_root": "benchmarks/evaluation/evidence",
+  "preregistration": "benchmarks/evaluation/PREREGISTRATION_ATTRIBUTION.md"
+}

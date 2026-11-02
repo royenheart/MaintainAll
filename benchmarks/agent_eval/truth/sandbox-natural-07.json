@@ -1,0 +1,13 @@
+{
+  "expected_blocker": "none",
+  "expected_completed": true,
+  "host_has": "unknown",
+  "outer_jail_exposes": false,
+  "note": "declared expectation; pending host probe",
+  "evidence_patterns": [
+    "ok",
+    "healthy",
+    "success",
+    "200"
+  ]
+}

@@ -1,0 +1,260 @@
+{
+  "sessionId": "session-observability-holdout",
+  "final_chars": 4,
+  "wall_ms": 389867,
+  "model_ms_approx": 617,
+  "tool_ms": 389250,
+  "turns": 8,
+  "steps": 200,
+  "assistant_messages": 200,
+  "tool_calls": 1000,
+  "tool_by_name": [
+    [
+      "bash",
+      220
+    ],
+    [
+      "read",
+      180
+    ],
+    [
+      "write",
+      160
+    ],
+    [
+      "grep",
+      140
+    ],
+    [
+      "edit",
+      120
+    ],
+    [
+      "skill",
+      100
+    ],
+    [
+      "subagent",
+      80
+    ]
+  ],
+  "tool_errors": 40,
+  "tool_errors_by_name": [
+    [
+      "bash",
+      11
+    ],
+    [
+      "read",
+      10
+    ],
+    [
+      "write",
+      5
+    ],
+    [
+      "edit",
+      5
+    ],
+    [
+      "grep",
+      5
+    ],
+    [
+      "skill",
+      4
+    ]
+  ],
+  "tool_error_rate": 0.04,
+  "tool_latency_ms_p50": 379,
+  "tool_latency_ms_p95": 757,
+  "tool_latency_ms_max": 800,
+  "read_calls": 180,
+  "write_calls": 280,
+  "bash_calls": 220,
+  "skill_calls": 100,
+  "skill_names": [
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability",
+    "dsh-observability"
+  ],
+  "model_policy_calls": 0,
+  "reference_reads": 0,
+  "reference_files": [],
+  "reference_bytes": 0,
+  "model_policy_reads": 0,
+  "unique_reads": 28,
+  "unique_writes": 28,
+  "read_result_chars": 15820,
+  "write_arg_chars": 9439,
+  "calls_before_first_edit": 8,
+  "calls_after_first_edit": 992,
+  "first_edit_ms": 4071,
+  "last_edit_ms": 387425,
+  "phase_after_edit_ms": 2442,
+  "verification_calls": 220,
+  "verification_examples": [
+    "npm test",
+    "npm test",
+    "npm test",
+    "npm test",
+    "npm test"
+  ],
+  "repeated_calls": [
+    [
+      "bash:npm test",
+      220
+    ],
+    [
+      "grep:src",
+      140
+    ],
+    [
+      "skill:",
+      100
+    ],
+    [
+      "subagent:",
+      80
+    ],
+    [
+      "read:src/feature-14.ts",
+      12
+    ],
+    [
+      "write:src/feature-22.ts",
+      12
+    ],
+    [
+      "write:src/feature-5.ts",
+      10
+    ],
+    [
+      "write:src/feature-16.ts",
+      10
+    ]
+  ],
+  "max_repeat": 220,
+  "tokens": {
+    "inputTokens": 460840,
+    "outputTokens": 62371,
+    "cacheReadTokens": 1516202,
+    "cacheWriteTokens": 50344,
+    "totalTokens": 0
+  },
+  "uncached_tokens": 523211,
+  "usage_events": 200,
+  "cache_hit_rate": 0.748,
+  "tokens_per_s_model": 101087.5,
+  "context_window": 1048576,
+  "tool_schema_bytes": 36,
+  "system_prompt_bytes": 0,
+  "reasoning_chars": 0,
+  "assistant_chars": 800,
+  "compaction_events": 0,
+  "compaction_starts": 0,
+  "compaction_summaries": 0,
+  "compaction_prunes": 0,
+  "compaction_ends": 0,
+  "compaction_types": [],
+  "compaction_summary_chars": 0,
+  "compaction_shadowed_events": 0,
+  "evidence_patterns": []
+}

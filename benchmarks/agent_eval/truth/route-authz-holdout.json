@@ -1,0 +1,70 @@
+{
+  "report": "report.json",
+  "entrypoints": [
+    {
+      "route": "/api/status",
+      "surface": "http",
+      "hostAuth": "yes",
+      "evidence": "src/api/apply.ts:5",
+      "chain": [],
+      "severity": "review",
+      "verdict": "allow"
+    },
+    {
+      "route": "/api/run",
+      "surface": "http",
+      "hostAuth": "no",
+      "evidence": "src/api/apply.ts:7",
+      "chain": [
+        "src/api/routes.ts:7",
+        "src/api/registry.ts:8",
+        "src/handlers/run.ts:4"
+      ],
+      "severity": "high",
+      "verdict": "block"
+    },
+    {
+      "route": "/api/read",
+      "surface": "http",
+      "hostAuth": "no",
+      "evidence": "src/api/apply.ts:6",
+      "chain": [
+        "src/api/routes.ts:6",
+        "src/api/registry.ts:7",
+        "src/handlers/read.ts:4"
+      ],
+      "severity": "high",
+      "verdict": "block"
+    },
+    {
+      "route": "/api/events",
+      "surface": "upgrade",
+      "hostAuth": "no",
+      "evidence": "src/api/apply.ts:8",
+      "chain": [
+        "src/api/routes.ts:10",
+        "src/api/registry.ts:8",
+        "src/handlers/run.ts:4"
+      ],
+      "severity": "high",
+      "verdict": "block",
+      "aliases": [
+        "upgrade",
+        "events"
+      ]
+    },
+    {
+      "route": "client/widget.tsx",
+      "surface": "client",
+      "hostAuth": "n/a",
+      "evidence": "src/client/widget.tsx:4",
+      "chain": [],
+      "severity": "review",
+      "verdict": "review",
+      "aliases": [
+        "widget"
+      ]
+    }
+  ],
+  "evidence_patterns": []
+}

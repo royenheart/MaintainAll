@@ -1,0 +1,26 @@
+{
+  "completed": false,
+  "blocker": "No accessible GPU: bwrap hides /dev/nvidia* and /dev/dri; nvidia-smi fails; only CPU llvmpipe is available.",
+  "evidence": [
+    {
+      "tool_call_id": "call_00_Mt0TTxsD41uHhND06hOJ2292",
+      "quoted_output": "01:00.0 VGA compatible controller: NVIDIA Corporation TU106M [GeForce RTX 2060 Mobile] (rev a1)"
+    },
+    {
+      "tool_call_id": "call_01_3m8EWzXsTYTroUynifW30184",
+      "quoted_output": "NVIDIA-SMI has failed because it couldn't communicate with the NVIDIA driver. Make sure that the latest NVIDIA driver is installed and running."
+    },
+    {
+      "tool_call_id": "call_00_NKZic3i8DdEtvfixIRoX8993",
+      "quoted_output": "1359 1347 0:7 /nvidia0 /dev/nvidia0 ro,nosuid,nodev master:2 - devtmpfs devtmpfs rw,seclabel,size=15999348k,nr_inodes=3999837,mode=755,inode64\n1362 1347 0:7 /dri /dev/dri ro,nosuid,nodev master:2 - devtmpfs devtmpfs rw,seclabel,size=15999348k,nr_inodes=3999837,mode=755,inode64\n1364 1347 0:7 /nvidiactl /dev/nvidiactl ro,nosuid,nodev master:2 - devtmpfs devtmpfs rw,seclabel,size=15999348k,nr_inodes=3999837,mode=755,inode64\n1366 1347 0:7 /nvidia-uvm /dev/nvidia-uvm ro,nosuid,nodev master:2 - devtmpfs devtmpfs rw,seclabel,size=15999348k,nr_inodes=3999837,mode=755,inode64\n1393 1347 0:177 / /dev rw,nosuid,nodev,relatime - tmpfs tmpfs rw,seclabel,mode=755,uid=1000,gid=1000,inode64"
+    },
+    {
+      "tool_call_id": "call_01_3jxX3xp6bgqep7XTf1FY5620",
+      "quoted_output": "deviceType         = PHYSICAL_DEVICE_TYPE_CPU\n\tdeviceName         = llvmpipe (LLVM 22.1.8, 256 bits)"
+    },
+    {
+      "tool_call_id": "call_00_cROr0C55u8keZrG508t62674",
+      "quoted_output": "environment: 'Headless Chromium; not a real-device GPU benchmark',"
+    }
+  ]
+}

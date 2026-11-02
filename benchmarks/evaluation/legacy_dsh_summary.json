@@ -1,0 +1,220 @@
+{
+  "note": "Documented legacy DSH skill results, not sealed records. Raw runs are not part of the current sealed evidence set; source is benchmarks/evaluation/TASK_LEVEL.md and FINAL_REPORT.md.",
+  "skills": [
+    {
+      "id": "dsh-observability",
+      "title": "DSH observability",
+      "status": "case-specific signal",
+      "summary": "Exact percentile/tie wording in the skill plus event-log analysis. Strong on large generated traces, but one task family.",
+      "metrics": [
+        [
+          "variants pass",
+          "22/22"
+        ],
+        [
+          "variants without",
+          "1/22"
+        ],
+        [
+          "holdout with",
+          "6/6 x2"
+        ],
+        [
+          "holdout without",
+          "5/6 x2"
+        ]
+      ],
+      "chart": {
+        "labels": [
+          "variants pass",
+          "holdout",
+          "compaction",
+          "codex JSONL"
+        ],
+        "with": [
+          100,
+          100,
+          100,
+          100
+        ],
+        "without": [
+          4.5,
+          83.3,
+          68.8,
+          77.8
+        ]
+      },
+      "rows": [
+        [
+          "22 large variants (budget 30)",
+          "22/22 pass",
+          "1/22 pass",
+          "large case-family signal"
+        ],
+        [
+          "observability-large-holdout (2618 events)",
+          "6/6 x2",
+          "5/6 x2, p50 wrong",
+          "replicated holdout"
+        ],
+        [
+          "observability-compaction-large (2221 events)",
+          "8/8 x2",
+          "5/8, 6/8; p50/p95/compaction wrong",
+          "same task family"
+        ],
+        [
+          "observability-codex-large (5000-line JSONL)",
+          "9/9 x2",
+          "7/9 x2; cache_rate/uncached wrong",
+          "same family, different input shape"
+        ]
+      ],
+      "caveat": "One task family, partly generated variants. Not a general observability capability claim.",
+      "disabled": false
+    },
+    {
+      "id": "dsh-plugin-validation",
+      "title": "DSH plugin validation",
+      "status": "controls only",
+      "summary": "Large plugin audit cases are useful controls; no stable correctness separation from the without arm.",
+      "metrics": [
+        [
+          "plugin audit",
+          "8/8 both"
+        ],
+        [
+          "supplychain",
+          "7/7 both"
+        ],
+        [
+          "route-authz",
+          "7/7 both"
+        ],
+        [
+          "multifinding",
+          "8/8 both"
+        ]
+      ],
+      "chart": {
+        "labels": [
+          "plugin audit",
+          "supplychain",
+          "route authz",
+          "multifinding"
+        ],
+        "with": [
+          100,
+          100,
+          100,
+          100
+        ],
+        "without": [
+          100,
+          100,
+          100,
+          100
+        ]
+      },
+      "rows": [
+        [
+          "large-plugin-audit (204 files)",
+          "8/8",
+          "8/8",
+          "large control, not discriminator"
+        ],
+        [
+          "large-plugin-supplychain (205 files)",
+          "7/7",
+          "7/7",
+          "efficiency hint only"
+        ],
+        [
+          "large-route-authz at 80",
+          "7/7",
+          "6/7 then 7/7",
+          "training case candidate; holdout only budget difference"
+        ],
+        [
+          "large-plugin-multifinding at 150",
+          "8/8",
+          "8/8",
+          "large efficiency control"
+        ]
+      ],
+      "caveat": "No replicated correctness signal. Treat as controls until a new discriminating case is frozen.",
+      "disabled": true,
+      "disabled_reason": "Legacy cases are controls only; hidden from default skill discovery until a discriminating case is frozen."
+    },
+    {
+      "id": "dsh-runtime-guide",
+      "title": "DSH runtime guide",
+      "status": "null / unstable",
+      "summary": "Sandbox-awareness and true-resume are controls; runtime-upgrade behavior is candidate-unstable, not a guarantee.",
+      "metrics": [
+        [
+          "sandbox awareness",
+          "6/6 both"
+        ],
+        [
+          "true-resume",
+          "6/6 both"
+        ],
+        [
+          "runtime-upgrade",
+          "6/6 \u2192 5/6"
+        ],
+        [
+          "guide without",
+          "5/6 \u2192 3/6"
+        ]
+      ],
+      "chart": {
+        "labels": [
+          "sandbox awareness",
+          "true resume",
+          "runtime upgrade"
+        ],
+        "with": [
+          100,
+          100,
+          92
+        ],
+        "without": [
+          100,
+          100,
+          67
+        ]
+      },
+      "rows": [
+        [
+          "sandbox-awareness paired",
+          "6/6",
+          "6/6",
+          "control, no correctness or call benefit"
+        ],
+        [
+          "true-resume at target cutoff",
+          "6/6",
+          "6/6",
+          "reproducible null result"
+        ],
+        [
+          "runtime-upgrade at 100",
+          "6/6 then 5/6",
+          "5/6 then 3/6",
+          "candidate-unstable"
+        ],
+        [
+          "upgrade-protocol explicit refusal",
+          "6/6 then 5/6",
+          "not scored",
+          "incomplete second run; not a guarantee"
+        ]
+      ],
+      "caveat": "Do not claim a stable runtime-guide improvement; two cases are controls/null and one is unstable.",
+      "disabled": true,
+      "disabled_reason": "No stable positive signal; kept for rework, hidden from default skill discovery."
+    }
+  ]
+}

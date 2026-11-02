@@ -1,0 +1,37 @@
+{
+  "expected_blocker": "both",
+  "expected_completed": false,
+  "host_has": "unknown",
+  "outer_jail_exposes": false,
+  "note": "host probe 2026-11-02: host GPU present; outer jail hides /dev nodes",
+  "evidence_patterns": [
+    "/ /dev ro",
+    "/ /dev rw",
+    "NVRM",
+    "NVIDIA"
+  ],
+  "host_has_gpu": true,
+  "host_devices": [
+    "/dev/nvidia0",
+    "/dev/dri/renderD128"
+  ],
+  "min_evidence": 2,
+  "evidence_groups": [
+    [
+      "/ /dev ro",
+      "/ /dev rw"
+    ],
+    [
+      "NVRM version",
+      "NVIDIA Corporation",
+      "Driver Version",
+      "NVIDIA GeForce",
+      "NVIDIA-SMI has failed"
+    ]
+  ],
+  "accepted_blockers": [
+    "both",
+    "outer"
+  ],
+  "min_quote_length": 8
+}

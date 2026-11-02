@@ -1,0 +1,24 @@
+{
+  "version": "schwarzschild-rk4-v1",
+  "upstream": "ebruneton/black_hole_shader@e72b3f293409893a6fa25528b29572c96fc57f57",
+  "units": "Schwarzschild radius = 1",
+  "format": "Little-endian float32 width, height, then row-major RG float32 samples",
+  "integrator": "RK4",
+  "angularStep": 0.0002,
+  "files": {
+    "deflection": {
+      "file": "deflection.dat",
+      "width": 512,
+      "height": 512,
+      "bytes": 2097160,
+      "sha256": "b768d9fc2741b024d6f46bd52e054ca11bf0da5312e19ec1004d1ae796ad9436"
+    },
+    "inverseRadius": {
+      "file": "inverse-radius.dat",
+      "width": 128,
+      "height": 64,
+      "bytes": 65544,
+      "sha256": "f2772795da59c6c4b7fa4f02854c5e504c3adf8f6dfc234f3863d20ac4942fcb"
+    }
+  }
+}

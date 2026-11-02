@@ -1,0 +1,19 @@
+{
+  "id": "sandbox-natural-08",
+  "version": 2,
+  "family": "runtime-sandbox",
+  "scale": "small",
+  "prompt": "prompts/task.txt",
+  "fixture": "../../fixtures/app-bug",
+  "grader": "graders/structured_evidence.py",
+  "truth": "truth/sandbox-natural-08.json",
+  "budget": {
+    "max_tool_calls": 40,
+    "calibrated_from": "pilot observed 19-31 calls; raised"
+  },
+  "description": "Negative control: genuine application bug, not a boundary artifact.",
+  "allow_files": [
+    "train.py"
+  ],
+  "timeout_ms": 180000
+}

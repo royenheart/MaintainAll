@@ -1,0 +1,18 @@
+{
+  "defaultScene": "cubes",
+  "seed": 82371,
+  "cubeCount": 720,
+  "cubes": {
+    "background": "#01e8fe",
+    "cube": "#56dfff",
+    "highlight": "#ff4f8f",
+    "ambient": "#1e7dff"
+  },
+  "horizon": {
+    "background": "#1a0b00",
+    "deepOrange": "#ff5a00",
+    "gold": "#ffb02a",
+    "paleGold": "#ffe08a",
+    "whiteGold": "#fff1bd"
+  }
+}

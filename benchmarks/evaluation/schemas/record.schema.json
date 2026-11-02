@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Record",
+  "type": "object",
+  "required": [
+    "schema",
+    "record_id",
+    "manifest",
+    "state",
+    "attempts",
+    "metrics",
+    "record_hash"
+  ],
+  "properties": {
+    "schema": {
+      "type": "integer"
+    },
+    "record_id": {
+      "type": "string"
+    },
+    "manifest": {
+      "type": "object"
+    },
+    "state": {
+      "enum": [
+        "planned",
+        "calibrated",
+        "running",
+        "evaluated",
+        "graded",
+        "reviewed",
+        "sealed",
+        "failed"
+      ]
+    },
+    "attempts": {
+      "type": "array"
+    },
+    "metrics": {
+      "type": "object"
+    },
+    "record_hash": {
+      "type": "string",
+      "pattern": "^[0-9a-f]{64}$"
+    }
+  },
+  "additionalProperties": true
+}

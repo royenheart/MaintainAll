@@ -1,0 +1,142 @@
+{
+  "sessionId": "session-observability-variant-12",
+  "final_chars": 4,
+  "wall_ms": 158912,
+  "model_ms_approx": 376,
+  "tool_ms": 158536,
+  "turns": 6,
+  "steps": 120,
+  "assistant_messages": 120,
+  "tool_calls": 360,
+  "tool_by_name": [
+    [
+      "tool-0",
+      95
+    ],
+    [
+      "tool-3",
+      91
+    ],
+    [
+      "tool-2",
+      90
+    ],
+    [
+      "tool-1",
+      84
+    ]
+  ],
+  "tool_errors": 5,
+  "tool_errors_by_name": [
+    [
+      "tool-3",
+      3
+    ],
+    [
+      "tool-2",
+      1
+    ],
+    [
+      "tool-0",
+      1
+    ]
+  ],
+  "tool_error_rate": 0.014,
+  "tool_latency_ms_p50": 450,
+  "tool_latency_ms_p95": 858,
+  "tool_latency_ms_max": 900,
+  "read_calls": 0,
+  "write_calls": 0,
+  "bash_calls": 0,
+  "skill_calls": 0,
+  "skill_names": [],
+  "model_policy_calls": 0,
+  "reference_reads": 0,
+  "reference_files": [],
+  "reference_bytes": 0,
+  "model_policy_reads": 0,
+  "unique_reads": 0,
+  "unique_writes": 0,
+  "read_result_chars": 0,
+  "write_arg_chars": 0,
+  "calls_before_first_edit": null,
+  "calls_after_first_edit": null,
+  "first_edit_ms": null,
+  "last_edit_ms": null,
+  "phase_after_edit_ms": null,
+  "verification_calls": 0,
+  "verification_examples": [],
+  "repeated_calls": [
+    [
+      "tool-0:src/f-17.ts",
+      11
+    ],
+    [
+      "tool-2:src/f-1.ts",
+      9
+    ],
+    [
+      "tool-0:src/f-10.ts",
+      9
+    ],
+    [
+      "tool-0:src/f-12.ts",
+      9
+    ],
+    [
+      "tool-1:src/f-15.ts",
+      9
+    ],
+    [
+      "tool-3:src/f-14.ts",
+      8
+    ],
+    [
+      "tool-2:src/f-16.ts",
+      8
+    ],
+    [
+      "tool-0:src/f-20.ts",
+      8
+    ]
+  ],
+  "max_repeat": 11,
+  "tokens": {
+    "inputTokens": 358003,
+    "outputTokens": 37752,
+    "cacheReadTokens": 675527,
+    "cacheWriteTokens": 17505,
+    "totalTokens": 0
+  },
+  "uncached_tokens": 395755,
+  "usage_events": 120,
+  "cache_hit_rate": 0.643,
+  "tokens_per_s_model": 100404.3,
+  "context_window": 1048576,
+  "tool_schema_bytes": 18,
+  "system_prompt_bytes": 0,
+  "reasoning_chars": 0,
+  "assistant_chars": 480,
+  "compaction_events": 1,
+  "compaction_starts": 1,
+  "compaction_summaries": 1,
+  "compaction_prunes": 0,
+  "compaction_ends": 1,
+  "compaction_types": [
+    [
+      "compaction/start",
+      1
+    ],
+    [
+      "compaction/summary",
+      1
+    ],
+    [
+      "compaction/end",
+      1
+    ]
+  ],
+  "compaction_summary_chars": 478,
+  "compaction_shadowed_events": 10,
+  "evidence_patterns": []
+}

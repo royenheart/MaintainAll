@@ -1,0 +1,63 @@
+.formation-study {
+  position: relative;
+  height: 100svh;
+  min-height: 320px;
+  overflow: hidden;
+  background: #030a12;
+  color: #e5eef8;
+  font:
+    13px/1.5 system-ui,
+    sans-serif;
+}
+.formation-stage {
+  position: absolute;
+  inset: 0;
+}
+.formation-controls {
+  position: absolute;
+  inset: auto 20px 20px;
+  max-width: 620px;
+  padding: 14px 18px;
+  background: #08101deb;
+  border: 1px solid #8299b442;
+  border-radius: 14px;
+}
+.formation-controls p {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 20px;
+  justify-content: space-between;
+  margin: 0 0 8px;
+}
+.formation-controls label {
+  display: flex;
+  gap: 16px;
+  align-items: center;
+}
+.formation-controls input {
+  flex: 1;
+  min-width: 0;
+  accent-color: #f0c680;
+}
+.formation-actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+  margin: 8px 0;
+}
+.formation-actions button {
+  min-height: 36px;
+  padding: 4px 12px;
+  border: 1px solid #7f95ac;
+  border-radius: 8px;
+  background: #17283d;
+  color: inherit;
+  cursor: pointer;
+}
+.formation-actions button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+.formation-controls small {
+  color: #b0bdcd;
+}

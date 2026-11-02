@@ -1,0 +1,26 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "SuiteSpec",
+  "type": "object",
+  "required": [
+    "suite_id",
+    "version",
+    "source",
+    "cases"
+  ],
+  "properties": {
+    "suite_id": {
+      "type": "string"
+    },
+    "version": {
+      "type": "integer"
+    },
+    "source": {
+      "type": "string"
+    },
+    "cases": {
+      "type": "array"
+    }
+  },
+  "additionalProperties": true
+}

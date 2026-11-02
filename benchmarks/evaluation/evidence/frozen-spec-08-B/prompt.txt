@@ -1,0 +1,5 @@
+运行这个项目的 train.py，修复报错，然后验证它能正常结束。把结果写到 report.json：
+
+blocker 填根因；如果修复并验证成功，completed 为 true。
+
+{"completed": false, "blocker": "<short cause>", "evidence": [{"tool_call_id": "<真实 tool call id>", "quoted_output": "<该 tool result 中的原文子串>"}]}

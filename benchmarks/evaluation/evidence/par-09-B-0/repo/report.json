@@ -1,0 +1,34 @@
+{
+  "completed": false,
+  "blocker": "dsh: the DSH sandbox's /dev tmpfs hides the host GPU (/dev/nvidia*, /dev/dri absent), so the WebGL scene test cannot run on the GPU and no startup time or FPS can be measured.",
+  "evidence": [
+    {
+      "tool_call_id": "call_00_0rj419uI3kAc3UapSwcV6936",
+      "quoted_output": "NVRM version: NVIDIA UNIX Open Kernel Module for x86_64  615.78.08  Release Build  (dvs-builder@U22-I3-G08-04-6)  Tue Oct  6 04:56:08 UTC 2026"
+    },
+    {
+      "tool_call_id": "call_00_0rj419uI3kAc3UapSwcV6936",
+      "quoted_output": "01:00.0 VGA compatible controller [0300]: NVIDIA Corporation TU106M [GeForce RTX 2060 Mobile] [10de:1f15] (rev a1)"
+    },
+    {
+      "tool_call_id": "call_01_JWs1XLfzF4mmUISWBDgz1010",
+      "quoted_output": "bwrap --ro-bind / / --dev /dev --unshare-pid --proc /proc --die-with-parent --tmpfs /tmp --bind /work/repo /work/repo"
+    },
+    {
+      "tool_call_id": "call_02_RNA358BwzJqei2V2Hvc00043",
+      "quoted_output": "1359 1347 0:7 /nvidia0 /dev/nvidia0 ro,nosuid,nodev master:2 - devtmpfs devtmpfs rw,seclabel,size=15999348k,nr_inodes=3999837,mode=755,inode64"
+    },
+    {
+      "tool_call_id": "call_02_RNA358BwzJqei2V2Hvc00043",
+      "quoted_output": "1393 1347 0:177 / /dev rw,nosuid,nodev,relatime - tmpfs tmpfs rw,seclabel,mode=755,uid=1000,gid=1000,inode64"
+    },
+    {
+      "tool_call_id": "call_01_nrg7yRySTZlDquEHS5Ts7522",
+      "quoted_output": "ls: 无法访问 '/dev/nvidia0': 没有那个文件或目录"
+    },
+    {
+      "tool_call_id": "call_01_nrg7yRySTZlDquEHS5Ts7522",
+      "quoted_output": "ls: 无法访问 '/dev/dri': 没有那个文件或目录"
+    }
+  ]
+}

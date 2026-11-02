@@ -1,0 +1,20 @@
+{
+  "expected_blocker": "dsh",
+  "expected_completed": false,
+  "host_has_gpu": true,
+  "outer_jail_exposes": true,
+  "dsh_mode": "workspace-write",
+  "min_evidence": 1,
+  "evidence_groups": [
+    [
+      "/nvidia0 /dev/nvidia0",
+      "/dri /dev/dri"
+    ]
+  ],
+  "evidence_patterns": [
+    "mountinfo",
+    "nvidia",
+    "dri"
+  ],
+  "min_quote_length": 8
+}

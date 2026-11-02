@@ -1,0 +1,6 @@
+- id: skill-filesystem
+  config:
+    includeDefaultRoots: false
+    customSkillDirs:
+      - /work/skills
+    watch: false

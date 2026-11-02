@@ -1,0 +1,68 @@
+/* Long material cycles are independent of the 680ms pointer reflection. */
+.finish-light-field {
+  display: none;
+}
+.finish-material-motion {
+  animation-play-state: paused;
+}
+.orbit-study[data-surface-motion='drift']
+  :is(.finish-enamel-field, .finish-inlay-field) {
+  animation: nameplate-drift 12s ease-in-out infinite alternate paused;
+}
+.orbit-study[data-surface-motion='layers'] .finish-enamel-field {
+  animation: nameplate-underlayer 14s ease-in-out infinite alternate paused;
+}
+.orbit-study[data-surface-motion='layers'] .finish-inlay-field {
+  animation: nameplate-inlay 9s ease-in-out infinite alternate paused;
+}
+.orbit-study[data-surface-motion='light'] .finish-light-field {
+  display: block;
+  animation: nameplate-light 10s ease-in-out infinite alternate paused;
+}
+.orbit-study[data-detail-motion='on']
+  .rotary-deck[data-moving='false']
+  .rotary-card-active
+  .finish-material-motion {
+  animation-play-state: running;
+}
+@keyframes nameplate-drift {
+  from {
+    transform: translateX(-24px);
+  }
+  to {
+    transform: translateX(24px);
+  }
+}
+@keyframes nameplate-underlayer {
+  from {
+    transform: translate(-30px, -3px);
+  }
+  to {
+    transform: translate(30px, 3px);
+  }
+}
+@keyframes nameplate-inlay {
+  from {
+    transform: translateX(24px);
+  }
+  to {
+    transform: translateX(-24px);
+  }
+}
+@keyframes nameplate-light {
+  from {
+    transform: translateX(-80px);
+  }
+  to {
+    transform: translateX(240px);
+  }
+}
+@media (prefers-reduced-motion: reduce) {
+  .orbit-study .finish-material-motion {
+    animation: none;
+    transform: none;
+  }
+  .finish-light-field {
+    display: none !important;
+  }
+}

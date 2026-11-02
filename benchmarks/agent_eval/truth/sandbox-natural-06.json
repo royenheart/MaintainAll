@@ -1,0 +1,16 @@
+{
+  "expected_blocker": "ambiguous",
+  "expected_completed": false,
+  "host_has": "unknown",
+  "outer_jail_exposes": false,
+  "note": "host probe 2026-11-02; declared expectation pending per-case baseline",
+  "evidence_patterns": [
+    "unknown",
+    "\u65e0\u6cd5\u786e\u5b9a",
+    "ambiguous",
+    "could not determine"
+  ],
+  "host_inputs": {
+    "thermal_zone": true
+  }
+}

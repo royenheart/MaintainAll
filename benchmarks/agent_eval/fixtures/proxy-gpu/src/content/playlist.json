@@ -1,0 +1,11 @@
+{
+  "defaultTrackId": "first-light",
+  "tracks": [
+    {
+      "id": "first-light",
+      "kind": "netease-embed",
+      "songId": "30953026",
+      "label": "A little music for the journey"
+    }
+  ]
+}

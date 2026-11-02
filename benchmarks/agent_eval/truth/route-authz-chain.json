@@ -1,0 +1,76 @@
+{
+  "report": "report.json",
+  "entrypoints": [
+    {
+      "route": "/relay/status",
+      "surface": "http",
+      "hostAuth": "yes",
+      "evidence": "src/host/apply.ts:5",
+      "chain": [],
+      "severity": "review",
+      "verdict": "allow"
+    },
+    {
+      "route": "/relay/exec",
+      "surface": "http",
+      "hostAuth": "no",
+      "evidence": "src/host/apply.ts:7",
+      "chain": [
+        "src/host/routes.ts:5",
+        "src/host/registry.ts:8",
+        "src/host/handlers/shell.ts:4"
+      ],
+      "severity": "high",
+      "verdict": "block"
+    },
+    {
+      "route": "/relay/sync",
+      "surface": "http",
+      "hostAuth": "no",
+      "evidence": "src/host/apply.ts:8",
+      "chain": [],
+      "severity": "review",
+      "verdict": "allow"
+    },
+    {
+      "route": "/relay/ws",
+      "surface": "upgrade",
+      "hostAuth": "no",
+      "evidence": "src/host/apply.ts:9",
+      "chain": [
+        "src/host/routes.ts:10",
+        "src/host/registry.ts:8",
+        "src/host/handlers/shell.ts:4"
+      ],
+      "severity": "high",
+      "verdict": "block",
+      "aliases": [
+        "upgrade",
+        "ws"
+      ]
+    },
+    {
+      "route": "/relay/whoami",
+      "surface": "http",
+      "hostAuth": "yes",
+      "evidence": "src/host/apply.ts:6",
+      "chain": [],
+      "severity": "review",
+      "verdict": "safe-with-guard"
+    },
+    {
+      "route": "client/panel.tsx",
+      "surface": "client",
+      "hostAuth": "n/a",
+      "evidence": "src/client/panel.tsx:4",
+      "chain": [],
+      "severity": "review",
+      "verdict": "review",
+      "aliases": [
+        "client:Panel",
+        "panel"
+      ]
+    }
+  ],
+  "evidence_patterns": []
+}

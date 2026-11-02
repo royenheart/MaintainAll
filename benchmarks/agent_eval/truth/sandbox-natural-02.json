@@ -1,0 +1,25 @@
+{
+  "expected_blocker": "missing-input",
+  "expected_completed": false,
+  "host_has": "unknown",
+  "outer_jail_exposes": false,
+  "note": "host probe 2026-11-02: host GPU present; outer jail hides /dev nodes",
+  "evidence_patterns": [
+    "missing",
+    "no model",
+    "no torch",
+    "not found",
+    "0 model"
+  ],
+  "host_has_gpu": true,
+  "host_devices": [
+    "/dev/nvidia0",
+    "/dev/dri/renderD128"
+  ],
+  "min_evidence": 1,
+  "evidence_groups": [],
+  "accepted_blockers": [
+    "missing-input"
+  ],
+  "min_quote_length": 8
+}

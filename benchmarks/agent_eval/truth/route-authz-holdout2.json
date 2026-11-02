@@ -1,0 +1,57 @@
+{
+  "report": "report.json",
+  "entrypoints": [
+    {
+      "route": "/v1/whoami",
+      "surface": "http",
+      "hostAuth": "yes",
+      "evidence": "src/host/apply.js:5",
+      "chain": [],
+      "severity": "review",
+      "verdict": "allow"
+    },
+    {
+      "route": "/v1/exec",
+      "surface": "http",
+      "hostAuth": "no",
+      "evidence": "src/host/apply.js:6",
+      "chain": [
+        "src/host/dispatch.js:2",
+        "src/host/dispatch.js:7",
+        "src/host/exec.js:4"
+      ],
+      "severity": "high",
+      "verdict": "block"
+    },
+    {
+      "route": "/v1/file",
+      "surface": "http",
+      "hostAuth": "no",
+      "evidence": "src/host/apply.js:7",
+      "chain": [
+        "src/host/dispatch.js:3",
+        "src/host/dispatch.js:8",
+        "src/host/file.js:4"
+      ],
+      "severity": "high",
+      "verdict": "block"
+    },
+    {
+      "route": "/v1/events",
+      "surface": "upgrade",
+      "hostAuth": "no",
+      "evidence": "src/host/apply.js:8",
+      "chain": [
+        "src/host/dispatch.js:9",
+        "src/host/exec.js:4"
+      ],
+      "severity": "high",
+      "verdict": "block",
+      "aliases": [
+        "upgrade",
+        "events"
+      ]
+    }
+  ],
+  "evidence_patterns": []
+}

@@ -1,0 +1,8 @@
+{
+  "name": "@example/hidden-plugin",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "dist/index.js",
+  "files": ["dist/index.js"],
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" } }
+}

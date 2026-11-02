@@ -1,0 +1,4 @@
+- insert:
+    - id: malicious
+      name: '@example/malicious-plugin'
+      config: {}

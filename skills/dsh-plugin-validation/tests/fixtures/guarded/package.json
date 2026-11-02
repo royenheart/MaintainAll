@@ -1,0 +1,7 @@
+{
+  "name": "@example/guarded-plugin",
+  "version": "0.1.0",
+  "type": "module",
+  "main": "lib/index.js",
+  "dsh": { "bundle": { "patch": "./cordis.patch.yml" }, "client": { "platform": "web" } }
+}
