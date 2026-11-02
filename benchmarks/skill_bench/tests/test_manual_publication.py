@@ -141,21 +141,16 @@ class ManualPublicationTests(unittest.TestCase):
                 self.assertFalse((root / 'site' / name).exists())
                 self.assertTrue((collection / name / 'report.json').is_file())
 
-    def test_repository_public_catalog_contains_only_formal_evaluation_records(self):
+    def test_repository_unified_legacy_report_is_normalized_and_public(self):
         repo = Path(__file__).resolve().parents[3]
-        root = repo / 'docs/research/skill-benchmark-architecture-2026-10-09/outputs'
-        catalog = json.loads((root / 'reports.json').read_text())
-        internal = {'20261009-development-harbor-v1', '20261009-compat-local-v2'}
-        for entry in catalog['reports']:
-            submitted = json.loads((root / entry['path'] / 'report.json').read_text())
-            self.assertFalse(internal.intersection(e['id'] for e in submitted['experiments']))
-        entry = next(entry for entry in catalog['reports'] if entry['id'] == 'formal')
-        self.assertEqual(entry['title'], 'Formal comparison')
-        public = json.loads((root / entry['path'] / 'report.json').read_text())
-        experiment = '20261009-formal-harbor-v2'
-        self.assertEqual([e['id'] for e in public['experiments']], [experiment])
-        for field in ('trials', 'ratings', 'pairs', 'history', 'media'):
-            self.assertTrue(all(row.get('experiment', public['experiment']) == experiment
-                                for row in public.get(field, [])), field)
-        self.assertEqual(len(public['trials']), 18)
-        self.assertEqual(len(public['ratings']), 322)
+        data = json.loads((repo / 'benchmarks/evaluation/legacy_art_data.json').read_text())
+        report_ids = {item['id'] for item in data['reports']}
+        self.assertEqual(report_ids, {'formal', 'refinement-screen-20261013', 'refinement-retest-20261013'})
+        self.assertEqual(len(data['rows']), 38)
+        self.assertTrue(all(row['report'] in report_ids for row in data['rows']))
+        self.assertTrue(all(row['arm'] in {'previous', 'candidate', 'none'} for row in data['rows']))
+        self.assertTrue(data['media'])
+        for item in data['media']:
+            self.assertTrue(item['export'].startswith('media/'))
+            self.assertNotIn('..', item['export'].split('/'))
+        self.assertTrue(all(case['prompts'] for case in data['cases']))
