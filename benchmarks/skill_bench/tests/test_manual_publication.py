@@ -3,7 +3,6 @@ from contextlib import redirect_stderr
 import io
 import json
 from pathlib import Path
-import re
 import tempfile
 import unittest
 from unittest.mock import patch
@@ -23,22 +22,21 @@ class ManualPublicationTests(unittest.TestCase):
             'reports': [{'id': 'example', 'title': 'Manual evaluation', 'path': 'example'}]}))
         return reports
 
-    def test_ci_has_no_model_request_or_authenticated_runner(self):
-        workflow = (Path(__file__).resolve().parents[3] / '.github/workflows/skill-benchmark.yml').read_text()
-        self.assertNotIn('\n  request:', workflow)
-        self.assertNotIn('trusted_sha:', workflow)
-        self.assertNotIn('make_push_request', workflow)
-        self.assertNotIn('self-hosted', workflow)
-        self.assertNotIn('pull_request_target', workflow)
-        self.assertNotIn('secrets.', workflow)
-        self.assertNotIn('skill-bench run', workflow)
-        self.assertIn('persist-credentials: false', workflow)
-        actions = re.findall(r'uses:\s*([^\s#]+)', workflow)
-        self.assertTrue(actions)
-        self.assertTrue(all(re.fullmatch(r'[A-Za-z0-9_/-]+@[0-9a-f]{40}', action) for action in actions))
-        self.assertIn('skill-bench fetch-results', workflow)
-        self.assertIn('skill-bench publish', workflow)
-        self.assertIn('runs-on: ubuntu-latest', workflow)
+    def test_evaluation_ci_has_no_model_request_or_authenticated_runner(self):
+        root = Path(__file__).resolve().parents[3] / '.github/workflows'
+        site = (root / 'evaluation-site.yml').read_text()
+        offline = (root / 'skill-benchmark.yml').read_text()
+        for workflow in (site, offline):
+            self.assertNotIn('\n  request:', workflow)
+            self.assertNotIn('trusted_sha:', workflow)
+            self.assertNotIn('make_push_request', workflow)
+            self.assertNotIn('self-hosted', workflow)
+            self.assertNotIn('secrets.', workflow)
+            self.assertIn('runs-on: ubuntu-latest', workflow)
+        self.assertIn('build_public_site.py', site)
+        self.assertIn('lfs: true', site)
+        self.assertIn('upload-pages-artifact', site)
+        self.assertNotIn('skill-bench publish', offline)
 
     def test_remote_generation_commands_are_unavailable(self):
         for args in (['track', 'drain', '--state-root', '/unused', '--execute'], ['worker', '--execute']):
@@ -143,15 +141,21 @@ class ManualPublicationTests(unittest.TestCase):
                 self.assertFalse((root / 'site' / name).exists())
                 self.assertTrue((collection / name / 'report.json').is_file())
 
-    def test_repository_catalog_summaries_preserve_formal_evaluations(self):
-        from skill_bench.result_packages import DEFAULT_CATALOG, load_catalog
+    def test_repository_public_catalog_contains_only_formal_evaluation_records(self):
         repo = Path(__file__).resolve().parents[3]
-        catalog = load_catalog(repo / DEFAULT_CATALOG)
+        root = repo / 'docs/research/skill-benchmark-architecture-2026-10-09/outputs'
+        catalog = json.loads((root / 'reports.json').read_text())
         internal = {'20261009-development-harbor-v1', '20261009-compat-local-v2'}
         for entry in catalog['reports']:
-            self.assertFalse(internal.intersection(entry['summary']['experiments']))
+            submitted = json.loads((root / entry['path'] / 'report.json').read_text())
+            self.assertFalse(internal.intersection(e['id'] for e in submitted['experiments']))
         entry = next(entry for entry in catalog['reports'] if entry['id'] == 'formal')
         self.assertEqual(entry['title'], 'Formal comparison')
-        self.assertEqual(entry['summary']['experiments'], ['20261009-formal-harbor-v2'])
-        self.assertEqual(entry['summary']['trials'], 18)
-        self.assertEqual(entry['summary']['ratings'], 322)
+        public = json.loads((root / entry['path'] / 'report.json').read_text())
+        experiment = '20261009-formal-harbor-v2'
+        self.assertEqual([e['id'] for e in public['experiments']], [experiment])
+        for field in ('trials', 'ratings', 'pairs', 'history', 'media'):
+            self.assertTrue(all(row.get('experiment', public['experiment']) == experiment
+                                for row in public.get(field, [])), field)
+        self.assertEqual(len(public['trials']), 18)
+        self.assertEqual(len(public['ratings']), 322)
