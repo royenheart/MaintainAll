@@ -40,7 +40,7 @@ jobs:
       - name: Validate task requirements, assets and rubrics
         shell: bash
         run: |
-          rg --files benchmarks -g suite.json | while IFS= read -r suite; do
+          find benchmarks -name suite.json -type f -print0 | while IFS= read -r -d '' suite; do
             uv run --project benchmarks/skill_bench skill-bench validate --suite "$suite"
           done
       - name: Run deterministic framework and grading tests
