@@ -211,11 +211,11 @@ instances:
   - name: dsh-a
     port: 3080
     profile: web
-    home: /home/royenheart/.dsh
+    home: /home/example/.dsh
   - name: dsh-b
     port: 3081
     profile: web
-    home: /home/royenheart/.dsh-3081
+    home: /home/example/.dsh-3081
 ```
 
 `up` / `reload` 会按 `instances.yml` 找到每个端口的 `DSH_HOME`，读取对应
