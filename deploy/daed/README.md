@@ -4,7 +4,7 @@
 
 ## Maintaining the private fork
 
-The maintained source is the private [royenheart/daed repository](https://github.com/royenheart/daed), checked out locally at `~/projects/daed`. [docker-compose.yml](docker-compose.yml) selects the runtime image through `DAED_IMAGE`; without an override it pins the existing production image by digest. It has no build step. Editing these files, rendering Compose configuration, and building an image do not apply a deployment. An explicit `up`, restart, reload, or replacement of the running service requires the operator's approval. The quick-start commands below describe first-time installation, not maintenance of the running instance.
+The maintained source is the private [royenheart/daed repository](https://github.com/royenheart/daed), checked out locally at `~/projects/daed`. [docker-compose.yml](docker-compose.yml) selects the runtime image through `DAED_IMAGE`; without an override it falls back to the pinned upstream image. The deployed host selects the reviewed private-fork image through the local, ignored `.env`. The Compose files have no build step. Editing these files, rendering Compose configuration, and building an image do not apply a deployment. An explicit `up`, restart, reload, or replacement of the running service requires the operator's approval. The quick-start commands below describe first-time installation, not maintenance of the running instance.
 
 Paths and candidate image names in the command examples are customizable. `~/projects/daed` is this host's example checkout location, not a hard-coded build path. Set `DAED_SOURCE_DIR` to the actual source directory, `DAED_BUILD_IMAGE` to the desired build output tag, and `DAED_IMAGE` to the reviewed runtime image tag or digest. Agents must inspect the target host and operator's requested image before selecting these values; the examples do not authorize deploying them.
 
@@ -21,6 +21,8 @@ git -C "$DAED_SOURCE_DIR" submodule status --recursive
 ```
 
 The imported checkout currently records wing `dc503088945812c11235b35362d2bfa1a4c3bdf0`. That dependency chain includes the upstream HTTP probe fix and only the earlier AnyTLS lifecycle fixes; it does not contain all current dae fixes or the additional blocked-TLS-close patch. Update and test the wing/core/outbound pins in the source repository before calling an image fixed. Commit the exact submodule revisions and effective Go module replacements. A clean, recursively initialized checkout is required for a source revision label to identify the build accurately.
+
+The source checkout alone does not define the binary: the fork's private wing fixes are build-time patches recorded in the source repository's `patches/` directory (manifest `patches/wing.json`). Both the native `make` build and the fork's Dockerfiles apply them through `scripts/prepare-wing.py`, which verifies the patch and result checksums and fails closed otherwise. A candidate image must be produced by one of those documented build paths; a binary compiled through a raw `go build` or copied into an existing image bypasses the preparation steps and can miss fixes such as the per-control-plane runtime-statistics read path that the dashboard traffic charts depend on.
 
 ### Prepare a local candidate without deploying
 
@@ -46,7 +48,7 @@ docker compose -f docker-compose.yml -f docker-compose.build.yml build daed
 docker image inspect "$DAED_BUILD_IMAGE" --format '{{.Id}} {{json .Config.Labels}}'
 ```
 
-Do not use `up`, `up --build`, or `run` with this overlay while preparing a candidate. A build does not restart daed, but compilation still consumes host CPU and memory; prefer CI or a separate build host when production resource headroom is limited. Complete the source regression/race tests and isolated memory benchmarks before requesting a deployment. Do not reuse the live config directory or host eBPF attachment points in those tests. The build instructions are not evidence that this particular checkout has built or passed tests.
+The build overlay applies the fork's build-time wing patches inside the build stage, so the produced image carries the same fixes as a documented native build. Do not use `up`, `up --build`, or `run` with this overlay while preparing a candidate. A build does not restart daed, but compilation still consumes host CPU and memory; prefer CI or a separate build host when production resource headroom is limited. Complete the source regression/race tests and isolated memory benchmarks before requesting a deployment. Do not reuse the live config directory or host eBPF attachment points in those tests. The build instructions are not evidence that this particular checkout has built or passed tests.
 
 ### Optional private GHCR distribution
 
@@ -72,7 +74,7 @@ For a registry candidate, substitute its reviewed digest for `$DAED_BUILD_IMAGE`
 docker compose up -d --no-deps --no-build --pull never daed
 ```
 
-After activation, check the panel, proxy connectivity, memory/goroutine/FD trends, and resource reclamation under the same workload used for the baseline. If rollback is approved, restore the old `DAED_IMAGE` and any required compatible database backup, then recreate using the same runtime command. Do not run `docker compose down` or prune the previous image during this process. There is no automatic update, migration, restart, or rollback command in the preparation path.
+After activation, check the panel, proxy connectivity, memory/goroutine/FD trends, and resource reclamation under the same workload used for the baseline. Confirm that the traffic overview charts populate and that `runtimeOverview.samples` in the dashboard API keeps growing: a flat chart with a single zero sample means the running image was built through a path that skipped the wing runtime-statistics patch. If rollback is approved, restore the old `DAED_IMAGE` and any required compatible database backup, then recreate using the same runtime command. Do not run `docker compose down` or prune the previous image during this process. There is no automatic update, migration, restart, or rollback command in the preparation path.
 
 ## 网络拓扑
 
