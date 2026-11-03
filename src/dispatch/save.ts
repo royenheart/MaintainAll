@@ -12,8 +12,18 @@ import { existsSync } from 'node:fs'
 import { rm } from 'node:fs/promises'
 import { TASK_TRIGGER_SOURCES } from '../core/contract.ts'
 import { join } from 'node:path'
-import type { SeedEvent, TaskManifest, TaskMode, TaskTrigger } from '../core/contract.ts'
-import { compactSeedEvents, extractSeedEvents, validateSeedCwd } from '../core/seed.ts'
+import type { SeedEvent, TaskManifest, TaskMode, TaskSeed, TaskTrigger } from '../core/contract.ts'
+import {
+  MAX_EVENT_COUNT,
+  MAX_SEED_BYTES,
+  compactSeedEvents,
+  extractSeedEvents,
+  findLatestFittingBoundary,
+  seedByteSizes,
+  serializedSeedBytes,
+  validateSeedBounds,
+  validateSeedCwd,
+} from '../core/seed.ts'
 import { readTaskAsset, writeTaskAsset, writeTaskMeta } from '../core/task-writer.ts'
 import { loadRegistryState, saveRegistryState } from '../core/storage.ts'
 import { normalizeTriggerFilter } from '../core/triggers/normalize.ts'
@@ -49,6 +59,10 @@ export interface SaveTaskMeta {
   icon?: string
   color?: string
   naturalPrompt?: string
+  /** Continue the source Session on replay instead of creating a new Run session. */
+  continueSession?: boolean
+  /** Filled by the materialize path with the source Session id. */
+  sourceSessionId?: string
 }
 
 const TASK_TRIGGER_SOURCE_SET = new Set<string>(TASK_TRIGGER_SOURCES)
@@ -73,7 +87,11 @@ export function validateTaskTriggers(triggers: readonly TaskTrigger[]): void {
     if (ids.has(trigger.id)) throw new Error(`duplicate trigger id: ${trigger.id}`)
     ids.add(trigger.id)
     if (!TASK_TRIGGER_SOURCE_SET.has(trigger.source)) {
-      throw new Error(`trigger ${trigger.id}: unsupported source '${String(trigger.source)}'`)
+      throw new Error(
+        `trigger ${trigger.id}: unsupported source '${String(trigger.source)}'; source must be one of `
+        + `${TASK_TRIGGER_SOURCES.join(', ')}. Source is the trigger kind, not a path, command, or `
+        + 'schedule expression; put selectors in filter and schedule rules in params',
+      )
     }
     if (typeof trigger.enabled !== 'boolean') {
       throw new Error(`trigger ${trigger.id}: enabled must be a boolean`)
@@ -143,6 +161,40 @@ export function validateTaskTriggers(triggers: readonly TaskTrigger[]): void {
   }
 }
 
+/**
+ * Validate the creation-time continuation contract before a save prompt is
+ * injected or an asset is written. `continueSession` requires a fresh capture
+ * mode (no seed) and forbids preset bindings because the source Session keeps
+ * its own agent and permission configuration.
+ */
+export function validateContinuationCreation(
+  meta: Pick<SaveTaskMeta, 'continueSession' | 'taskMode' | 'agentPresetHint' | 'permissionPresetHint'>,
+): void {
+  if (meta.continueSession !== true) return
+  if (meta.taskMode !== 'fresh') {
+    throw new Error('continuation tasks require taskMode \'fresh\' so no replay seed is captured')
+  }
+  if (meta.agentPresetHint !== undefined || meta.permissionPresetHint !== undefined) {
+    throw new Error('continuation tasks cannot bind an agent preset or permission preset; the source Session keeps its own')
+  }
+}
+
+/** Creation-time replay target recorded by an existing task asset. */
+export function replayModeOfManifest(manifest: TaskManifest): 'new-session' | 'continue-session' {
+  return manifest.bindings?.continueSession === undefined ? 'new-session' : 'continue-session'
+}
+
+/** Reject an attempt to change the creation-time replay target on re-save. */
+export function assertReplayModeUnchanged(
+  existing: TaskManifest,
+  requested: 'new-session' | 'continue-session' | undefined,
+): void {
+  if (requested === undefined) return
+  if (requested !== replayModeOfManifest(existing)) {
+    throw new Error('replayMode is fixed at task creation; delete and re-create the task to change it')
+  }
+}
+
 /** Validate and normalize `meta` into a `TaskManifest`. */
 export function manifestFromMeta(meta: SaveTaskMeta): TaskManifest {
   if (!/^[a-z0-9][a-z0-9-]*$/.test(meta.id)) {
@@ -150,6 +202,18 @@ export function manifestFromMeta(meta: SaveTaskMeta): TaskManifest {
   }
   if (meta.name.trim() === '') throw new Error('task name must not be empty')
   if (meta.taskMode === 'auto') throw new Error('auto is a request mode; choose safe-copy, compact, or fresh')
+  validateContinuationCreation(meta)
+  if (meta.continueSession === true
+    && (typeof meta.sourceSessionId !== 'string' || meta.sourceSessionId.trim() === '')) {
+    throw new Error('continuation tasks require the source Session id')
+  }
+  const bindings = {
+    ...(meta.agentPresetHint === undefined ? {} : { agentPreset: { hint: meta.agentPresetHint } }),
+    ...(meta.permissionPresetHint === undefined ? {} : { permissionPreset: { hint: meta.permissionPresetHint } }),
+    ...(meta.continueSession !== true
+      ? {}
+      : { continueSession: { sessionId: meta.sourceSessionId as string } }),
+  }
   return {
     format: 'dsh-opskit/1',
     id: meta.id,
@@ -160,27 +224,128 @@ export function manifestFromMeta(meta: SaveTaskMeta): TaskManifest {
     ...(meta.icon === undefined ? {} : { icon: meta.icon }),
     ...(meta.color === undefined ? {} : { color: meta.color }),
     ...(meta.naturalPrompt === undefined ? {} : { naturalPrompt: meta.naturalPrompt }),
-    ...(meta.agentPresetHint !== undefined || meta.permissionPresetHint !== undefined
-      ? {
-          bindings: {
-            ...(meta.agentPresetHint !== undefined ? { agentPreset: { hint: meta.agentPresetHint } } : {}),
-            ...(meta.permissionPresetHint !== undefined
-              ? { permissionPreset: { hint: meta.permissionPresetHint } }
-              : {}),
-          },
-        }
-      : {}),
+    ...(Object.keys(bindings).length === 0 ? {} : { bindings }),
   }
 }
 
-/** Cut the replay seed from a session's durable events. */
-export function seedFromSession(session: SaveSessionFace, boundarySeq: number): { cwd: string; events: SeedEvent[] } {
+/** Read a session's durable event prefix and its validated replay cwd. */
+function sessionSeedEvents(session: SaveSessionFace, boundarySeq: number): { cwd: string; events: SeedEvent[] } {
   const cwd = validateSeedCwd(session.header.cwd)
   const events = extractSeedEvents(
     session.snapshotEvents().map((event) => ({ type: event.type, seq: event.seq, data: event.data })),
     boundarySeq,
   )
   return { cwd, events }
+}
+
+/** Cut the replay seed from a session's durable events. */
+export function seedFromSession(session: SaveSessionFace, boundarySeq: number): { cwd: string; events: SeedEvent[] } {
+  return sessionSeedEvents(session, boundarySeq)
+}
+
+/** Measured replay-seed cost of one capture boundary for both capture modes. */
+export interface SessionSeedSummary {
+  cwd: string
+  boundarySeq: number
+  /** The durable seed prefix the capture modes are measured against. */
+  events: SeedEvent[]
+  safeCopyBytes: number
+  compactBytes: number
+  eventCount: number
+  compactEventCount: number
+}
+
+/**
+ * Measure the safe-copy and compact replay-seed sizes at `boundarySeq` without
+ * writing an asset. The Save dialog preflight and `ops_save_task` both use this
+ * so an oversized capture fails with the measured numbers before the model
+ * spends a turn or a task directory is created.
+ */
+export function summarizeSessionSeed(session: SaveSessionFace, boundarySeq: number): SessionSeedSummary {
+  const { cwd, events } = sessionSeedEvents(session, boundarySeq)
+  const sizes = seedByteSizes(cwd, events)
+  return {
+    cwd,
+    boundarySeq,
+    events,
+    safeCopyBytes: sizes.safeCopy,
+    compactBytes: sizes.compact,
+    eventCount: sizes.eventCount,
+    compactEventCount: sizes.compactEventCount,
+  }
+}
+
+/** Explain why a capture mode does not fit the seed budget, or `undefined` when it does. */
+function seedBudgetFailure(
+  session: SaveSessionFace,
+  summary: SessionSeedSummary,
+  taskMode: 'safe-copy' | 'compact',
+): string | undefined {
+  const bytes = taskMode === 'compact' ? summary.compactBytes : summary.safeCopyBytes
+  const eventCount = taskMode === 'compact' ? summary.compactEventCount : summary.eventCount
+  if (bytes <= MAX_SEED_BYTES && eventCount <= MAX_EVENT_COUNT) return undefined
+  const allEvents = session.snapshotEvents().map((event) => ({
+    type: event.type,
+    seq: event.seq,
+    data: event.data,
+  }))
+  const overBytes = bytes > MAX_SEED_BYTES
+  const reason = overBytes
+    ? `seed is too large (${bytes} > ${MAX_SEED_BYTES} bytes)`
+    : `seed has too many events (${eventCount} > ${MAX_EVENT_COUNT})`
+  const parts = [
+    `invalid seed: ${reason} at boundarySeq ${summary.boundarySeq} with taskMode '${taskMode}'`,
+  ]
+  if (taskMode === 'safe-copy') {
+    parts.push(`compact mode at the same boundary needs ${summary.compactBytes} bytes`)
+  }
+  const fitting = findLatestFittingBoundary(summary.cwd, allEvents, summary.boundarySeq, taskMode)
+  if (fitting !== undefined) {
+    parts.push(
+      `the latest completed turn that fits ${taskMode} is boundarySeq ${fitting.seq} (${fitting.bytes} bytes)`,
+    )
+  } else if (taskMode === 'safe-copy') {
+    const compactFitting = findLatestFittingBoundary(summary.cwd, allEvents, summary.boundarySeq, 'compact')
+    if (compactFitting !== undefined) {
+      parts.push(
+        `the latest completed turn that fits compact is boundarySeq ${compactFitting.seq} (${compactFitting.bytes} bytes)`,
+      )
+    }
+  }
+  parts.push(taskMode === 'safe-copy'
+    ? 'retry with taskMode "compact", a lower boundarySeq, or "fresh"'
+    : 'retry with a lower boundarySeq or "fresh"')
+  return parts.join('; ')
+}
+
+/** Throw when `summary` cannot be written in `taskMode`; otherwise no-op. */
+export function assertSeedBudget(
+  session: SaveSessionFace,
+  summary: SessionSeedSummary,
+  taskMode: 'safe-copy' | 'compact',
+): void {
+  const failure = seedBudgetFailure(session, summary, taskMode)
+  if (failure !== undefined) throw new Error(failure)
+}
+
+/**
+ * Build the replay seed for one capture mode, enforcing the serialized seed
+ * budgets first. `fresh` writes no seed; `auto` is a request mode and must be
+ * resolved by the caller before this function is called.
+ */
+export function buildTaskSeed(
+  session: SaveSessionFace,
+  boundarySeq: number,
+  taskMode: TaskMode,
+): TaskSeed | undefined {
+  if (taskMode === 'fresh') return undefined
+  if (taskMode === 'auto') throw new Error('auto is a request mode; choose safe-copy, compact, or fresh')
+  const summary = summarizeSessionSeed(session, boundarySeq)
+  assertSeedBudget(session, summary, taskMode)
+  const events = taskMode === 'compact' ? compactSeedEvents(summary.events) : summary.events
+  const seed = { cwd: summary.cwd, events }
+  validateSeedBounds(seed, serializedSeedBytes(seed.cwd, seed.events))
+  return seed
 }
 
 /**
@@ -196,15 +361,13 @@ export async function materializeTaskFromSave(
   if (session === undefined) throw new Error(`unknown session: ${request.sessionId}`)
   const taskMode = request.meta.taskMode ?? 'safe-copy'
   if (taskMode === 'auto') throw new Error('auto is a request mode; choose safe-copy, compact, or fresh')
-  const rawSeed = taskMode === 'fresh'
-    ? undefined
-    : seedFromSession(session, request.boundarySeq)
-  const seed = rawSeed === undefined || taskMode !== 'compact'
-    ? rawSeed
-    : { cwd: rawSeed.cwd, events: compactSeedEvents(rawSeed.events) }
+  validateContinuationCreation({ ...request.meta, taskMode })
+  const seed = buildTaskSeed(session, request.boundarySeq, taskMode)
   const triggers = request.meta.triggers.map(normalizeTriggerFilter)
   validateTaskTriggers(triggers)
-  const manifest = manifestFromMeta(request.meta)
+  const manifest = manifestFromMeta(request.meta.continueSession === true
+    ? { ...request.meta, sourceSessionId: session.id }
+    : request.meta)
   if (existsSync(join(root, 'ops', manifest.id))) {
     throw new Error(`task already exists: ${manifest.id}; edit it instead of materializing a new asset`)
   }
@@ -315,6 +478,15 @@ export async function materializeTaskEdit(
 }
 
 function defaultAgentsMd(manifest: TaskManifest): string {
+  const execution = manifest.bindings?.continueSession === undefined
+    ? [
+        'Follow the replay seed context and complete the requested ops task.',
+        'Report what you did, what you changed, and any follow-up the user should know.',
+      ]
+    : [
+        'Read and follow this runbook in the task asset directory; the run continues the source session and uses no replay seed.',
+        'Report what you did, what changed, and any follow-up the user should know.',
+      ]
   return [
     `# ${manifest.name}`,
     '',
@@ -322,8 +494,7 @@ function defaultAgentsMd(manifest: TaskManifest): string {
     '',
     '## Execution',
     '',
-    'Follow the replay seed context and complete the requested ops task.',
-    'Report what you did, what you changed, and any follow-up the user should know.',
+    ...execution,
     '',
   ].join('\n')
 }

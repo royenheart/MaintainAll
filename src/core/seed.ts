@@ -57,6 +57,85 @@ export function validateSeedBounds(seed: TaskSeed, seedBytes?: number): void {
   }
 }
 
+/** Capture modes that write a replay seed. */
+export type SeedCaptureMode = 'safe-copy' | 'compact'
+
+/** Exact byte length of the `seed/session.jsonl` text for one header and event list. */
+export function serializedSeedBytes(cwd: string, events: readonly SeedEvent[]): number {
+  let bytes = Buffer.byteLength(JSON.stringify({ type: 'session', cwd }), 'utf8') + 1
+  for (const event of events) bytes += Buffer.byteLength(JSON.stringify(event), 'utf8') + 1
+  return bytes
+}
+
+/** Serialized sizes for both capture modes at one boundary. */
+export interface SeedByteSizes {
+  safeCopy: number
+  compact: number
+  eventCount: number
+  compactEventCount: number
+}
+
+/** Measure the safe-copy and compact serialized seed sizes of the same events. */
+export function seedByteSizes(cwd: string, events: readonly SeedEvent[]): SeedByteSizes {
+  const compact = compactSeedEvents(events)
+  return {
+    safeCopy: serializedSeedBytes(cwd, events),
+    compact: serializedSeedBytes(cwd, compact),
+    eventCount: events.length,
+    compactEventCount: compact.length,
+  }
+}
+
+/** One completed-turn boundary that fits a seed budget. */
+export interface FittingSeedBoundary {
+  seq: number
+  bytes: number
+  eventCount: number
+}
+
+/**
+ * Walk the durable event prefix once and return the latest `turn/end` whose
+ * seed for `mode` stays within the byte and event-count budgets. This mirrors
+ * {@link extractSeedEvents} exactly: only durable events up to the completed
+ * turn are counted, and events after `boundarySeq` are ignored.
+ */
+export function findLatestFittingBoundary(
+  cwd: string,
+  events: readonly SeedEvent[],
+  boundarySeq: number,
+  mode: SeedCaptureMode,
+  limits: { maxBytes?: number; maxEvents?: number } = {},
+): FittingSeedBoundary | undefined {
+  const maxBytes = limits.maxBytes ?? MAX_SEED_BYTES
+  const maxEvents = limits.maxEvents ?? MAX_EVENT_COUNT
+  // Mirror extractSeedEvents: the complete selected prefix must be contiguous
+  // even though only durable events contribute bytes and count.
+  assertContiguousSeq(events.filter((event) => event.seq <= boundarySeq))
+  const headerBytes = Buffer.byteLength(JSON.stringify({ type: 'session', cwd }), 'utf8') + 1
+  let safeCopyBytes = headerBytes
+  let compactBytes = headerBytes
+  let safeCopyCount = 0
+  let compactCount = 0
+  let fitting: FittingSeedBoundary | undefined
+  for (const event of events) {
+    if (event.seq > boundarySeq || !DURABLE_EVENT_TYPES.has(event.type)) continue
+    safeCopyCount += 1
+    safeCopyBytes += Buffer.byteLength(JSON.stringify(event), 'utf8') + 1
+    const compactEvent = compactSeedEvent(event)
+    if (compactEvent !== undefined) {
+      compactCount += 1
+      compactBytes += Buffer.byteLength(JSON.stringify(compactEvent), 'utf8') + 1
+    }
+    if (event.type !== 'turn/end') continue
+    const bytes = mode === 'compact' ? compactBytes : safeCopyBytes
+    const eventCount = mode === 'compact' ? compactCount : safeCopyCount
+    if (bytes <= maxBytes && eventCount <= maxEvents) {
+      fitting = { seq: event.seq, bytes, eventCount }
+    }
+  }
+  return fitting
+}
+
 /** Durable event types retained in `seed/session.jsonl`. */
 export const DURABLE_EVENT_TYPES: ReadonlySet<string> = new Set([
   'turn/start',
@@ -111,24 +190,33 @@ export function extractSeedEvents(events: SeedEvent[], boundarySeq: number): See
 }
 
 /**
- * Deterministic compaction for `taskMode: 'compact'`: strip reasoning blocks
- * from `assistant/message` content and drop assistant messages left empty.
- * Tool calls, tool results, and user messages are preserved.
+ * Deterministic compaction for `taskMode: 'compact'` applied to one event:
+ * strip reasoning blocks from `assistant/message` content, drop an assistant
+ * message left empty, and clear its timed stream (compact stores no timed
+ * streams). Every other event is returned unchanged.
  */
-export function compactSeedEvents(events: SeedEvent[]): SeedEvent[] {
-  return events.flatMap((event) => {
-    if (event.type !== 'assistant/message' || typeof event.data !== 'object' || event.data === null) {
-      return [event]
-    }
-    const data = event.data as { message?: { content?: unknown[] } }
-    const content = Array.isArray(data.message?.content) ? data.message.content : []
-    const kept = content.filter((block) => {
-      if (typeof block !== 'object' || block === null) return true
-      return (block as { type?: string }).type !== 'reasoning'
-    })
-    if (kept.length === 0) return []
-    return [{ ...event, data: { ...data, message: { ...data.message, content: kept }, stream: [] } }]
+export function compactSeedEvent(event: SeedEvent): SeedEvent | undefined {
+  if (event.type !== 'assistant/message' || typeof event.data !== 'object' || event.data === null) {
+    return event
+  }
+  const data = event.data as { message?: { content?: unknown[] } }
+  const content = Array.isArray(data.message?.content) ? data.message.content : []
+  const kept = content.filter((block) => {
+    if (typeof block !== 'object' || block === null) return true
+    return (block as { type?: string }).type !== 'reasoning'
   })
+  if (kept.length === 0) return undefined
+  return { ...event, data: { ...data, message: { ...data.message, content: kept }, stream: [] } }
+}
+
+/** Apply {@link compactSeedEvent} to a whole seed while preserving order. */
+export function compactSeedEvents(events: readonly SeedEvent[]): SeedEvent[] {
+  const compacted: SeedEvent[] = []
+  for (const event of events) {
+    const next = compactSeedEvent(event)
+    if (next !== undefined) compacted.push(next)
+  }
+  return compacted
 }
 
 const LEFT_DELIMITERS: ReadonlySet<string> = new Set([

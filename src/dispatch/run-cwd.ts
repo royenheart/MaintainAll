@@ -32,6 +32,11 @@ export function runTimestamp(now: Date): string {
   return `${date}-${time}`
 }
 
+/** Filesystem-safe unique run id: `<timestamp>-<8 random hex>`. */
+export function newRunId(now = new Date()): string {
+  return `${runTimestamp(now)}-${randomBytes(4).toString('hex')}`
+}
+
 /**
  * Create a fresh run cwd for `taskId` under the plugin data `root`:
  * `ops/<task-id>/runs/<ts>-<runid>/`, then copy the task's `AGENTS.md`,
@@ -45,8 +50,7 @@ export function runTimestamp(now: Date): string {
  */
 export async function createRunCwd(root: string, taskId: string, now = new Date()): Promise<string> {
   const taskDir = join(root, 'ops', taskId)
-  const runId = randomBytes(4).toString('hex')
-  const runCwd = join(taskDir, 'runs', `${runTimestamp(now)}-${runId}`)
+  const runCwd = join(taskDir, 'runs', newRunId(now))
   try {
     await mkdir(runCwd, { recursive: true })
 

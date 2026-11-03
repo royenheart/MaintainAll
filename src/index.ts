@@ -18,7 +18,7 @@ import { Service, type Context } from '@deepseek-ai/cordis'
 import type { RegistryState, RunMapState, TaskManifest, TaskMode, TaskTrigger } from './core/contract.ts'
 import { assertTaskId, parseManifest } from './core/manifest.ts'
 import { exportTask, importTask } from './core/opskit.ts'
-import { compactSeedEvents, extractSeedEvents } from './core/seed.ts'
+import { MAX_EVENT_COUNT, MAX_SEED_BYTES } from './core/seed.ts'
 import {
   loadTriggerState,
   pluginDataRoot,
@@ -31,13 +31,20 @@ import { normalizeEvent } from './core/triggers/event.ts'
 import { normalizeTriggerFilter } from './core/triggers/normalize.ts'
 import type { EngineTask } from './engine/trigger-engine.ts'
 import {
+  assertReplayModeUnchanged,
+  assertSeedBudget,
+  buildTaskSeed,
   materializeTaskEdit,
   materializeTaskFromSave,
+  summarizeSessionSeed,
+  validateContinuationCreation,
   validateTaskTriggers,
   type SaveSessionFace,
   type SaveSessionsFace,
   type SaveTaskMeta,
 } from './dispatch/save.ts'
+import { buildEditPrompt, buildSavePrompt, type SavePromptSeed } from './dispatch/save-prompt.ts'
+import { OPS_SAVE_TASK_TRIGGER_GUIDE, OPS_SAVE_TASK_TRIGGER_SCHEMA } from './dispatch/tool-contract.ts'
 import { dispatchReplay } from './dispatch/replay.ts'
 import { TaskStateStore } from './host/task-state.ts'
 import { ReplayRuntime } from './host/replay-runtime.ts'
@@ -54,6 +61,9 @@ export const name = 'maintainall'
 
 /** Base pathname of every route this plugin serves. */
 export const ROUTE_BASE = '/plugins/@royenheart/dsh-plugin-maintainall'
+
+/** Task creation modes a save request may name. */
+const TASK_MODE_VALUES: ReadonlySet<string> = new Set(['safe-copy', 'compact', 'fresh', 'auto'])
 
 /** Composition-time config: `root` overrides the plugin data root (tests). */
 export interface MaintainAllConfig {
@@ -97,88 +107,13 @@ function isPlainObject(value: unknown): value is Record<string, unknown> {
 
 /** Session face used when the Save dialog asks the model to auto-generate the task. */
 interface FollowupAgentFace {
-  readonly session: { snapshotEvents(): ReadonlyArray<{ readonly seq: number }> }
+  readonly session: SaveSessionFace
   followup(message: unknown): void
 }
 
 /** Agent registry face used for prompt injection. */
 interface AgentsFace {
   get(id: string): FollowupAgentFace | undefined
-}
-
-/** Render the prompt that asks the model to re-set an existing task. */
-function buildEditPrompt(
-  task: Awaited<ReturnType<typeof readTaskAsset>>,
-  description: string,
-  wants?: { icon?: string; color?: string; naturalPrompt?: string },
-): string {
-  const mode = task.manifest.taskMode ?? 'safe-copy'
-  const desired = [
-    wants?.icon === undefined ? null : `- \`icon\` must be ${JSON.stringify(wants.icon)}`,
-    wants?.color === undefined ? null : `- \`color\` must be ${JSON.stringify(wants.color)}`,
-    wants?.naturalPrompt === undefined || wants.naturalPrompt === ''
-      ? null
-      : `- \`naturalPrompt\` must be ${JSON.stringify(wants.naturalPrompt)}`,
-  ].filter((line) => line !== null)
-  return [
-    `Reconfigure the ops task "${task.manifest.name}" (id: ${task.manifest.id}).`,
-    '',
-    "The user's new requirements in natural language:",
-    description,
-    '',
-    'Current task information:',
-    '```json',
-    JSON.stringify({ manifest: task.manifest, triggers: task.triggers }, null, 2),
-    '```',
-    '',
-    'Current runbook AGENTS.md:',
-    '```markdown',
-    task.agensMd,
-    '```',
-    '',
-    'Update the task for the new requirements and save it by calling `ops_save_task`. Requirements:',
-    `- \`id\` must remain ${JSON.stringify(task.manifest.id)}`,
-    `- \`taskMode\` must remain ${JSON.stringify(mode)}; \`ops_save_task\` automatically preserves the existing replay seed, so do not rewrite the seed`,
-    ...(desired.length === 0
-      ? ['- Preserve `icon` / `color` / `naturalPrompt` unless the user explicitly asks to change them']
-      : desired),
-    '- Do not copy the original conversation; complete the edit in this new session and save it.',
-  ].join('\n')
-}
-
-/** Render the user prompt that asks the model to generate the task asset. */
-function buildSavePrompt(
-  description: string,
-  boundarySeq: number,
-  taskMode: string,
-  wants?: { icon?: string; color?: string; naturalPrompt?: string },
-): string {
-  const modeLine = taskMode === 'auto'
-    ? '- Choose `taskMode` from `safe-copy` / `compact` / `fresh` yourself and pass it to `ops_save_task`'
-    : `- \`taskMode\` must be ${JSON.stringify(taskMode)}`
-  const desired = [
-    wants?.icon === undefined ? null : `- \`icon\` must be ${JSON.stringify(wants.icon)}`,
-    wants?.color === undefined ? null : `- \`color\` must be ${JSON.stringify(wants.color)}`,
-    wants?.naturalPrompt === undefined || wants.naturalPrompt === ''
-      ? null
-      : `- \`naturalPrompt\` must be ${JSON.stringify(wants.naturalPrompt)}`,
-  ].filter((line) => line !== null)
-  return [
-    'Save the current session as a replayable ops task.',
-    '',
-    "The user's natural-language task description:",
-    description,
-    '',
-    'Use `ops_save_task` with the successful trace before boundarySeq and the description. Requirements:',
-    '- `id` uses lowercase letters, digits, and hyphens',
-    '- Summarize `name` / `description` yourself',
-    '- `instructions` is the runbook in AGENTS.md style, including execution steps, checks, and cautions',
-    '- Choose `triggers` from the description: schedule / filewatch / docker / journald / webhook / exec; each trigger must include `id`, `source`, and `enabled`',
-    '- Set `naturalPrompt` to the user original natural-language task description (empty string when absent)',
-    modeLine,
-    `- Use \`boundarySeq\` ${boundarySeq} (that trace and earlier become the replay seed)`,
-    ...desired,
-  ].join('\n')
 }
 
 export class MaintainAllService extends Service {
@@ -269,6 +204,7 @@ export class MaintainAllService extends Service {
             root: this.root,
             keepAlive: (sessionId, handle) => { this.replay.remember(sessionId, handle) },
             createAgent: (options) => this.replay.createAgent(options),
+            resolveSourceAgent: (sessionId) => this.replay.resolveSourceSession(sessionId),
           })
           if (!result.ok) this.logError('dispatch failed', { taskId, error: result.error })
           else if (result.warning !== undefined) this.logError('dispatch bookkeeping incomplete', { taskId, warning: result.warning })
@@ -358,7 +294,13 @@ export class MaintainAllService extends Service {
     const definition: unknown = {
       name: 'ops_save_task',
       description:
-        'Persist the current ops session as a reusable task asset. Use it after the user asked to save the task: provide the task id/name/description, the runbook instructions, the trigger list, and the boundarySeq that separates the successful trajectory from the current generation turn.',
+        'Persist the current ops session as a reusable task asset. Use it after the user asked to save the task: provide the task id/name/description, the runbook instructions, the trigger list, and the boundarySeq that separates the successful trajectory from the current generation turn.'
+        + '\n\nTriggers:\n'
+        + OPS_SAVE_TASK_TRIGGER_GUIDE
+        + '\n\nReplay target:\n'
+        + '- "new-session" (default) creates a seeded Run session.\n'
+        + '- "continue-session" delivers the trigger into the source Session; it requires taskMode "fresh" '
+        + 'and stores no replay seed.',
       parameters: {
         type: 'object',
         properties: {
@@ -366,11 +308,24 @@ export class MaintainAllService extends Service {
           name: { type: 'string' },
           description: { type: 'string' },
           instructions: { type: 'string' },
-          triggers: { type: 'array', items: { type: 'object', additionalProperties: true } },
+          triggers: {
+            type: 'array',
+            description:
+              'Deterministic triggers. `source` is the trigger kind; schedule rules go in '
+              + '`params`, source selectors in `filter`.',
+            items: OPS_SAVE_TASK_TRIGGER_SCHEMA,
+          },
           boundarySeq: { type: 'integer', minimum: 0 },
           skills: { type: 'object', additionalProperties: true },
           scripts: { type: 'object', additionalProperties: true },
           taskMode: { type: 'string', enum: ['safe-copy', 'compact', 'fresh'] },
+          replayMode: {
+            type: 'string',
+            enum: ['new-session', 'continue-session'],
+            description:
+              'Creation-time replay target. "continue-session" keeps the source Session and requires '
+              + 'taskMode "fresh"; "new-session" (default) creates a seeded Run session.',
+          },
           icon: { type: 'string' },
           color: { type: 'string' },
           naturalPrompt: { type: 'string' },
@@ -401,6 +356,7 @@ export class MaintainAllService extends Service {
           skills?: Record<string, string>
           scripts?: Record<string, string>
           taskMode?: TaskMode
+          replayMode?: 'new-session' | 'continue-session'
           icon?: string
           color?: string
           naturalPrompt?: string
@@ -414,10 +370,17 @@ export class MaintainAllService extends Service {
         if (!Number.isInteger(input.boundarySeq) || input.boundarySeq < 0) {
           throw new Error('ops_save_task: boundarySeq must be a non-negative integer')
         }
+        const replayMode = input.replayMode ?? 'new-session'
+        if (replayMode !== 'new-session' && replayMode !== 'continue-session') {
+          throw new Error('ops_save_task: replayMode must be "new-session" or "continue-session"')
+        }
         const agent = (exec as { agent?: { session?: SaveSessionFace } }).agent
         const session = agent?.session
         if (session === undefined) throw new Error('ops_save_task: caller session is unavailable')
-        const triggers = input.triggers.map(normalizeTriggerFilter)
+        const triggers = input.triggers.map((raw, index) => {
+          if (!isPlainObject(raw)) throw new Error(`ops_save_task: triggers[${index}] must be an object`)
+          return normalizeTriggerFilter(raw as unknown as TaskTrigger)
+        })
         validateTaskTriggers(triggers)
         await this.assertTriggerIdsAvailable(input.id, triggers)
         const taskDir = join(root, 'ops', input.id)
@@ -434,6 +397,7 @@ export class MaintainAllService extends Service {
           }
         }
         if (existing !== undefined) {
+          assertReplayModeUnchanged(existing.manifest, input.replayMode)
           const instructions = input.instructions.trim() === '' ? existing.agensMd : input.instructions
           const manifest: TaskManifest = {
             format: existing.manifest.format,
@@ -464,7 +428,12 @@ export class MaintainAllService extends Service {
             .filter((id) => !triggers.some((trigger) => trigger.id === id))
         } else {
           const taskMode = input.taskMode ?? 'safe-copy'
+          if (!TASK_MODE_VALUES.has(taskMode)) {
+            throw new Error('taskMode must be safe-copy, compact, fresh, or auto')
+          }
           if (taskMode === 'auto') throw new Error('auto is a request mode; choose safe-copy, compact, or fresh')
+          const continueSession = replayMode === 'continue-session'
+          validateContinuationCreation({ continueSession, taskMode })
           const cwd = session.header.cwd
           if (taskMode !== 'fresh' && (typeof cwd !== 'string' || cwd.trim() === '')) {
             throw new Error('session cwd is unavailable; cannot materialize a replay seed')
@@ -472,28 +441,13 @@ export class MaintainAllService extends Service {
           const instructions = input.instructions.trim() === ''
             ? `# ${input.name}\n\n${input.description}`
             : input.instructions
-          const snapshot = session.snapshotEvents()
           let boundary = input.boundarySeq
           if (boundary === 0) {
-            for (let index = snapshot.length - 1; index >= 0; index--) {
-              if (snapshot[index]?.type === 'turn/end') {
-                boundary = snapshot[index]!.seq
-                break
-              }
+            for (const event of session.snapshotEvents()) {
+              if (event.type === 'turn/end') boundary = event.seq
             }
           }
-          const rawSeed = taskMode === 'fresh'
-            ? undefined
-            : {
-                cwd: cwd as string,
-                events: extractSeedEvents(
-                  snapshot.map((event) => ({ type: event.type, seq: event.seq, data: event.data })),
-                  boundary,
-                ),
-              }
-          const seed = rawSeed === undefined || taskMode !== 'compact'
-            ? rawSeed
-            : { cwd: rawSeed.cwd, events: compactSeedEvents(rawSeed.events) }
+          const seed = buildTaskSeed(session, boundary, taskMode)
           const manifest: TaskManifest = {
             format: 'dsh-opskit/1',
             id: input.id,
@@ -501,6 +455,7 @@ export class MaintainAllService extends Service {
             description: input.description,
             version: '0.1.0',
             taskMode,
+            ...(continueSession ? { bindings: { continueSession: { sessionId: session.id } } } : {}),
             ...(input.icon === undefined ? {} : { icon: input.icon }),
             ...(input.color === undefined ? {} : { color: input.color }),
             ...(input.naturalPrompt === undefined ? {} : { naturalPrompt: input.naturalPrompt }),
@@ -665,6 +620,7 @@ export class MaintainAllService extends Service {
           description: task.manifest.description,
           version: task.manifest.version,
           taskMode: task.manifest.taskMode ?? 'safe-copy',
+          continueSession: task.manifest.bindings?.continueSession !== undefined,
           icon: task.manifest.icon ?? '',
           color: task.manifest.color ?? '',
           naturalPrompt: task.manifest.naturalPrompt ?? '',
@@ -696,6 +652,7 @@ export class MaintainAllService extends Service {
         root: this.root,
         keepAlive: (sessionId, handle) => { this.replay.remember(sessionId, handle) },
         createAgent: (options) => this.replay.createAgent(options),
+        resolveSourceAgent: (sessionId) => this.replay.resolveSourceSession(sessionId),
       })
       if (result.ok) {
         this.state.reloadRegistry()
@@ -988,20 +945,68 @@ export class MaintainAllService extends Service {
         if (agent === undefined) throw new Error('no live agent for session: ' + sessionId)
         const events = agent.session.snapshotEvents()
         const lastSeq = events.length > 0 ? (events[events.length - 1]?.seq ?? 0) : 0
+        // The dialog submits 0 for "latest"; honor an explicit earlier boundary
+        // when the caller retries with one (for example the tool's
+        // fitting-boundary hint after a seed-budget rejection).
+        const cut = boundarySeq === 0 ? lastSeq : boundarySeq
         const description = typeof meta.description === 'string' ? meta.description : ''
         const wants = {
           ...(typeof meta.icon === 'string' ? { icon: meta.icon } : {}),
           ...(typeof meta.color === 'string' ? { color: meta.color } : {}),
           ...(typeof meta.naturalPrompt === 'string' ? { naturalPrompt: meta.naturalPrompt } : {}),
         }
-        const prompt = typeof meta.editTaskId === 'string' && meta.editTaskId !== ''
-          ? buildEditPrompt(await readTaskAsset(this.root, meta.editTaskId), description, wants)
-          : buildSavePrompt(
-              description,
-              lastSeq,
-              typeof meta.taskMode === 'string' ? meta.taskMode : 'safe-copy',
-              wants,
-            )
+        const editTaskId = typeof meta.editTaskId === 'string' && meta.editTaskId !== ''
+          ? meta.editTaskId
+          : undefined
+        if (meta.continueSession !== undefined && typeof meta.continueSession !== 'boolean') {
+          throw new Error('continueSession must be a boolean')
+        }
+        const continueSession = meta.continueSession === true
+        if (continueSession && meta.editTaskId !== undefined) {
+          throw new Error('the continuation replay target is fixed at creation; it cannot be set by an edit prompt')
+        }
+        const taskMode = typeof meta.taskMode === 'string' ? meta.taskMode : 'safe-copy'
+        if (taskMode !== 'safe-copy' && taskMode !== 'compact' && taskMode !== 'fresh' && taskMode !== 'auto') {
+          throw new Error('taskMode must be safe-copy, compact, fresh, or auto')
+        }
+        // Measure the replay seed before injecting the save prompt. A concrete
+        // mode that cannot fit fails here with the measured numbers instead of
+        // spending a model turn only to fail in `ops_save_task`.
+        for (const field of ['agentPresetHint', 'permissionPresetHint'] as const) {
+          if (meta[field] !== undefined && typeof meta[field] !== 'string') {
+            throw new Error(`${field} must be a string when present`)
+          }
+        }
+        validateContinuationCreation({
+          continueSession,
+          taskMode,
+          ...(typeof meta.agentPresetHint === 'string' ? { agentPresetHint: meta.agentPresetHint } : {}),
+          ...(typeof meta.permissionPresetHint === 'string' ? { permissionPresetHint: meta.permissionPresetHint } : {}),
+        })
+        let seed: SavePromptSeed | undefined
+        let seedUnavailable: string | undefined
+        if (editTaskId === undefined && taskMode !== 'fresh' && !continueSession) {
+          try {
+            const summary = summarizeSessionSeed(agent.session, cut)
+            seed = {
+              boundarySeq: cut,
+              safeCopyBytes: summary.safeCopyBytes,
+              compactBytes: summary.compactBytes,
+              safeCopyEventCount: summary.eventCount,
+              compactEventCount: summary.compactEventCount,
+              maxBytes: MAX_SEED_BYTES,
+              maxEvents: MAX_EVENT_COUNT,
+            }
+            if (taskMode !== 'auto') assertSeedBudget(agent.session, summary, taskMode)
+          } catch (error) {
+            // `auto` may still choose `fresh`; a concrete capture mode cannot.
+            if (taskMode !== 'auto') throw error
+            seedUnavailable = error instanceof Error ? error.message : String(error)
+          }
+        }
+        const prompt = editTaskId === undefined
+          ? buildSavePrompt(description, cut, taskMode, wants, seed, seedUnavailable, continueSession)
+          : buildEditPrompt(await readTaskAsset(this.root, editTaskId), description, wants)
         agent.followup({
           id: randomUUID(),
           role: 'user',
@@ -1018,6 +1023,9 @@ export class MaintainAllService extends Service {
       try {
         if (meta.triggers !== undefined && !Array.isArray(meta.triggers)) {
           throw new Error('triggers must be an array')
+        }
+        if (meta.continueSession !== undefined && typeof meta.continueSession !== 'boolean') {
+          throw new Error('continueSession must be a boolean')
         }
         const rawTriggers = Array.isArray(meta.triggers) ? meta.triggers as TaskTrigger[] : []
         const triggers = rawTriggers.map(normalizeTriggerFilter)

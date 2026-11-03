@@ -21,7 +21,7 @@ deploy/daed/    daed deployment config + one-shot daed-init.py
 ```sh
 npm install       # node ^22.19 || >=24
 npm run build     # tsdown host/client bundles plus tsc declarations
-npm test          # node --test tests/core/*.test.ts tests/triggers/*.test.ts tests/client/*.test.ts tests/dispatch/*.test.ts tests/engine/*.test.ts
+npm test          # node --test tests/core/*.test.ts tests/triggers/*.test.ts tests/client/*.test.ts tests/dispatch/*.test.ts tests/engine/*.test.ts tests/host/*.test.ts
 npm run typecheck # tsc --noEmit
 npm run lint      # oxlint
 ```
@@ -54,7 +54,7 @@ npm run lint      # oxlint
 
 ## Trigger engine (non-LLM)
 
-Triggers are deterministic. The current source list, schedule selectors, filter contract, committed-target persistence, dispatch order, and teardown behavior are specified in [docs/architecture.md](docs/architecture.md). Standing orders: the LLM never participates in a trigger decision; CEL expressions may only read the event and whitelisted string/regex functions (`matches`, `startsWith`, `endsWith`, `contains`); validate every trigger shape, required source filter, and schedule first target, and keep trigger ids non-empty, non-reserved, and unique across tasks (webhook ids URL-safe), before any save/edit/tool write; all management routes except the token-authenticated webhook route apply `connection.requestRejection`; dispatch applies the manifest permission preset fail-closed and rolls back an unpublished Agent on post-create failure.
+Triggers are deterministic. The current source list, schedule selectors, filter contract, committed-target persistence, dispatch order, and teardown behavior are specified in [docs/architecture.md](docs/architecture.md). Standing orders: the LLM never participates in a trigger decision; CEL expressions may only read the event and whitelisted string/regex functions (`matches`, `startsWith`, `endsWith`, `contains`); validate every trigger shape, required source filter, and schedule first target, and keep trigger ids non-empty, non-reserved, and unique across tasks (webhook ids URL-safe), before any save/edit/tool write; render the model-facing `ops_save_task` trigger schema, tool guide, and save prompt from `src/dispatch/tool-contract.ts` and keep them aligned with `validateTaskTriggers`; all management routes except the token-authenticated webhook route apply `connection.requestRejection`; every save path measures the replay seed budget (16 MiB / 100,000 events, both capture modes) before injecting the generation prompt or writing an asset, and an overflow reports the measured bytes, the compact size, and the latest fitting `turn/end`; dispatch applies the manifest permission preset fail-closed and rolls back an unpublished Agent on post-create failure; a continuation task (`bindings.continueSession`) instead delivers into the source Session without a run cwd, seed rewrite, title rename, or preset binding, resolves the source Agent through the embedding's reminder activation waterfall as a compatibility bridge (never a plugin-owned resume; this is not a general session-activation API, and the proposed upstream replacement is tracked under `decisions/proposed/`), fails closed on a source preset binding, archived/subagent session, or missing activation provider, and queues through dsh's followup inbox.
 
 ## Tests
 

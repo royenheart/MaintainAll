@@ -84,11 +84,16 @@ async function readSeedFile(path: string): Promise<string> {
 /** Serialize a seed to `seed/session.jsonl` text: session header, then one JSON event per line. */
 export function serializeSeed(seed: TaskSeed): string {
   validateSeedCwd(seed.cwd)
-  if (seed.events.length > MAX_EVENT_COUNT) throw new Error('invalid seed: too many events')
+  if (seed.events.length > MAX_EVENT_COUNT) {
+    throw new Error(`invalid seed: too many events (${seed.events.length} > ${MAX_EVENT_COUNT})`)
+  }
   const lines = [JSON.stringify({ type: 'session', cwd: seed.cwd })]
   for (const event of seed.events) lines.push(JSON.stringify(event))
   const text = lines.join('\n') + '\n'
-  if (Buffer.byteLength(text, 'utf8') > MAX_SEED_BYTES) throw new Error('invalid seed: seed is too large')
+  const bytes = Buffer.byteLength(text, 'utf8')
+  if (bytes > MAX_SEED_BYTES) {
+    throw new Error(`invalid seed: seed is too large (${bytes} > ${MAX_SEED_BYTES} bytes)`)
+  }
   return text
 }
 

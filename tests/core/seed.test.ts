@@ -8,6 +8,8 @@ import {
   validateSeedCwd,
 } from '../../src/core/seed.ts'
 import type { SeedEvent, TaskSeed } from '../../src/core/contract.ts'
+import { compactSeedEvents, findLatestFittingBoundary, seedByteSizes, serializedSeedBytes } from '../../src/core/seed.ts'
+import { serializeSeed } from '../../src/core/task-writer.ts'
 
 function event(seq: number, type: string, data?: unknown): SeedEvent {
   return data === undefined ? { seq, type } : { seq, type, data }
@@ -405,4 +407,124 @@ test('filterSeedTools: no-op when every tool is available', () => {
   ]
   const filtered = filterSeedTools(events, new Set(['bash']))
   assert.deepEqual(filtered, events)
+})
+
+
+test('serializedSeedBytes: equals the exact byte size serializeSeed writes', () => {
+  const seed: TaskSeed = {
+    cwd: '/home/user/ops/original',
+    events: [
+      event(1, 'turn/start', { turn: 1 }),
+      event(2, 'assistant/message', { message: { content: [{ type: 'text', text: 'héllo 世界' }] } }),
+      event(3, 'turn/end', { turn: 1 }),
+    ],
+  }
+  assert.equal(serializedSeedBytes(seed.cwd, seed.events), Buffer.byteLength(serializeSeed(seed), 'utf8'))
+})
+
+test('seedByteSizes: compact drops reasoning-only messages and reports both sizes', () => {
+  const events = [
+    event(1, 'turn/start'),
+    event(2, 'user/message', { text: 'check' }),
+    event(3, 'assistant/message', { message: { content: [{ type: 'reasoning', text: 'x'.repeat(4096) }, { type: 'text', text: 'done' }] } }),
+    event(4, 'assistant/message', { message: { content: [{ type: 'reasoning', text: 'y'.repeat(4096) }] } }),
+    event(5, 'turn/end'),
+  ]
+  const sizes = seedByteSizes('/home/user/ops/original', events)
+  assert.equal(sizes.safeCopy, serializedSeedBytes('/home/user/ops/original', events))
+  assert.equal(sizes.eventCount, 5)
+  assert.equal(sizes.compactEventCount, 4)
+  assert.ok(sizes.compact < sizes.safeCopy)
+  assert.equal(sizes.compact, serializedSeedBytes('/home/user/ops/original', compactSeedEvents(events)))
+})
+
+test('findLatestFittingBoundary: returns the latest completed turn under the byte budget', () => {
+  const events = [
+    event(1, 'turn/start'),
+    event(2, 'user/message', { text: 'a'.repeat(256) }),
+    event(3, 'turn/end'),
+    event(4, 'turn/start'),
+    event(5, 'user/message', { text: 'b'.repeat(256) }),
+    event(6, 'turn/end'),
+  ]
+  const firstTurnBytes = serializedSeedBytes('/home/user/ops/original', extractSeedEvents(events, 3))
+  const secondTurnBytes = serializedSeedBytes('/home/user/ops/original', extractSeedEvents(events, 6))
+  assert.ok(firstTurnBytes < secondTurnBytes)
+  assert.deepEqual(
+    findLatestFittingBoundary('/home/user/ops/original', events, 6, 'safe-copy', { maxBytes: firstTurnBytes }),
+    { seq: 3, bytes: firstTurnBytes, eventCount: 3 },
+  )
+  assert.deepEqual(
+    findLatestFittingBoundary('/home/user/ops/original', events, 6, 'safe-copy', { maxBytes: secondTurnBytes }),
+    { seq: 6, bytes: secondTurnBytes, eventCount: 6 },
+  )
+  assert.equal(
+    findLatestFittingBoundary('/home/user/ops/original', events, 6, 'safe-copy', { maxBytes: 10 }),
+    undefined,
+  )
+})
+
+test('findLatestFittingBoundary: honors the event-count limit', () => {
+  const events = [
+    event(1, 'turn/start'),
+    event(2, 'turn/end'),
+    event(3, 'turn/start'),
+    event(4, 'turn/end'),
+  ]
+  const fitting = findLatestFittingBoundary('/home/user/ops/original', events, 4, 'safe-copy', { maxEvents: 2 })
+  assert.equal(fitting?.seq, 2)
+  assert.equal(fitting?.eventCount, 2)
+})
+
+test('compactSeedEvents: clears assistant timed streams even without reasoning blocks', () => {
+  const events = [
+    event(1, 'turn/start'),
+    event(2, 'assistant/message', {
+      message: { content: [{ type: 'text', text: 'done' }] },
+      stream: [{ type: 'chunk', text: 'do' }, { type: 'chunk', text: 'ne' }],
+    }),
+    event(3, 'turn/end'),
+  ]
+  const compacted = compactSeedEvents(events)
+  const message = compacted[1]?.data as { stream?: unknown[] }
+  assert.deepEqual(message.stream, [])
+})
+
+test('findLatestFittingBoundary: rejects a non-contiguous selected prefix like extraction', () => {
+  const events = [
+    event(1, 'turn/start'),
+    event(3, 'turn/end'),
+  ]
+  assert.throws(
+    () => findLatestFittingBoundary('/home/user/ops/original', events, 3, 'safe-copy'),
+    /contiguous/,
+  )
+})
+
+test('findLatestFittingBoundary: compact mode ignores reasoning bytes at the same boundary', () => {
+  const events = [
+    event(1, 'turn/start'),
+    event(2, 'assistant/message', { message: { content: [{ type: 'reasoning', text: 'x'.repeat(4096) }] } }),
+    event(3, 'turn/end'),
+    event(4, 'turn/start'),
+    event(5, 'user/message', { text: 'next' }),
+    event(6, 'turn/end'),
+  ]
+  const compactFirst = serializedSeedBytes(
+    '/home/user/ops/original',
+    compactSeedEvents(extractSeedEvents(events, 3)),
+  )
+  const compactFull = serializedSeedBytes(
+    '/home/user/ops/original',
+    compactSeedEvents(extractSeedEvents(events, 6)),
+  )
+  assert.ok(compactFirst < compactFull)
+  assert.equal(
+    findLatestFittingBoundary('/home/user/ops/original', events, 6, 'compact', { maxBytes: compactFirst })?.seq,
+    3,
+  )
+  assert.equal(
+    findLatestFittingBoundary('/home/user/ops/original', events, 6, 'compact', { maxBytes: compactFull })?.seq,
+    6,
+  )
 })

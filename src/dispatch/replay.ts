@@ -19,17 +19,31 @@ import {
   saveRegistryState,
   saveRunMapState,
 } from '../core/storage.ts'
-import { createRunCwd } from './run-cwd.ts'
+import { createRunCwd, newRunId } from './run-cwd.ts'
 import { loadTask } from './load-task.ts'
-import { buildSeedForRun, firstUserMessage } from './session.ts'
+import { buildSeedForRun, continuationMessage, firstUserMessage } from './session.ts'
 
 /** Minimal face of one dsh agent consumed by dispatch. */
 export interface ReplayAgentFace {
   followup(message: unknown): void
   /** Present on a real dsh agent; dispatch applies the session title to it. */
-  session?: unknown
+  session?: {
+    readonly header?: {
+      readonly id?: string
+      readonly cwd?: string
+      readonly agentPreset?: string
+      readonly delegationDepth?: number
+      readonly origin?: string
+    }
+  }
   /** Present on a real dsh agent; dispatch does not call it directly. */
   dispose?: () => void | Promise<void>
+}
+
+/** One activated source Session Agent plus an optional handle supplied by a resolver. */
+export interface ReplaySourceAgentFace {
+  agent: ReplayAgentFace
+  handle?: unknown
 }
 
 /** One created agent plus the host-owned handle disposer. */
@@ -71,6 +85,10 @@ export type DispatchFailureReason =
   | 'agent_create_failed'
   | 'task_deleted'
   | 'publish_failed'
+  | 'source_agent_unavailable'
+  | 'source_session_unavailable'
+  | 'source_session_archived'
+  | 'registry_unreadable'
 
 /** Result shape returned by `dispatchReplay`. */
 export interface DispatchResult {
@@ -130,6 +148,7 @@ export async function dispatchReplay(
     root?: string
     keepAlive?: (sessionId: string, handle: unknown) => void
     createAgent?: (options: { sessionId: string; seed?: SeedEvent[]; meta?: { cwd?: string; agentPreset?: string } }) => Promise<ReplayHandle>
+    resolveSourceAgent?: (sessionId: string) => Promise<ReplaySourceAgentFace>
     permissionPresets?: PermissionPresetsFace
     sessionTitle?: SessionTitleFace
   } = {},
@@ -143,6 +162,10 @@ export async function dispatchReplay(
     task = loadTask(root, taskId)
   } catch (error) {
     return { ok: false, reason: 'asset_unreadable', error: error instanceof Error ? error.message : String(error) }
+  }
+  const continuation = task.manifest.bindings?.continueSession
+  if (continuation !== undefined) {
+    return dispatchContinuation(root, taskId, record.name, task, event, continuation.sessionId, opts)
   }
   const agents = optionalService<ReplayAgentsFace>(ctx, 'agents')
   if (agents === undefined && opts.createAgent === undefined) {
@@ -268,4 +291,112 @@ export async function dispatchReplay(
     return { ok: true, sessionId, warning: 'bookkeeping_incomplete' }
   }
   return { ok: true, sessionId }
+}
+
+/**
+ * Deliver a fired trigger into the source Session instead of creating a
+ * seeded Run session.
+ *
+ * The source Agent is resolved by the host (`resolveSourceAgent`): a live
+ * Agent is reused, otherwise the host resumes the persisted Session through
+ * the same activation path dsh reminders use. No run cwd is materialized, no
+ * seed is rewritten, and the source Session's title, preset, permissions, and
+ * working directory stay unchanged. The run is still recorded in the run-map
+ * and the registry so the Ops panel shows it.
+ */
+async function dispatchContinuation(
+  root: string,
+  taskId: string,
+  taskName: string,
+  task: Awaited<ReturnType<typeof loadTask>>,
+  event: TriggerEvent,
+  sourceSessionId: string,
+  opts: {
+    keepAlive?: (sessionId: string, handle: unknown) => void
+    resolveSourceAgent?: (sessionId: string) => Promise<ReplaySourceAgentFace>
+  },
+): Promise<DispatchResult> {
+  const resolve = opts.resolveSourceAgent
+  if (resolve === undefined) {
+    return {
+      ok: false,
+      reason: 'source_agent_unavailable',
+      error: 'source Session resolution is unavailable',
+    }
+  }
+  let resolved: ReplaySourceAgentFace
+  try {
+    resolved = await resolve(sourceSessionId)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return {
+      ok: false,
+      reason: /archived/i.test(message) ? 'source_session_archived' : 'source_session_unavailable',
+      error: message,
+    }
+  }
+  let registryNow: ReturnType<typeof loadRegistryState>
+  try {
+    registryNow = loadRegistryState(root)
+  } catch (error) {
+    await disposeSourceHandle(resolved.handle)
+    return {
+      ok: false,
+      reason: 'registry_unreadable',
+      error: `cannot re-read the task registry before publishing: ${error instanceof Error ? error.message : String(error)}`,
+    }
+  }
+  if (registryNow.tasks[taskId] === undefined) {
+    await disposeSourceHandle(resolved.handle)
+    return { ok: false, reason: 'task_deleted', error: `task deleted during replay: ${taskId}` }
+  }
+  const sourceCwd = resolved.agent.session?.header?.cwd ?? ''
+  try {
+    const message = continuationMessage(event, taskName, join(root, 'ops', taskId))
+    resolved.agent.followup({
+      id: randomUUID(),
+      role: 'user',
+      content: [{ type: 'text', text: message.content }],
+      source: { kind: 'plugin:maintainall' },
+    })
+  } catch (error) {
+    await disposeSourceHandle(resolved.handle)
+    return { ok: false, reason: 'publish_failed', error: error instanceof Error ? error.message : String(error) }
+  }
+  try {
+    if (resolved.handle !== undefined) opts.keepAlive?.(sourceSessionId, resolved.handle)
+    const runMap = loadRunMapState(root)
+    const runId = newRunId()
+    runMap.runs[runId] = {
+      taskId,
+      sessionId: sourceSessionId,
+      cwd: sourceCwd,
+      createdAt: new Date().toISOString(),
+    }
+    saveRunMapState(root, runMap)
+    // Reload immediately before the write so a concurrent save/import/delete is
+    // not overwritten by the snapshot read before delivery.
+    const latestRegistry = loadRegistryState(root)
+    const currentRecord = latestRegistry.tasks[taskId]
+    if (currentRecord !== undefined) {
+      currentRecord.lastRunAt = new Date().toISOString()
+      saveRegistryState(root, latestRegistry)
+    }
+  } catch {
+    // The trigger message is already published; bookkeeping failure must not
+    // dispose a resolver-supplied handle or the provider-owned source Agent.
+    return { ok: true, sessionId: sourceSessionId, warning: 'bookkeeping_incomplete' }
+  }
+  return { ok: true, sessionId: sourceSessionId }
+}
+
+/** Best-effort disposal of a resolver-supplied source handle, if any. */
+async function disposeSourceHandle(handle: unknown): Promise<void> {
+  const dispose = (handle as { dispose?: () => void | Promise<void> } | undefined)?.dispose
+  if (typeof dispose !== 'function') return
+  try {
+    await dispose.call(handle)
+  } catch {
+    // Rollback is best effort; report the original failure.
+  }
 }

@@ -67,6 +67,11 @@ export interface TaskTrigger {
 export interface ManifestBindings {
   agentPreset?: { hint: string }
   permissionPreset?: { hint: string }
+  /**
+   * Continue the source Session on replay instead of creating a new seeded
+   * Run session. The id is machine-local, so export/import never carries it.
+   */
+  continueSession?: { sessionId: string }
 }
 
 /** External requirements a task declares. */

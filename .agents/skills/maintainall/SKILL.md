@@ -23,7 +23,7 @@ Project-specific development knowledge for `@royenheart/dsh-plugin-maintainall`.
 - `src/core/` — pure contract, manifest, seed, storage, opskit, task writer, and trigger implementation; no dsh imports.
 - `src/core/triggers/` — trigger events, filters, normalization, rate/debounce, and source implementations.
 - `src/engine/` — trigger engine, listeners, schedule time, and state.
-- `src/dispatch/` — run workspace, seed extraction, replay dispatch, save materialization, and lifecycle.
+- `src/dispatch/` — run workspace, seed extraction, replay dispatch, save materialization/lifecycle, save/edit prompts, and the model-facing `ops_save_task` trigger contract.
 - `src/locales/` — symmetric `zh`/`en` dictionaries and keys.
 - `tests/` — `node --test`; pure core and trigger tests do not need a harness.
 - `preset/ops.patch.yml` — Ops agent preset.
@@ -48,7 +48,9 @@ Run the targeted test files for the module you touched rather than the full suit
 ## Invariants
 
 - Trigger decisions are deterministic. The model never participates in a trigger decision.
-- All trigger shapes, filters, schedule targets, ids, and uniqueness constraints validate before any save or edit.
+- All trigger shapes, filters, schedule targets, ids, and uniqueness constraints validate before any save or edit. The `ops_save_task` trigger schema, tool guide, and save prompt are rendered from `src/dispatch/tool-contract.ts` and must match `validateTaskTriggers`.
+- Save paths measure the replay seed budget (16 MiB / 100,000 events, both capture modes) before injecting the generation prompt or writing an asset; an overflow reports the measured bytes, the compact size, and the latest fitting `turn/end`.
+- A continuation task (`bindings.continueSession`, creation-time, `taskMode: fresh`, no preset bindings) delivers triggers into its source Session: no run cwd, seed rewrite, title rename, or permission-preset application; a live Agent or the embedding's reminder activation waterfall is used as a compatibility bridge (never a plugin-owned resume; the neutral upstream extension is tracked under `decisions/proposed/`); archived, deleted, preset-conflicting, or unresolvable sources fail closed; export/import drops the machine-local binding.
 - Storage writes are atomic. Do not write under `$DSH_HOME/sessions/`, `$DSH_HOME/profiles/`, or the plugin package directory.
 - Client text is i18n-only with symmetric `zh`/`en` dictionaries.
 - Plugin HTTP responses are non-cacheable (`cache-control: no-store`) and client GETs bypass the browser cache; a deployment proxy must not cache the `/plugins/<package>/` prefix as immutable static assets, or a successful task toggle never reaches the panel.

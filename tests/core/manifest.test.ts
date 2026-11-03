@@ -127,3 +127,57 @@ test('rewriteManifestForImport: empty bindings drop the section', () => {
   const rewritten = rewriteManifestForImport(manifest, {})
   assert.equal(rewritten.bindings, undefined)
 })
+
+test('parseManifest: accepts a continuation binding and rejects malformed ones', () => {
+  const base = VALID_YAML.replace('id: check-disk', 'id: continue-check')
+  const accepted = parseManifest(`${base}
+taskMode: fresh
+bindings:
+  continueSession:
+    sessionId: session-example-1
+`)
+  assert.deepEqual(accepted.bindings, { continueSession: { sessionId: 'session-example-1' } })
+  for (const binding of [
+    'true',
+    '{}',
+    '{ sessionId: 42 }',
+    '{ sessionId: "  " }',
+    '{ sessionId: session-1, extra: true }',
+    '{ sessionId: " session-1 " }',
+  ]) {
+    assert.throws(
+      () => parseManifest(`${base}
+bindings:
+  continueSession: ${binding}
+`),
+      /bindings\.continueSession/,
+    )
+  }
+  assert.throws(
+    () => parseManifest(`${base}
+taskMode: safe-copy
+bindings:
+  continueSession:
+    sessionId: session-1
+`),
+    /requires taskMode: fresh/,
+  )
+  assert.throws(
+    () => parseManifest(`${base}
+taskMode: fresh
+bindings:
+  agentPreset:
+    hint: ops
+  continueSession:
+    sessionId: session-1
+`),
+    /cannot be combined/,
+  )
+})
+
+test('rewriteManifestForImport: a continuation binding never survives import', () => {
+  const manifest = parseManifest(VALID_YAML)
+  manifest.bindings = { continueSession: { sessionId: 'session-local' } }
+  const rewritten = rewriteManifestForImport(manifest, {})
+  assert.equal(rewritten.bindings, undefined)
+})

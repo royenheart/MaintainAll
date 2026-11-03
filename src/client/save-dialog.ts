@@ -22,6 +22,12 @@ import {
 } from './schedule-form.ts'
 import { ROUTE_BASE, postJsonEdit, postJsonError } from './api.ts'
 import {
+  buildAutoCreateSaveRequest,
+  buildEditLlmRequest,
+  buildEditMaterializeRequest,
+  buildManualCreateSaveRequest,
+} from './save-request.ts'
+import {
   TRIGGER_SOURCES,
   buildTriggerFilter,
   readTriggerFields,
@@ -83,6 +89,7 @@ export function SaveOpsAction(props: {
     initial === undefined || initial === null ? 0 : initialTrigger(initial).maxPerHour,
   )
   const [modeIndex, setModeIndex] = React.useState(initial === undefined || initial === null ? 0 : initialModeIndex(initial.taskMode))
+  const [continueSession, setContinueSession] = React.useState(initial?.continueSession === true)
   const [icon, setIcon] = React.useState<string>(
     initial === undefined || initial === null ? '📁' : (initial.icon ?? ''),
   )
@@ -102,7 +109,16 @@ export function SaveOpsAction(props: {
     ? (auto ? TASK_MODES : MANUAL_TASK_MODES)
     : TASK_MODES
   const mode = availableModes[modeIndex] ?? availableModes[0]
+  const displayMode = continueSession
+    ? {
+        nameKey: 'save.mode.continue.name' as MaintainAllKey,
+        descKey: 'save.mode.continue.desc' as MaintainAllKey,
+      }
+    : mode
+  const modeLocked = continueSession || (initial !== undefined && initial !== null)
+  const effectiveModeId = continueSession ? 'fresh' : (mode?.id ?? 'safe-copy')
   const shiftMode = (delta: number) => {
+    if (modeLocked) return
     setModeIndex((previous) => (previous + delta + availableModes.length) % availableModes.length)
   }
 
@@ -152,12 +168,16 @@ export function SaveOpsAction(props: {
       : [trigger]
     if (initial !== undefined && initial !== null) {
       if (auto) {
-        const result = await postJsonEdit(`${ROUTE_BASE}/tasks/${encodeURIComponent(initial.id)}/edit`, {
-          description: naturalDescription,
-          icon,
-          color,
-          naturalPrompt: naturalDescription,
-        }, t('save.error'))
+        const result = await postJsonEdit(
+          `${ROUTE_BASE}/tasks/${encodeURIComponent(initial.id)}/edit`,
+          buildEditLlmRequest({
+            description: naturalDescription,
+            icon,
+            color,
+            naturalPrompt: naturalDescription,
+          }),
+          t('save.error'),
+        )
         if (result.error !== null) {
           setError(result.error)
           return
@@ -166,17 +186,18 @@ export function SaveOpsAction(props: {
         close()
         return
       }
-      const failure = await postJsonError(`${ROUTE_BASE}/tasks/${encodeURIComponent(initial.id)}/edit`, {
-        materialize: true,
-        meta: {
+      const failure = await postJsonError(
+        `${ROUTE_BASE}/tasks/${encodeURIComponent(initial.id)}/edit`,
+        buildEditMaterializeRequest({
           name: taskName,
           description,
           triggers,
           icon,
           color,
           naturalPrompt: initial.naturalPrompt ?? '',
-        },
-      }, t('save.error'))
+        }),
+        t('save.error'),
+      )
       if (failure !== null) {
         setError(failure)
         return
@@ -186,34 +207,36 @@ export function SaveOpsAction(props: {
     }
 
     const failure = auto
-      ? await postJsonError(`${ROUTE_BASE}/save`, {
-          sessionId: sessionId ?? '',
-          boundarySeq: 0,
-          meta: {
-            auto: true,
-            description: naturalDescription,
-            taskMode: mode?.id ?? 'safe-copy',
+      ? await postJsonError(
+          `${ROUTE_BASE}/save`,
+          buildAutoCreateSaveRequest({
+            sessionId: sessionId ?? '',
+            mode: effectiveModeId,
+            continueSession,
             icon,
             color,
             naturalPrompt: naturalDescription,
-          },
-        }, t('save.error'))
-      : await postJsonError(`${ROUTE_BASE}/save`, {
-          sessionId: sessionId ?? '',
-          // 0 = "up to the latest event"; the host cuts the seed boundary there.
-          boundarySeq: 0,
-          meta: {
-            id: taskId,
+            description: naturalDescription,
+          }),
+          t('save.error'),
+        )
+      : await postJsonError(
+          `${ROUTE_BASE}/save`,
+          buildManualCreateSaveRequest({
+            sessionId: sessionId ?? '',
+            // 0 = "up to the latest event"; the host cuts the seed boundary there.
+            mode: effectiveModeId,
+            continueSession,
+            icon,
+            color,
+            naturalPrompt: naturalDescription,
+            taskId,
             name: taskName,
             description,
-            materialize: true,
-            taskMode: mode?.id ?? 'safe-copy',
-            icon,
-            color,
-            naturalPrompt: naturalDescription,
-            triggers: [trigger],
-          },
-        }, t('save.error'))
+            trigger,
+          }),
+          t('save.error'),
+        )
     if (failure !== null) {
       setError(failure)
       return
@@ -289,6 +312,29 @@ export function SaveOpsAction(props: {
               }),
               React.createElement('span', null, t(initial === undefined || initial === null ? 'save.auto' : 'save.autoEdit')),
             ),
+            React.createElement(
+              'div',
+              { className: 'maintainall-field' },
+              React.createElement(
+                'label',
+                { className: 'maintainall-field maintainall-field--check' },
+                React.createElement('input', {
+                  type: 'checkbox',
+                  checked: continueSession,
+                  disabled: initial !== undefined && initial !== null,
+                  onChange: (event: { target: { checked: boolean } }) => {
+                    const checked = event.target.checked
+                    setContinueSession(checked)
+                    if (checked) {
+                      const freshIndex = availableModes.findIndex((candidate) => candidate.id === 'fresh')
+                      if (freshIndex >= 0) setModeIndex(freshIndex)
+                    }
+                  },
+                }),
+                React.createElement('span', null, t('save.continueSession')),
+              ),
+              React.createElement('div', { className: 'maintainall-mode__desc' }, t('save.continueSessionHint')),
+            ),
             initial === undefined || initial === null
               ? React.createElement(
                   'div',
@@ -299,6 +345,7 @@ export function SaveOpsAction(props: {
                       type: 'button',
                       className: 'maintainall-btn maintainall-btn--icon',
                       'aria-label': t('save.mode.prev'),
+                      disabled: modeLocked,
                       onClick: () => shiftMode(-1),
                     },
                     React.createElement(IconChevronLeftOutlineRegular, { size: 14 }),
@@ -306,8 +353,8 @@ export function SaveOpsAction(props: {
                   React.createElement(
                     'div',
                     { className: 'maintainall-mode__text' },
-                    React.createElement('div', { className: 'maintainall-mode__name' }, t(mode.nameKey)),
-                    React.createElement('div', { className: 'maintainall-mode__desc' }, t(mode.descKey)),
+                    React.createElement('div', { className: 'maintainall-mode__name' }, t(displayMode.nameKey)),
+                    React.createElement('div', { className: 'maintainall-mode__desc' }, t(displayMode.descKey)),
                   ),
                   React.createElement(
                     'button',
@@ -315,6 +362,7 @@ export function SaveOpsAction(props: {
                       type: 'button',
                       className: 'maintainall-btn maintainall-btn--icon',
                       'aria-label': t('save.mode.next'),
+                      disabled: modeLocked,
                       onClick: () => shiftMode(1),
                     },
                     React.createElement(IconChevronRightOutlineRegular, { size: 14 }),
@@ -326,8 +374,8 @@ export function SaveOpsAction(props: {
                   React.createElement(
                     'div',
                     { className: 'maintainall-mode__text' },
-                    React.createElement('div', { className: 'maintainall-mode__name' }, t(mode.nameKey)),
-                    React.createElement('div', { className: 'maintainall-mode__desc' }, t(mode.descKey)),
+                    React.createElement('div', { className: 'maintainall-mode__name' }, t(displayMode.nameKey)),
+                    React.createElement('div', { className: 'maintainall-mode__desc' }, t(displayMode.descKey)),
                   ),
                 ),
             row(

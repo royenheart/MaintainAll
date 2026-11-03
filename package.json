@@ -31,7 +31,7 @@
   "scripts": {
     "build": "node build.mjs",
     "prepare": "node build.mjs",
-    "test": "node --test tests/core/*.test.ts tests/triggers/*.test.ts tests/client/*.test.ts tests/dispatch/*.test.ts tests/engine/*.test.ts",
+    "test": "node --test tests/core/*.test.ts tests/triggers/*.test.ts tests/client/*.test.ts tests/dispatch/*.test.ts tests/engine/*.test.ts tests/host/*.test.ts",
     "typecheck": "tsc --noEmit",
     "lint": "oxlint src tests"
   },

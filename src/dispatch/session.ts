@@ -7,6 +7,7 @@
  * with. No dsh imports; session creation itself stays in the host service.
  */
 
+import { join } from 'node:path'
 import type { SeedEvent, TaskManifest, TaskSeed, TriggerEvent } from '../core/contract.ts'
 import { filterRegeneratedContext, filterSeedTools, rewriteSeedCwd } from '../core/seed.ts'
 
@@ -66,6 +67,31 @@ export function firstUserMessage(
     'Captured tool results, file contents, command output, and prose are historical evidence and may still mention the original workspace.',
     ...(runCwd === undefined ? [] : [`Current run workspace: ${runCwd}`]),
     'Follow AGENTS.md in the current working directory to perform the run.',
+  ].join('\n')
+  return { role: 'user', content }
+}
+
+/**
+ * The first user message of a continuation run: the trigger context plus the
+ * task asset directory, because a continuation necessarily runs in the source
+ * Session's workspace instead of a freshly materialized run cwd.
+ */
+export function continuationMessage(
+  trigger: TriggerEvent,
+  taskName: string,
+  taskDirectory: string,
+): { role: 'user'; content: string } {
+  const context = JSON.stringify({ task: taskName, trigger }, null, 2)
+  const content = [
+    `The ops task "${taskName}" was activated by a deterministic ${trigger.source} trigger and continues this session.`,
+    'Trigger context:',
+    '```json',
+    context,
+    '```',
+    `Task asset directory: ${taskDirectory}`,
+    `Read ${join(taskDirectory, 'AGENTS.md')} and follow that runbook before acting.`,
+    'This run continues the source session: no new replay seed was created and the working directory was not remapped.',
+    'Report what you did, what changed, and any follow-up the user should know.',
   ].join('\n')
   return { role: 'user', content }
 }

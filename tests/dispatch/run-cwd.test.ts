@@ -3,7 +3,7 @@ import assert from 'node:assert/strict'
 import { existsSync, lstatSync, mkdtempSync, mkdirSync, readdirSync, readFileSync, symlinkSync, writeFileSync } from 'node:fs'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
-import { createRunCwd, runTimestamp } from '../../src/dispatch/run-cwd.ts'
+import { createRunCwd, newRunId, runTimestamp } from '../../src/dispatch/run-cwd.ts'
 
 function tmpRoot(): string {
   return mkdtempSync(join(tmpdir(), 'maintainall-dispatch-run-cwd-'))
@@ -20,6 +20,12 @@ function assertNoSymlinks(dir: string): void {
     }
   }
 }
+
+test('newRunId: appends eight random hex characters to the timestamp', () => {
+  const runId = newRunId(new Date(2026, 7, 24, 10, 30, 5))
+  assert.match(runId, /^20260824-103005-[0-9a-f]{8}$/)
+  assert.notEqual(newRunId(new Date(2026, 7, 24, 10, 30, 5)), newRunId(new Date(2026, 7, 24, 10, 30, 5)))
+})
 
 test('runTimestamp: formats local time as YYYYMMDD-HHMMSS', () => {
   assert.equal(runTimestamp(new Date(2026, 7, 24, 10, 30, 5)), '20260824-103005')

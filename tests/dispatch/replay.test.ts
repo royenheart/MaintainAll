@@ -1,6 +1,6 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
-import { existsSync } from 'node:fs'
+import { existsSync, writeFileSync } from 'node:fs'
 import { mkdtemp, readFile, readdir } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import { join } from 'node:path'
@@ -314,4 +314,221 @@ test('dispatchReplay fails closed when a declared permission preset has no servi
   assert.equal(result.ok, false)
   assert.match(result.error ?? '', /permission preset service unavailable/)
   assert.equal(created, false)
+})
+
+async function continuationRoot(taskId: string, bindings: Record<string, unknown>): Promise<string> {
+  const root = await mkdtemp(join(tmpdir(), `maintainall-continuation-${taskId}-`))
+  await writeTaskAsset(root, {
+    manifest: {
+      format: 'dsh-opskit/1' as const,
+      id: taskId,
+      name: 'Continue monitor',
+      description: 'Continue in the source session',
+      version: '0.1.0',
+      taskMode: 'fresh',
+      bindings: bindings as never,
+    },
+    agensMd: '# Continue monitor\n\nCheck the upstream state.',
+    skills: new Map(),
+    scripts: new Map(),
+    triggers: [{ id: 't1', source: 'schedule', params: { cron: '0 * * * *' }, enabled: true }],
+  })
+  const registry = loadRegistryState(root)
+  registry.tasks[taskId] = {
+    id: taskId,
+    name: 'Continue monitor',
+    version: '0.1.0',
+    enabled: true,
+    importedAt: new Date().toISOString(),
+  }
+  saveRegistryState(root, registry)
+  return root
+}
+
+test('dispatchReplay continuation delivers into the source session without a run cwd', async () => {
+  const sourceSessionId = 'session-source-monitor'
+  const root = await continuationRoot('continue-monitor', { continueSession: { sessionId: sourceSessionId } })
+  const followed: unknown[] = []
+  const kept: Array<{ sessionId: string; handle: unknown }> = []
+  const permissionCalls: string[] = []
+  const titleCalls: string[] = []
+  let created = false
+  const sourceAgent = {
+    session: { header: { id: sourceSessionId, cwd: '/home/user/projects/example' } },
+    followup: (message: unknown) => { followed.push(message) },
+  }
+  const handle = { dispose: () => {} }
+  const result = await dispatchReplay({ agents: { create: async () => { created = true; throw new Error('must not create') } } }, 'continue-monitor', {
+    source: 'schedule',
+    occurredAt: new Date().toISOString(),
+    payload: {},
+  }, {
+    root,
+    resolveSourceAgent: async (sessionId) => {
+      assert.equal(sessionId, sourceSessionId)
+      return { agent: sourceAgent, handle }
+    },
+    keepAlive: (sessionId, value) => { kept.push({ sessionId, handle: value }) },
+    permissionPresets: { resolve: (name) => { permissionCalls.push(`resolve:${name}`) }, set: () => { permissionCalls.push('set') } },
+    sessionTitle: { rename: () => { titleCalls.push('rename') } },
+  })
+
+  assert.equal(result.ok, true)
+  assert.equal(result.sessionId, sourceSessionId)
+  assert.equal(created, false)
+  assert.equal(followed.length, 1)
+  const followup = followed[0] as { role?: string; source?: { kind?: string }; content?: Array<{ text?: string }> }
+  assert.equal(followup.role, 'user')
+  assert.equal(followup.source?.kind, 'plugin:maintainall')
+  const text = followup.content?.[0]?.text ?? ''
+  assert.match(text, /continues this session/)
+  assert.match(text, /Task asset directory: .*continue-monitor/)
+  assert.match(text, /AGENTS\.md and follow that runbook/)
+  assert.deepEqual(permissionCalls, [])
+  assert.deepEqual(titleCalls, [])
+  assert.equal(kept.length, 1)
+  assert.equal(kept[0]?.sessionId, sourceSessionId)
+  assert.equal(kept[0]?.handle, handle)
+
+  const runMap = loadRunMapState(root)
+  assert.equal(Object.keys(runMap.runs).length, 1)
+  const run = Object.values(runMap.runs)[0]
+  assert.equal(run?.taskId, 'continue-monitor')
+  assert.equal(run?.sessionId, sourceSessionId)
+  assert.equal(run?.cwd, '/home/user/projects/example')
+  assert.deepEqual(await readdir(join(root, 'ops', 'continue-monitor', 'runs')), [])
+  assert.equal(loadRegistryState(root).tasks['continue-monitor']?.lastRunAt === undefined, false)
+})
+
+test('dispatchReplay continuation fails closed without a source resolver', async () => {
+  const sourceSessionId = 'session-source-missing'
+  const root = await continuationRoot('continue-no-resolver', { continueSession: { sessionId: sourceSessionId } })
+  const result = await dispatchReplay({}, 'continue-no-resolver', {
+    source: 'manual',
+    occurredAt: new Date().toISOString(),
+    payload: {},
+  }, { root })
+  assert.equal(result.ok, false)
+  assert.equal(result.reason, 'source_agent_unavailable')
+  assert.deepEqual(loadRunMapState(root).runs, {})
+})
+
+test('dispatchReplay continuation reports unavailable and archived source sessions', async () => {
+  const sourceSessionId = 'session-source-gone'
+  const root = await continuationRoot('continue-unavailable', { continueSession: { sessionId: sourceSessionId } })
+  const event = { source: 'schedule' as const, occurredAt: new Date().toISOString(), payload: {} }
+  const unavailable = await dispatchReplay({}, 'continue-unavailable', event, {
+    root,
+    resolveSourceAgent: async () => { throw new Error(`cannot resume source session "${sourceSessionId}": not found`) },
+  })
+  assert.equal(unavailable.ok, false)
+  assert.equal(unavailable.reason, 'source_session_unavailable')
+  const archived = await dispatchReplay({}, 'continue-unavailable', event, {
+    root,
+    resolveSourceAgent: async () => { throw new Error(`source session "${sourceSessionId}" is archived; restore it`) },
+  })
+  assert.equal(archived.ok, false)
+  assert.equal(archived.reason, 'source_session_archived')
+})
+
+test('dispatchReplay continuation rejects a preset-bound asset at load and disposes a failed handle', async () => {
+  const sourceSessionId = 'session-source-conflict'
+  const conflictRoot = await continuationRoot('continue-conflict', { continueSession: { sessionId: sourceSessionId } })
+  writeFileSync(join(conflictRoot, 'ops', 'continue-conflict', 'manifest.yml'), [
+    'format: dsh-opskit/1',
+    'id: continue-conflict',
+    'name: Continue conflict',
+    'description: Continue conflict',
+    'version: 0.1.0',
+    'taskMode: fresh',
+    'bindings:',
+    '  continueSession:',
+    '    sessionId: session-source-conflict',
+    '  permissionPreset:',
+    '    hint: read-only',
+    '',
+  ].join('\n'), 'utf8')
+  let resolved = false
+  const conflict = await dispatchReplay({}, 'continue-conflict', {
+    source: 'manual', occurredAt: new Date().toISOString(), payload: {},
+  }, {
+    root: conflictRoot,
+    resolveSourceAgent: async () => { resolved = true; throw new Error('must not resolve') },
+  })
+  assert.equal(conflict.ok, false)
+  assert.equal(conflict.reason, 'asset_unreadable')
+  assert.equal(resolved, false)
+
+  const failRoot = await continuationRoot('continue-publish-fail', { continueSession: { sessionId: sourceSessionId } })
+  let disposed = false
+  const failed = await dispatchReplay({}, 'continue-publish-fail', {
+    source: 'manual', occurredAt: new Date().toISOString(), payload: {},
+  }, {
+    root: failRoot,
+    resolveSourceAgent: async () => ({
+      agent: {
+        session: { header: { id: sourceSessionId, cwd: '/home/user/projects/example' } },
+        followup: () => { throw new Error('inbox unavailable') },
+      },
+      handle: { dispose: async () => { disposed = true } },
+    }),
+  })
+  assert.equal(failed.ok, false)
+  assert.equal(failed.reason, 'publish_failed')
+  assert.equal(disposed, true)
+  assert.deepEqual(loadRunMapState(failRoot).runs, {})
+})
+
+test('dispatchReplay continuation rolls back when the task is deleted during resolution', async () => {
+  const sourceSessionId = 'session-source-deleted'
+  const root = await continuationRoot('continue-delete-race', { continueSession: { sessionId: sourceSessionId } })
+  let disposed = false
+  let followed = false
+  const result = await dispatchReplay({}, 'continue-delete-race', {
+    source: 'manual', occurredAt: new Date().toISOString(), payload: {},
+  }, {
+    root,
+    resolveSourceAgent: async () => {
+      const registry = loadRegistryState(root)
+      delete registry.tasks['continue-delete-race']
+      saveRegistryState(root, registry)
+      return {
+        agent: {
+          session: { header: { id: sourceSessionId, cwd: '/home/user/projects/example' } },
+          followup: () => { followed = true },
+        },
+        handle: { dispose: async () => { disposed = true } },
+      }
+    },
+  })
+  assert.equal(result.ok, false)
+  assert.equal(result.reason, 'task_deleted')
+  assert.equal(followed, false)
+  assert.equal(disposed, true)
+  assert.deepEqual(loadRunMapState(root).runs, {})
+})
+
+test('dispatchReplay continuation rolls back a resumed handle when the registry becomes unreadable', async () => {
+  const sourceSessionId = 'session-source-registry'
+  const root = await continuationRoot('continue-registry-race', { continueSession: { sessionId: sourceSessionId } })
+  let disposed = false
+  const result = await dispatchReplay({}, 'continue-registry-race', {
+    source: 'manual', occurredAt: new Date().toISOString(), payload: {},
+  }, {
+    root,
+    resolveSourceAgent: async () => {
+      writeFileSync(join(root, 'storages', 'registry.json'), '{', 'utf8')
+      return {
+        agent: {
+          session: { header: { id: sourceSessionId, cwd: '/home/user/projects/example' } },
+          followup: () => {},
+        },
+        handle: { dispose: async () => { disposed = true } },
+      }
+    },
+  })
+  assert.equal(result.ok, false)
+  assert.equal(result.reason, 'registry_unreadable')
+  assert.equal(disposed, true)
+  assert.deepEqual(loadRunMapState(root).runs, {})
 })

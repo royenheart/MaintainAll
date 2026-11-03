@@ -139,6 +139,28 @@ export function validateManifest(manifest: unknown): TaskManifest {
         fail(`bindings.${key}`, 'must be { hint: string } when present')
       }
     }
+    const continueSession = (m.bindings as Record<string, unknown>).continueSession
+    if (continueSession !== undefined) {
+      if (
+        typeof continueSession !== 'object' ||
+        continueSession === null ||
+        Array.isArray(continueSession) ||
+        Object.keys(continueSession).length !== 1 ||
+        !Object.prototype.hasOwnProperty.call(continueSession, 'sessionId') ||
+        typeof (continueSession as Record<string, unknown>).sessionId !== 'string' ||
+        ((continueSession as Record<string, unknown>).sessionId as string).trim() === '' ||
+        ((continueSession as Record<string, unknown>).sessionId as string) !== ((continueSession as Record<string, unknown>).sessionId as string).trim()
+      ) {
+        fail('bindings.continueSession', 'must be exactly { sessionId: non-empty string } when present')
+      }
+      if (m.taskMode !== 'fresh') {
+        fail('bindings.continueSession', 'requires taskMode: fresh (no replay seed)')
+      }
+      if ((m.bindings as Record<string, unknown>).agentPreset !== undefined
+        || (m.bindings as Record<string, unknown>).permissionPreset !== undefined) {
+        fail('bindings.continueSession', 'cannot be combined with agentPreset or permissionPreset bindings')
+      }
+    }
   }
 
   if (m.checksums !== undefined) {

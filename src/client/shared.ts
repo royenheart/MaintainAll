@@ -55,6 +55,8 @@ export interface EditInitial {
   description: string
   instructions: string
   taskMode: TaskMode
+  /** Creation-time replay target; true means this task continues its source Session. */
+  continueSession?: boolean
   icon: string
   color: string
   naturalPrompt: string

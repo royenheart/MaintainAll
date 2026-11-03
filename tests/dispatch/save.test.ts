@@ -5,13 +5,19 @@ import { tmpdir } from 'node:os'
 import { join } from 'node:path'
 
 import { readFileSync, existsSync } from 'node:fs'
+import type { TaskManifest } from '../../src/core/contract.ts'
 import { loadRegistryState } from '../../src/core/storage.ts'
 import { readTaskAsset, writeTaskAsset } from '../../src/core/task-writer.ts'
 import {
+  assertReplayModeUnchanged,
+  buildTaskSeed,
   manifestFromMeta,
   materializeTaskEdit,
   materializeTaskFromSave,
+  replayModeOfManifest,
   seedFromSession,
+  summarizeSessionSeed,
+  validateContinuationCreation,
   validateTaskTriggers,
 } from '../../src/dispatch/save.ts'
 
@@ -277,4 +283,293 @@ test('validateTaskTriggers rejects duplicate ids and missing required filters', 
     () => validateTaskTriggers([{ id: 't1', source: 'webhook', filter: { token: 123456 }, enabled: true }]),
     /filter\.token/,
   )
+})
+
+test('validateTaskTriggers: unsupported source explains the accepted trigger kinds', () => {
+  assert.throws(
+    () => validateTaskTriggers([{ id: 'bad', source: '*/30 * * * *' as never, enabled: true }]),
+    (error: unknown) => {
+      const message = (error as Error).message
+      assert.match(message, /unsupported source/)
+      for (const source of ['schedule', 'filewatch', 'docker', 'journald', 'webhook', 'exec']) {
+        assert.ok(message.includes(source), `missing ${source}`)
+      }
+      assert.match(message, /params|filter/)
+      return true
+    },
+  )
+})
+
+function oversizedSession(): {
+  id: string
+  header: { cwd: string }
+  snapshotEvents(): Array<{ type: string; seq: number; data?: unknown }>
+} {
+  const reasoning = 'x'.repeat(17 * 1024 * 1024)
+  return {
+    id: 'session-big',
+    header: { cwd: '/home/user/ops/original' },
+    snapshotEvents: () => [
+      { type: 'turn/start', seq: 1, data: { turn: 1 } },
+      { type: 'assistant/message', seq: 2, data: { message: { content: [{ type: 'reasoning', text: reasoning }] } } },
+      { type: 'turn/end', seq: 3, data: { turn: 1 } },
+    ],
+  }
+}
+
+test('buildTaskSeed: safe-copy overflow reports measured size, cap, and compact alternative', () => {
+  const session = oversizedSession()
+  const sizes = summarizeSessionSeed(session, 3)
+  assert.equal(sizes.eventCount, 3)
+  assert.ok(sizes.safeCopyBytes > 16 * 1024 * 1024)
+  assert.ok(sizes.compactBytes < sizes.safeCopyBytes)
+  assert.throws(
+    () => buildTaskSeed(session, 3, 'safe-copy'),
+    (error: unknown) => {
+      const message = (error as Error).message
+      assert.match(message, /seed is too large/)
+      assert.ok(message.includes(String(sizes.safeCopyBytes)), 'reports the measured size')
+      assert.ok(message.includes('16777216'), 'reports the cap')
+      assert.match(message, /compact/)
+      assert.match(message, /boundarySeq 3/)
+      return true
+    },
+  )
+  const compact = buildTaskSeed(session, 3, 'compact')
+  assert.deepEqual(compact?.events.map((item) => item.type), ['turn/start', 'turn/end'])
+  assert.equal(buildTaskSeed(session, 3, 'fresh'), undefined)
+})
+
+test('materializeTaskFromSave: an oversized safe-copy seed fails before the asset is written', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'maintainall-save-oversized-'))
+  const sessions = { get: () => oversizedSession() }
+  await assert.rejects(
+    materializeTaskFromSave(root, sessions, {
+      sessionId: 'session-big',
+      boundarySeq: 3,
+      meta: {
+        id: 'oversized-watch',
+        name: 'Oversized watch',
+        description: 'Too large for safe-copy',
+        taskMode: 'safe-copy',
+        triggers: [{ id: 't1', source: 'schedule', params: { everySeconds: 1800 }, enabled: true }],
+      },
+    }),
+    /seed is too large/,
+  )
+  assert.equal(existsSync(join(root, 'ops', 'oversized-watch')), false)
+  // The preflight must run before writeTaskAsset creates its `ops/` staging
+  // directory; a late rejection would leave that directory behind.
+  assert.equal(existsSync(join(root, 'ops')), false)
+  assert.deepEqual(loadRegistryState(root).tasks, {})
+})
+
+function paddedSession(textLength: number): {
+  id: string
+  header: { cwd: string }
+  snapshotEvents(): Array<{ type: string; seq: number; data?: unknown }>
+} {
+  return {
+    id: 'session-padded',
+    header: { cwd: '/home/user/ops/original' },
+    snapshotEvents: () => [
+      { type: 'turn/start', seq: 1, data: { turn: 1 } },
+      { type: 'user/message', seq: 2, data: { text: 'x'.repeat(textLength) } },
+      { type: 'turn/end', seq: 3, data: { turn: 1 } },
+    ],
+  }
+}
+
+test('buildTaskSeed: accepts exactly the byte cap and rejects cap + 1', () => {
+  const base = summarizeSessionSeed(paddedSession(0), 3)
+  const padding = 16 * 1024 * 1024 - base.safeCopyBytes
+  assert.ok(padding > 0)
+  const exact = paddedSession(padding)
+  assert.equal(summarizeSessionSeed(exact, 3).safeCopyBytes, 16 * 1024 * 1024)
+  assert.equal(buildTaskSeed(exact, 3, 'safe-copy')?.events.length, 3)
+  assert.throws(
+    () => buildTaskSeed(paddedSession(padding + 1), 3, 'safe-copy'),
+    /seed is too large/,
+  )
+})
+
+test('buildTaskSeed: rejects an event-count overflow even when bytes fit', () => {
+  const events: Array<{ type: string; seq: number; data?: unknown }> = [
+    { type: 'turn/start', seq: 0, data: { turn: 1 } },
+  ]
+  for (let seq = 1; seq <= 100_000; seq += 1) {
+    events.push({ type: 'step/start', seq, data: { turn: 1, step: seq } })
+  }
+  events.push({ type: 'turn/end', seq: 100_001, data: { turn: 1 } })
+  const session = {
+    id: 'session-many-events',
+    header: { cwd: '/home/user/ops/original' },
+    snapshotEvents: () => events,
+  }
+  assert.throws(
+    () => buildTaskSeed(session, 100_001, 'safe-copy'),
+    (error: unknown) => {
+      const message = (error as Error).message
+      assert.match(message, /too many events/)
+      assert.match(message, /100002/)
+      assert.match(message, /100000/)
+      return true
+    },
+  )
+})
+
+test('buildTaskSeed: compact fits where safe-copy overflows and reports the compact size', () => {
+  const session = oversizedSession()
+  const summary = summarizeSessionSeed(session, 3)
+  assert.ok(summary.compactBytes <= 16 * 1024 * 1024)
+  const compact = buildTaskSeed(session, 3, 'compact')
+  assert.ok(compact !== undefined)
+  assert.equal(compact.cwd, '/home/user/ops/original')
+  assert.throws(
+    () => buildTaskSeed(session, 3, 'safe-copy'),
+    (error: unknown) => {
+      assert.ok((error as Error).message.includes(String(summary.compactBytes)))
+      return true
+    },
+  )
+})
+
+test('materializeTaskFromSave: continuation stores the source session and writes no seed', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'maintainall-save-continuation-'))
+  const sessions = {
+    get: () => session([
+      { type: 'turn/start', seq: 0, data: { turn: 1 } },
+      { type: 'turn/end', seq: 1, data: { turn: 1 } },
+    ]),
+  }
+  const taskDir = await materializeTaskFromSave(root, sessions, {
+    sessionId: 'session-1',
+    boundarySeq: 0,
+    meta: {
+      id: 'continue-watch',
+      name: 'Continue watch',
+      description: 'Watch in the source session',
+      taskMode: 'fresh',
+      continueSession: true,
+      triggers: [{ id: 't1', source: 'schedule', params: { everySeconds: 1800 }, enabled: true }],
+    },
+  })
+  const asset = await readTaskAsset(root, 'continue-watch')
+  assert.equal(asset.manifest.taskMode, 'fresh')
+  assert.deepEqual(asset.manifest.bindings, { continueSession: { sessionId: 'session-1' } })
+  assert.equal(asset.seed, undefined)
+  assert.equal(existsSync(join(taskDir, 'seed', 'session.jsonl')), false)
+})
+
+test('materializeTaskFromSave: continuation requires fresh mode and no preset bindings', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'maintainall-save-continuation-invalid-'))
+  const sessions = { get: () => session([{ type: 'turn/start', seq: 0 }, { type: 'turn/end', seq: 1 }]) }
+  const base = {
+    id: 'continue-invalid',
+    name: 'Continue invalid',
+    description: 'Invalid continuation',
+    continueSession: true,
+    triggers: [{ id: 't1' as const, source: 'schedule' as const, params: { everySeconds: 60 }, enabled: true }],
+  }
+  await assert.rejects(
+    materializeTaskFromSave(root, sessions, {
+      sessionId: 'session-1',
+      boundarySeq: 0,
+      meta: { ...base, taskMode: 'safe-copy' },
+    }),
+    /taskMode 'fresh'/,
+  )
+  await assert.rejects(
+    materializeTaskFromSave(root, sessions, {
+      sessionId: 'session-1',
+      boundarySeq: 0,
+      meta: { ...base, taskMode: 'fresh', permissionPresetHint: 'readonly' },
+    }),
+    /cannot bind/,
+  )
+  assert.equal(existsSync(join(root, 'ops', 'continue-invalid')), false)
+})
+
+test('manifestFromMeta: continuation needs an explicit source session id', () => {
+  assert.throws(
+    () => manifestFromMeta({
+      id: 'continue-meta',
+      name: 'Continue meta',
+      description: 'x',
+      taskMode: 'fresh',
+      continueSession: true,
+      triggers: [],
+    }),
+    /source Session id/,
+  )
+  const manifest = manifestFromMeta({
+    id: 'continue-meta',
+    name: 'Continue meta',
+    description: 'x',
+    taskMode: 'fresh',
+    continueSession: true,
+    sourceSessionId: 'session-9',
+    triggers: [],
+  })
+  assert.deepEqual(manifest.bindings, { continueSession: { sessionId: 'session-9' } })
+})
+
+test('validateContinuationCreation: fresh-only mode and no preset bindings', () => {
+  assert.doesNotThrow(() => validateContinuationCreation({}))
+  assert.doesNotThrow(() => validateContinuationCreation({ continueSession: false, taskMode: 'safe-copy' }))
+  assert.doesNotThrow(() => validateContinuationCreation({ continueSession: true, taskMode: 'fresh' }))
+  assert.throws(
+    () => validateContinuationCreation({ continueSession: true, taskMode: 'safe-copy' }),
+    /taskMode 'fresh'/,
+  )
+  assert.throws(
+    () => validateContinuationCreation({ continueSession: true, taskMode: 'fresh', agentPresetHint: 'ops' }),
+    /cannot bind/,
+  )
+  assert.throws(
+    () => validateContinuationCreation({ continueSession: true, taskMode: 'fresh', permissionPresetHint: 'readonly' }),
+    /cannot bind/,
+  )
+})
+
+test('replay target helpers: detect and protect the creation-time target', () => {
+  const fresh: TaskManifest = {
+    format: 'dsh-opskit/1',
+    id: 'fresh-task',
+    name: 'Fresh',
+    description: 'x',
+    version: '0.1.0',
+    taskMode: 'fresh',
+  }
+  const continued: TaskManifest = {
+    ...fresh,
+    id: 'continued-task',
+    bindings: { continueSession: { sessionId: 'session-1' } },
+  }
+  assert.equal(replayModeOfManifest(fresh), 'new-session')
+  assert.equal(replayModeOfManifest(continued), 'continue-session')
+  assert.doesNotThrow(() => assertReplayModeUnchanged(fresh, undefined))
+  assert.doesNotThrow(() => assertReplayModeUnchanged(fresh, 'new-session'))
+  assert.throws(() => assertReplayModeUnchanged(fresh, 'continue-session'), /fixed at task creation/)
+  assert.throws(() => assertReplayModeUnchanged(continued, 'new-session'), /fixed at task creation/)
+})
+
+test('materializeTaskFromSave: a continuation default runbook describes the source session, not a seed', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'maintainall-save-continuation-runbook-'))
+  const sessions = { get: () => session([{ type: 'turn/start', seq: 0 }, { type: 'turn/end', seq: 1 }]) }
+  await materializeTaskFromSave(root, sessions, {
+    sessionId: 'session-1',
+    boundarySeq: 0,
+    meta: {
+      id: 'continue-runbook',
+      name: 'Continue runbook',
+      description: 'Continue in the source session',
+      taskMode: 'fresh',
+      continueSession: true,
+      triggers: [{ id: 't1', source: 'schedule', params: { everySeconds: 1800 }, enabled: true }],
+    },
+  })
+  const asset = await readTaskAsset(root, 'continue-runbook')
+  assert.match(asset.agensMd, /continues the source session/)
+  assert.doesNotMatch(asset.agensMd, /replay seed context/)
 })
