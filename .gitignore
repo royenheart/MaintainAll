@@ -260,3 +260,6 @@ benchmarks/evaluation/site/
 public-benchmark-site/
 
 .run/
+
+# Local cloud CLI credentials/state
+.tccli-home/

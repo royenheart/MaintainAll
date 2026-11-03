@@ -37,6 +37,7 @@ npm run lint      # oxlint
 - Language: all code, comments, prompts, user-facing messages, and documentation are written in English; only replies and reports to the user use the user's own language.
 - Do not impose a per-line word, character, or column limit. Do not hard-wrap prose to a fixed width; keep paragraphs and list-item text on natural lines, and use newlines only for Markdown structure and meaningful paragraph boundaries.
 - Create development worktrees only under `.worktrees/<name>`; do not place them beside the repository checkout. The `.worktrees/` directory is ignored by Git.
+- Default every repository-modifying task to a dedicated worktree under `.worktrees/<name>` created from `main`; do not modify the main checkout unless the user explicitly asks to work there. Keep commits and tests in that worktree, and merge back only when the user asks.
 - Package is scoped `@royenheart/dsh-plugin-maintainall`; `@deepseek-ai/*` packages are peerDependencies only.
 - ESM everywhere (`"type": "module"`). Host entry default-exports a Cordis service or `apply(ctx)`; client entry exports `inject` + `apply(ctx)` and renders with `React.createElement` (no JSX).
 - `src/core/` imports no dsh packages and is unit-tested directly with `node --test`.

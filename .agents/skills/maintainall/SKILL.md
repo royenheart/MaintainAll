@@ -47,6 +47,8 @@ Run the targeted test files for the module you touched rather than the full suit
 
 ## Invariants
 
+- Repository-modifying tasks default to a worktree under `.worktrees/<name>` created from `main`; do not edit the main checkout unless the user explicitly asks. Keep the main checkout clean for parallel work.
+
 - Trigger decisions are deterministic. The model never participates in a trigger decision.
 - All trigger shapes, filters, schedule targets, ids, and uniqueness constraints validate before any save or edit. The `ops_save_task` trigger schema, tool guide, and save prompt are rendered from `src/dispatch/tool-contract.ts` and must match `validateTaskTriggers`.
 - Save paths measure the replay seed budget (16 MiB / 100,000 events, both capture modes) before injecting the generation prompt or writing an asset; an overflow reports the measured bytes, the compact size, and the latest fitting `turn/end`.
