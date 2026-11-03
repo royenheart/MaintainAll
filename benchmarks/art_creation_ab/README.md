@@ -2,7 +2,7 @@
 
 This local runner compares one or two trusted, synthetic tasks across frozen old/new skill snapshots. It uses the official Codex Linux permission profile and the existing local subscription authentication. It does not install Harbor, call an LLM judge, publish artifacts, or run a paid CI workflow.
 
-Requirements: Linux, the npm installation of `codex-cli 0.160.0`, Python 3.11+, and existing local Codex authentication. The model and effort are fixed to `gpt-6.1-sol` and `low`. A changed CLI version fails closed until its sandbox is revalidated. See [source pins](sources.lock.json).
+Requirements: Linux, the npm installation of `codex-cli 0.160.0`, Python 3.11+, and existing local Codex authentication. The model and effort are fixed to `gpt-6.1-sol` and `low`. A changed CLI version fails closed until its sandbox is revalidated. See [source pins](sources.lock.json) and the [Chinese implementation report](../../docs/research/art-creation-benchmark-2026-10-09/v0.md).
 
 ```sh
 python3 benchmarks/art_creation_ab/run.py --help
@@ -62,7 +62,7 @@ The first turn explores two directions without acceptance. The second is a synth
 
 The agent must render and inspect its actual images during each turn. Evidence comes from its exact private rollout: `task_started` boundaries separate turns, and both direct image tools and code-mode `view_image(...)` calls require returned image items. A declaration or an evaluator's later rendering does not count as agent display evidence. Sampled path coordinates, source IDs, retained objects, and generated code support mechanism review; two frames do not prove continuous playback or aesthetic quality.
 
-The pinned CLI reports thread-cumulative token totals after resume. Results retain these as `reported_cumulative_usage` and store second-turn deltas in `usage`; only normalized per-turn values may be summed. Raw logs, UUIDs, and snapshots remain private.
+The pinned CLI reports thread-cumulative token totals after resume. Results retain these as `reported_cumulative_usage` and store second-turn deltas in `usage`; only normalized per-turn values may be summed. Raw logs, UUIDs, and snapshots remain private. See the [Chinese feedback report](../../docs/research/art-creation-benchmark-2026-10-09/feedback.md) for actual observations and scorer corrections.
 
 ## Complex reference tasks
 
