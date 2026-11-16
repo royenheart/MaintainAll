@@ -1,0 +1,77 @@
+---
+name: maintainall
+description: Develop, test, debug, and produce the README demo for the MaintainAll DSH plugin. Use when changing plugin code, task assets, trigger behavior, the Ops panel, or the product demo, so the agent can start from the repository map and known invariants instead of re-reading the whole tree.
+---
+
+# MaintainAll project skill
+
+Project-specific development knowledge for `@royenheart/dsh-plugin-maintainall`. This file is for working on the plugin repository.
+
+## Read first
+
+- [Architecture](../../../docs/architecture.md) for runtime and persisted state.
+- [Testing](../../../docs/testing.md) for the test policy and gaps.
+- [Development](../../../docs/development.md) for build and profile setup.
+- [README demo](../../../README.md#demo) for the current artifact.
+- [Decision records](decisions/README.md) for historical choices; read only the relevant category, not the whole tree.
+
+## Fast map
+
+- `src/index.ts` — host Cordis service, HTTP routes, tools, save/edit/dispatch seams.
+- `src/host/` — `TaskStateStore`, `ReplayRuntime`, and `TriggerRuntime`; runtime wiring, not the public route table.
+- `src/client/` — Ops panel, save dialog, run history, and the client RPC helper.
+- `src/core/` — pure contract, manifest, seed, storage, opskit, task writer, and trigger implementation; no dsh imports.
+- `src/core/triggers/` — trigger events, filters, normalization, rate/debounce, and source implementations.
+- `src/engine/` — trigger engine, listeners, schedule time, and state.
+- `src/dispatch/` — run workspace, seed extraction, replay dispatch, save materialization/lifecycle, save/edit prompts, and the model-facing `ops_save_task` trigger contract.
+- `src/locales/` — symmetric `zh`/`en` dictionaries and keys.
+- `tests/` — `node --test`; pure core and trigger tests do not need a harness.
+- `preset/ops.patch.yml` — Ops agent preset.
+- `.agents/skills/maintainall/decisions/` — historical decision records; read only the relevant category.
+- `.agents/skills/` — project development skills such as this one.
+
+## Commands
+
+Run from the repository root:
+
+```sh
+npm install
+npm run build
+npm test
+npm run typecheck
+npm run lint
+```
+
+Run the targeted test files for the module you touched rather than the full suite by default. Add or update a test when behavior changes.
+
+## Invariants
+
+- Repository-modifying tasks default to a worktree under `.worktrees/<name>` created from `main`; do not edit the main checkout unless the user explicitly asks. Keep the main checkout clean for parallel work.
+
+- Trigger decisions are deterministic. The model never participates in a trigger decision.
+- All trigger shapes, filters, schedule targets, ids, and uniqueness constraints validate before any save or edit. The `ops_save_task` trigger schema, tool guide, and save prompt are rendered from `src/dispatch/tool-contract.ts` and must match `validateTaskTriggers`.
+- Save paths measure the replay seed budget (16 MiB / 100,000 events, both capture modes) before injecting the generation prompt or writing an asset; an overflow reports the measured bytes, the compact size, and the latest fitting `turn/end`.
+- A continuation task (`bindings.continueSession`, creation-time, `taskMode: fresh`, no preset bindings) delivers triggers into its source Session: no run cwd, seed rewrite, title rename, or permission-preset application; a live Agent or the embedding's reminder activation waterfall is used as a compatibility bridge (never a plugin-owned resume; the neutral upstream extension is tracked under `decisions/proposed/`); archived, deleted, preset-conflicting, or unresolvable sources fail closed; export/import drops the machine-local binding.
+- Storage writes are atomic. Do not write under `$DSH_HOME/sessions/`, `$DSH_HOME/profiles/`, or the plugin package directory.
+- Client text is i18n-only with symmetric `zh`/`en` dictionaries.
+- Plugin HTTP responses are non-cacheable (`cache-control: no-store`) and client GETs bypass the browser cache; a deployment proxy must not cache the `/plugins/<package>/` prefix as immutable static assets, or a successful task toggle never reaches the panel.
+- Registrations return disposers and release on unload and failed init.
+- `src/core/` stays free of dsh imports.
+- Use dsh extension points, never patch dsh internals.
+
+## Demo production
+
+The README demo is a **live evidence capture**, not a rebuilt motion film. It uses a scratch DSH home, the English light theme, a five-stage chapter rail, real model checks, a real saved task, and a real replay session. Read [the demo case](references/demo.md) before re-recording.
+
+Key rules:
+
+- Stage the rail before the capture and size it from the longest label; do not wrap labels.
+- No decorative cursor, spinning dot, or free-floating focus frame.
+- Type task fields at a readable pace; do not fill-and-submit in one frame.
+- After Run once, enter the replay session immediately and stay there through the result.
+- Record task id, run id, model, commit, and whether the artifact is live or rebuilt.
+- No banner or launch film for the README; the GIF is the deliverable.
+
+## Documentation
+
+Update `docs/` for behavior and architecture. Update this skill when the repository map, commands, invariants, or demo recipe changes. Keep project development instructions in this repository rather than in external personal notes.

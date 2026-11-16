@@ -1,0 +1,23 @@
+# Dependencies and build output
+node_modules/
+lib/
+dist/
+coverage/
+
+# Local worktrees and scratch state
+.worktrees/
+.tmp/
+tmp/
+
+# Environment and secrets
+.env
+.env.*
+!.env.example
+
+# Local tool caches and logs
+*.log
+.DS_Store
+__pycache__/
+*.pyc
+.pytest_cache/
+.ruff_cache/
