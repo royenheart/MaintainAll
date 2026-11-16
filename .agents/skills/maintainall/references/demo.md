@@ -16,8 +16,12 @@ The artifact must also prove the real model, task, and replay path worked.
 
 ## Current artifact
 
-- The published plugin-only repository intentionally does not ship the recording, its session ids, task ids, or commit ids.
-- The recording recipe and visual decisions remain below so a maintainer can reproduce it in a private scratch environment.
+- `docs/assets/maintainall-demo.gif`
+- 28.8 s, 950×563, 3.6 MB, 12 fps
+- live capture with a post-composed chapter rail
+- visible replay run: `20261028-030658-cf17aabf`
+- task: `payments-deploy-light2`
+- code commit: `5ea65f1`
 
 ## Decisions
 
@@ -38,7 +42,7 @@ The artifact must also prove the real model, task, and replay path worked.
 - A focus frame that is not tied to the current action looks random.
 - Filling a form instantly makes the save step unreadable.
 - Waiting on the task panel and later jumping to the result breaks the causal chain.
-- A live badge is not evidence by itself; keep capture provenance in private recording notes, not in the published plugin repository.
+- A live badge is not evidence by itself; the task/run IDs and commit belong next to the artifact.
 - Splicing different takes changes rail state and UI state; avoid it.
 
 ## Production recipe

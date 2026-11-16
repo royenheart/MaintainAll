@@ -19,7 +19,11 @@ Trigger decisions are deterministic: source filter, optional CEL `when`, debounc
 
 ## Demo
 
-A live demo capture is intentionally not included in this plugin-only repository so the published artifact does not carry capture metadata or session identifiers. The demo workflow is still described in the project development skill; the plugin itself has no runtime dependency on that recording.
+![MaintainAll live product demo: five stages from a new session to a replay result](docs/assets/maintainall-demo.gif)
+
+A live product demo recorded from a scratch DSH instance with the real model, in the English light theme. A vertical chapter-index rail stays on the left while the live DSH UI remains on the right: initialize, run checks, save task, replay, result. The recording types the task fields at a readable pace, then enters the replay session immediately after Run once and follows it to `DEPLOY_CHECK_OK`.
+
+The chapter rail is a recording overlay, not product chrome. The visible replay run is `20261028-030658-cf17aabf` from task `payments-deploy-light2` on code commit `5ea65f1`.
 
 ## Install
 
