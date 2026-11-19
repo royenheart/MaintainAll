@@ -47,6 +47,8 @@ import { buildEditPrompt, buildSavePrompt, type SavePromptSeed } from './dispatc
 import { OPS_SAVE_TASK_TRIGGER_GUIDE, OPS_SAVE_TASK_TRIGGER_SCHEMA } from './dispatch/tool-contract.ts'
 import { dispatchReplay } from './dispatch/replay.ts'
 import { TaskStateStore } from './host/task-state.ts'
+import { buildRouteTable } from './host/routes.ts'
+import type { RouteSpec } from './host/routes.ts'
 import { ReplayRuntime } from './host/replay-runtime.ts'
 import { TriggerRuntime } from './host/trigger-runtime.ts'
 
@@ -71,16 +73,8 @@ export interface MaintainAllConfig {
 }
 
 /** Minimal face of the dsh webServer service this plugin consumes. */
-interface ConnectionFace {
-  requestRejection(request: { readonly headers: IncomingMessage['headers'] }): 401 | 403 | undefined
-}
-
 interface WebServerFace {
-  register(route: {
-    kind: 'exact' | 'prefix'
-    path: string
-    handler: (req: IncomingMessage, res: ServerResponse) => void | Promise<void>
-  }): () => void
+  register(route: RouteSpec): () => void
 }
 
 /** Minimal logger face; `console.warn` is the fallback. */
@@ -117,7 +111,7 @@ interface AgentsFace {
 }
 
 export class MaintainAllService extends Service {
-  static inject = ['webServer', 'connection', 'sessions', 'tools', 'agents', 'agentPresets']
+  static inject = ['webServer', 'sessions', 'tools', 'agents', 'agentPresets']
 
   private readonly configuredRoot?: string
   private root = ''
@@ -232,27 +226,15 @@ export class MaintainAllService extends Service {
         event: 'session/disposed',
         listener: SessionDisposedListener,
       ) => () => void
-      const fence = (
-        handler: (req: IncomingMessage, res: ServerResponse) => void | Promise<void>,
-      ) => (req: IncomingMessage, res: ServerResponse): void | Promise<void> => {
-        const connection = this.ctx.get('connection') as unknown as ConnectionFace
-        const rejection = connection.requestRejection(req)
-        if (rejection !== undefined) {
-          res.statusCode = rejection
-          res.end()
-          return
-        }
-        return handler(req, res)
-      }
-      const routes: Parameters<WebServerFace['register']>[0][] = [
-        { kind: 'exact', path: `${ROUTE_BASE}/logs`, handler: fence((req, res) => this.handleLogs(req, res)) },
-        { kind: 'prefix', path: `${ROUTE_BASE}/tasks`, handler: fence((req, res) => this.handleTasksRoute(req, res)) },
-        { kind: 'exact', path: `${ROUTE_BASE}/save`, handler: fence((req, res) => this.withWrite(() => this.handleSave(req, res))) },
-        { kind: 'exact', path: `${ROUTE_BASE}/import`, handler: fence((req, res) => this.withWrite(() => this.handleImport(req, res))) },
-        { kind: 'prefix', path: `${ROUTE_BASE}/export`, handler: fence((req, res) => this.withWrite(() => this.handleExport(req, res))) },
-        { kind: 'prefix', path: `${ROUTE_BASE}/webhook`, handler: (req, res) => this.handleWebhook(req, res) },
-        { kind: 'prefix', path: `${ROUTE_BASE}/triggers`, handler: fence((req, res) => this.withWrite(() => this.handleTriggerToggle(req, res))) },
-      ]
+      const routes = buildRouteTable(ROUTE_BASE, {
+        logs: (req, res) => this.handleLogs(req, res),
+        tasks: (req, res) => this.handleTasksRoute(req, res),
+        save: (req, res) => this.withWrite(() => this.handleSave(req, res)),
+        import: (req, res) => this.withWrite(() => this.handleImport(req, res)),
+        export: (req, res) => this.withWrite(() => this.handleExport(req, res)),
+        webhook: (req, res) => this.handleWebhook(req, res),
+        triggers: (req, res) => this.withWrite(() => this.handleTriggerToggle(req, res)),
+      })
       for (const route of routes) disposers.push(webServer.register(route))
       // Keep the retained-handle map bounded to live sessions. The handle is
       // not needed after dsh disposes its Session.

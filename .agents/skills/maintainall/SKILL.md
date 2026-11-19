@@ -18,7 +18,7 @@ Project-specific development knowledge for `@royenheart/dsh-plugin-maintainall`.
 ## Fast map
 
 - `src/index.ts` — host Cordis service, HTTP routes, tools, save/edit/dispatch seams.
-- `src/host/` — `TaskStateStore`, `ReplayRuntime`, and `TriggerRuntime`; runtime wiring, not the public route table.
+- `src/host/` — `routes.ts` route table and admission policy, `TaskStateStore`, `ReplayRuntime`, and `TriggerRuntime`; runtime wiring consumed by the host service.
 - `src/client/` — Ops panel, save dialog, run history, and the client RPC helper.
 - `src/core/` — pure contract, manifest, seed, storage, opskit, task writer, and trigger implementation; no dsh imports.
 - `src/core/triggers/` — trigger events, filters, normalization, rate/debounce, and source implementations.
